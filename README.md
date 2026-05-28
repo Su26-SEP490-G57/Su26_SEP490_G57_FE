@@ -27,7 +27,7 @@ flutter pub get
 
 ### 2. Cấu hình Firebase
 
-**Android:** File `android/app/google-services.json` đã có trong repo.
+**Android:** File `android/app/google-services.json`.
 
 **iOS:** Cần thêm `ios/Runner/GoogleService-Info.plist` — download từ Firebase Console nếu build iOS.
 
