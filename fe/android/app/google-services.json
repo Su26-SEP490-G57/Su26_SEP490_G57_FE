@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "781624065817",
+    "project_id": "poms-25f1c",
+    "storage_bucket": "poms-25f1c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:781624065817:android:26cc6c516c6423a5c0cf88",
+        "android_client_info": {
+          "package_name": "android.app.poms"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "781624065817-2263vevr7ak6qti1d56o6fjrsaiapnj3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDc7ruu28M94z0sQvLl9D7bkeAHslPafvE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "781624065817-2263vevr7ak6qti1d56o6fjrsaiapnj3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
