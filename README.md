@@ -1,17 +1,30 @@
 # POMS Mobile — Flutter App
 
-Post-Operative Monitoring System — Mobile app cho **Nurse** và **Patient**.
+**Post-Operative Monitoring System** — Ứng dụng mobile theo dõi bệnh nhân sau phẫu thuật, phục vụ 2 vai trò: **Điều dưỡng (Nurse)** và **Bệnh nhân (Patient)**.
 
 ---
 
-## Yêu cầu
+## Tech Stack
+
+| | |
+|---|---|
+| Framework | Flutter 3.44.0 / Dart 3.12.0 |
+| State management | Riverpod 2.x (`flutter_riverpod`) |
+| Navigation | GoRouter 15.x |
+| Network | Dio 5.x + 2 custom interceptors |
+| Auth | JWT (access token in-memory, refresh token in SecureStorage) |
+| Local storage | SharedPreferences (user profile) + FlutterSecureStorage (refresh token) |
+
+---
+
+## Yêu cầu môi trường
 
 | Tool | Version |
 |---|---|
-| Flutter | 3.38.6+ |
-| Dart | 3.10.7+ |
-| Android Studio | Hedgehog+ (để chạy emulator) |
-| Node.js | 18+ (chỉ cần cho scripts Firebase) |
+| Flutter | 3.44.0+ |
+| Dart | 3.12.0+ |
+| Android Studio | Hedgehog+ (emulator) |
+| JDK | 17+ |
 
 ---
 
@@ -25,92 +38,136 @@ cd fe
 flutter pub get
 ```
 
-### 2. Cấu hình Firebase
-
-**Android:** File `android/app/google-services.json`.
-
-**iOS:** Cần thêm `ios/Runner/GoogleService-Info.plist` — download từ Firebase Console nếu build iOS.
-
-**Tất cả platform:** Firebase options đã được cấu hình trong `lib/firebase_options.dart`.
-
-### 3. Tạo file `.env`
+### 2. Tạo file `.env`
 
 ```bash
-cp .env.example .env  # hoặc tạo thủ công
+# Tạo file .env trong thư mục fe/
+cp .env.example .env
 ```
 
 Nội dung `.env`:
-```
+
+```env
 API_BASE_URL=http://10.0.2.2:8080/api
 ```
 
-> `10.0.2.2` là địa chỉ localhost của máy host khi chạy trên Android emulator.
+> `10.0.2.2` là địa chỉ trỏ về `localhost` của máy host khi chạy Android Emulator.
+> Thay bằng IP thực nếu dùng thiết bị vật lý hoặc deploy lên server.
 
-### 4. Chạy app
+### 3. Chạy app
 
 ```bash
-# Chạy trên emulator/device
+# Android emulator / thiết bị thực
 flutter run
 
-# Chạy trên Windows desktop (để test nhanh)
+# Windows desktop (test nhanh không cần emulator)
 flutter run -d windows
 ```
-
----
-
-## Tạo tài khoản test (Nurse)
-
-Firebase Auth chỉ hỗ trợ Email/Password. Nurse login dùng email ảo theo format `<username>@poms.internal`.
-
-**Bước 1:** Vào [Firebase Console](https://console.firebase.google.com) → project `project cua ban` → Authentication → Users → Add user
-- Email: `.....@poms.internal`
-- Password: `.....`
-
-**Bước 2:** Cài script để set custom claims (nếu cần test role):
-```bash
-cd scripts
-npm install
-# Download serviceAccountKey.json từ Firebase Console → Project Settings → Service accounts
-node set-role.js nurse01@poms.internal nurse
-```
-
-**Bước 3:** Login trong app với username `nurse01` / password `Nurse@123`.
 
 ---
 
 ## Cấu trúc project
 
 ```
-lib/
-  core/
-    constants/     # màu sắc, typography, routes, strings
-    errors/        # exception & failure classes
-    network/       # Dio client, auth interceptor
-    router/        # GoRouter config
-    theme/         # AppTheme (Material 3)
-    utils/         # extensions, exception handler
-
-  features/
-    auth/          # login, auth state, Firebase auth
-    nurse/         # nurse dashboard, patient list, alerts, tasks, profile
-    patient/       # patient dashboard (placeholder)
-
-  shared/
-    widgets/       # AppButton, AppTextField, CustomCheckbox, ErrorView...
-
-  app.dart         # MaterialApp.router
-  main.dart        # entry point
-  firebase_options.dart
+fe/lib/
+├── core/
+│   ├── constants/      # AppColors, AppConstants, AppRoutes, AppStrings, AppTextStyles
+│   ├── errors/         # AppException (sealed), Failure (sealed)
+│   ├── network/        # dio_client, token_storage, access_token_interceptor,
+│   │                   # refresh_token_interceptor, api_response
+│   ├── router/         # GoRouter config + redirect logic
+│   ├── theme/          # AppTheme — Material 3, Inter font
+│   └── utils/          # extensions, exception_handler
+│
+├── features/
+│   ├── auth/
+│   │   ├── data/       # AuthRemoteDataSource (REST), AuthRepositoryImpl
+│   │   ├── domain/     # UserModel, UserRole, AuthRepository interface
+│   │   └── presentation/ # LoginPage, SplashPage, auth_provider, login widgets
+│   ├── nurse/
+│   │   ├── domain/     # PatientSummary, PatientStatus, kMockPatients
+│   │   └── presentation/
+│   │       ├── layouts/  # NurseShell (bottom nav)
+│   │       └── pages/    # Dashboard, Patients, PatientDetail, Alerts,
+│   │                     # Reports, Tasks, Profile
+│   └── patient/
+│       └── presentation/ # PatientDashboardPage (stub)
+│
+├── shared/
+│   └── widgets/        # AppButton, AppTextField, CustomCheckbox,
+│                       # ErrorView, LoadingOverlay
+│
+├── app.dart            # MaterialApp.router
+└── main.dart           # Entry point
 ```
+
+---
+
+## Auth Flow
+
+App dùng **JWT thuần** (không Firebase Auth):
+
+```
+Login  →  POST /auth/login  →  { accessToken, refreshToken, user }
+                               ↓
+                 accessToken  →  in-memory (mất khi app kill)
+                 refreshToken →  FlutterSecureStorage
+                 user profile →  SharedPreferences (JSON)
+
+Request  →  AccessTokenInterceptor gắn Bearer header
+   401   →  RefreshTokenInterceptor gọi POST /auth/refresh
+            → nhận accessToken mới → retry original request
+            → nếu refresh thất bại → logout + redirect /login
+```
+
+**Remember Me:**
+- Tick → giữ session qua app restart (restore từ SharedPreferences)
+- Không tick → xóa session ngay khi app khởi động lại
 
 ---
 
 ## Lệnh thường dùng
 
 ```bash
-flutter pub get          # cài dependencies
-flutter run              # chạy app
-flutter run -d windows   # chạy trên Windows
-flutter analyze lib      # kiểm tra lỗi static
-flutter clean            # clean build cache
+# Cài / cập nhật dependencies
+flutter pub get
+
+# Chạy app
+flutter run
+flutter run -d windows
+
+# Static analysis
+flutter analyze lib
+
+# Code generation (Riverpod, Freezed, json_serializable)
+dart run build_runner build --delete-conflicting-outputs
+
+# Clean build cache
+flutter clean && flutter pub get
 ```
+
+---
+
+## Conventions
+
+- **Tất cả UI text**: tiếng Việt, khai báo trong `AppStrings` hoặc `const` local
+- **Page trong ShellRoute** (nurse): không có `Scaffold` riêng — `NurseShell` cung cấp
+- **Navigation**: `context.go()` cho tabs, `context.push()` cho sub-routes
+- **Error handling**: throw `AppException` ở data layer, map sang `Failure` ở domain
+- **Private widgets**: đặt cùng file với page (`_WidgetName`), không tách file riêng trừ khi dùng nhiều nơi
+
+---
+
+## Trạng thái hiện tại
+
+| Feature | Status |
+|---|---|
+| Auth (JWT login/logout/refresh/session restore) | ✅ Hoàn chỉnh |
+| Nurse Dashboard | ✅ UI xong, data mock |
+| Nurse Patient List (search + filter) | ✅ UI xong, data mock |
+| Nurse Patient Detail (tab Tổng quan) | ✅ UI xong, data mock |
+| Nurse Patient Detail (4 tabs còn lại) | 🚧 Placeholder |
+| Nurse Alerts / Reports / Tasks | 🚧 Placeholder |
+| Patient feature | 🚧 Placeholder |
+| API integration (thay mock data) | ⏳ Chờ backend |
+| Push notification (FCM) | ⏳ Chờ backend |
