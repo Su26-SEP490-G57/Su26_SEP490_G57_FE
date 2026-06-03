@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../errors/app_exception.dart';
 import '../errors/failure.dart';
@@ -8,9 +7,6 @@ import '../errors/failure.dart';
 AppException mapException(Object error) {
   if (error is DioException) {
     return _mapDioException(error);
-  }
-  if (error is FirebaseAuthException) {
-    return _mapFirebaseAuthException(error);
   }
   if (error is AppException) {
     return error;
@@ -49,6 +45,7 @@ AppException _mapDioException(DioException e) {
 
 AppException _mapStatusCode(int? statusCode) {
   return switch (statusCode) {
+    400 => const AuthException('Dữ liệu không hợp lệ'),
     401 => const UnauthorizedException(),
     403 => const ForbiddenException(),
     404 => const NotFoundException(),
@@ -56,19 +53,5 @@ AppException _mapStatusCode(int? statusCode) {
       statusCode: statusCode ?? 500,
       message: 'Lỗi máy chủ ($statusCode)',
     ),
-  };
-}
-
-AppException _mapFirebaseAuthException(FirebaseAuthException e) {
-  return switch (e.code) {
-    'user-not-found' ||
-    'wrong-password' ||
-    'invalid-credential' => const InvalidCredentialsException(),
-    'user-disabled' => const AuthException('Tài khoản đã bị vô hiệu hóa'),
-    'too-many-requests' => const AuthException(
-      'Quá nhiều yêu cầu. Vui lòng thử lại sau',
-    ),
-    'network-request-failed' => const NetworkException(),
-    _ => AuthException(e.message ?? 'Lỗi xác thực'),
   };
 }

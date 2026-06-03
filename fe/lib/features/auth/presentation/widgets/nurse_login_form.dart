@@ -29,23 +29,16 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
     super.dispose();
   }
 
-  // Domain suffix dùng cho email ảo — đổi sang BE endpoint khi BE sẵn sàng
-  static const String _emailDomain = '@poms.internal';
-
   Future<void> _submit() async {
     context.hideKeyboard();
     if (!_formKey.currentState!.validate()) return;
 
-    final username = _usernameController.text.trim();
-    final fakeEmail = '$username$_emailDomain';
-
     await ref
         .read(authNotifierProvider.notifier)
         .signIn(
-          email: fakeEmail,
+          email: _usernameController.text.trim(),
           password: _passwordController.text,
           rememberMe: _rememberMe,
-          forceRole: 'nurse',
         );
   }
 
@@ -60,30 +53,6 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Title ───────────────────────────────────────────────────
-          const Text(
-            'Đăng nhập điều dưỡng',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF191B24),
-              letterSpacing: -0.2,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Hệ thống hỗ trợ theo dõi hậu phẫu',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              color: Color(0xFF424656),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 28),
-
           // ── Username ────────────────────────────────────────────────
           const _FieldLabel(label: 'TÊN ĐĂNG NHẬP'),
           const SizedBox(height: 6),
@@ -99,6 +68,7 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
               return null;
             },
           ),
+
           const SizedBox(height: 16),
 
           // ── Password ────────────────────────────────────────────────
@@ -107,7 +77,7 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
           _GlassInputField(
             controller: _passwordController,
             hint: 'Nhập mật khẩu',
-            prefixIcon: Icons.lock_outline,
+            prefixIcon: Icons.lock_outline_rounded,
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _submit(),
@@ -119,7 +89,7 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
                   _obscurePassword
                       ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
-                  color: const Color(0xFF424656),
+                  color: const Color(0xFF727687),
                   size: 20,
                 ),
               ),
@@ -145,22 +115,32 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
                 label: 'Ghi nhớ đăng nhập',
               ),
               const Spacer(),
-              GestureDetector(
-                onTap: () {
+              TextButton(
+                onPressed: () {
                   // TODO: forgot password flow
                 },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 child: const Text(
-                  'Quên mật khẩu?',
+                  'QUÊN MẬT KHẨU?',
                   style: TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
                     color: Color(0xFF0050CB),
                   ),
                 ),
               ),
             ],
           ),
+
           const SizedBox(height: 24),
 
           // ── Login button ────────────────────────────────────────────
@@ -169,6 +149,7 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
             isLoading: isLoading,
             onPressed: isLoading ? null : _submit,
           ),
+
           const SizedBox(height: 24),
 
           // ── Switch to patient ───────────────────────────────────────
@@ -273,9 +254,9 @@ class _GlassInputFieldState extends State<_GlassInputField> {
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() {
-      setState(() => _isFocused = _focusNode.hasFocus);
-    });
+    _focusNode.addListener(
+      () => setState(() => _isFocused = _focusNode.hasFocus),
+    );
   }
 
   @override
@@ -289,22 +270,21 @@ class _GlassInputFieldState extends State<_GlassInputField> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
+        color: _isFocused ? Colors.white : const Color(0xFFF2F3FF),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _isFocused ? const Color(0xFF0050CB) : const Color(0xFFC2C6D8),
           width: _isFocused ? 2 : 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: _isFocused
-                ? const Color(0xFF0050CB).withValues(alpha: 0.1)
-                : Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            spreadRadius: _isFocused ? 1 : 0,
-            offset: _isFocused ? Offset.zero : const Offset(0, 2),
-          ),
-        ],
+        boxShadow: _isFocused
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF0050CB).withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ]
+            : [],
       ),
       child: TextFormField(
         controller: widget.controller,

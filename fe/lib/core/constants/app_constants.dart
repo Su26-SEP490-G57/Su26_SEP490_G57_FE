@@ -1,10 +1,19 @@
 /// Misc app-wide constants
 abstract final class AppConstants {
-  // Storage keys
+  // Storage keys — SharedPreferences
   static const String keyUserRole = 'user_role';
   static const String keyUserId = 'user_id';
   static const String keyRememberMe = 'remember_me';
   static const String keyOnboardingDone = 'onboarding_done';
+  static const String keyUserProfile = 'user_profile'; // JSON string
+
+  // Storage keys — FlutterSecureStorage
+  static const String keyRefreshToken = 'refresh_token';
+
+  // API endpoints
+  static const String endpointLogin = '/auth/login';
+  static const String endpointRefresh = '/auth/refresh';
+  static const String endpointLogout = '/auth/logout';
 
   // API
   static const Duration connectTimeout = Duration(seconds: 15);

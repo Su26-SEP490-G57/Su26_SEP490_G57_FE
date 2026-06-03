@@ -6,11 +6,14 @@ import '../../features/auth/domain/models/user_model.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/nurse/domain/models/patient_summary.dart';
 import '../../features/nurse/presentation/layouts/nurse_shell.dart';
 import '../../features/nurse/presentation/pages/nurse_alerts_page.dart';
 import '../../features/nurse/presentation/pages/nurse_dashboard_page.dart';
+import '../../features/nurse/presentation/pages/nurse_patient_detail_page.dart';
 import '../../features/nurse/presentation/pages/nurse_patients_page.dart';
 import '../../features/nurse/presentation/pages/nurse_profile_page.dart';
+import '../../features/nurse/presentation/pages/nurse_reports_page.dart';
 import '../../features/nurse/presentation/pages/nurse_tasks_page.dart';
 import '../../features/patient/presentation/pages/patient_dashboard_page.dart';
 import '../constants/app_routes.dart';
@@ -72,10 +75,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.nursePatients,
             builder: (context, state) => const NursePatientsPage(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => NursePatientDetailPage(
+                  patientId: state.pathParameters['id'] ?? '',
+                  patient: state.extra is PatientSummary
+                      ? state.extra as PatientSummary
+                      : null,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: AppRoutes.nurseAlerts,
             builder: (context, state) => const NurseAlertsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.nurseReports,
+            builder: (context, state) => const NurseReportsPage(),
           ),
           GoRoute(
             path: AppRoutes.nurseMonitoring,

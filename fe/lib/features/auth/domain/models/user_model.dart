@@ -35,6 +35,26 @@ class UserModel extends Equatable {
   final String? displayName;
   final String? photoUrl;
 
+  // ── Serialization — dùng để persist vào SharedPreferences ──────────────
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      uid: json['uid'] as String,
+      email: json['email'] as String,
+      role: UserRoleX.fromString(json['role'] as String),
+      displayName: json['displayName'] as String?,
+      photoUrl: json['photoUrl'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'uid': uid,
+    'email': email,
+    'role': role.name,
+    'displayName': displayName,
+    'photoUrl': photoUrl,
+  };
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
   String get initials {
     if (displayName != null && displayName!.isNotEmpty) {
       final parts = displayName!.trim().split(' ');

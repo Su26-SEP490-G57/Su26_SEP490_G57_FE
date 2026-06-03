@@ -2,29 +2,40 @@ import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
+import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../constants/app_constants.dart';
-import 'auth_interceptor.dart';
+import 'access_token_interceptor.dart';
+import 'refresh_token_interceptor.dart';
 
-/// Creates and configures the singleton Dio instance
-Dio createDioClient() {
-  final baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:8080/api';
+// ---------------------------------------------------------------------------
+// Auth Dio — không có interceptor, chỉ dùng cho /auth/login & /auth/refresh
+// Tránh circular dependency: AuthRemoteDataSource dùng Dio này, không phải
+// Dio đã gắn RefreshTokenInterceptor.
+// ---------------------------------------------------------------------------
 
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: AppConstants.connectTimeout,
-      receiveTimeout: AppConstants.receiveTimeout,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ),
+Dio createAuthDio() => _buildBaseDio();
+
+// ---------------------------------------------------------------------------
+// App Dio — gắn 2 interceptors, dùng cho tất cả API calls khác
+//
+// [authRepository] được inject từ bên ngoài (auth_provider.dart) để tránh
+// circular import giữa dio_client ↔ auth_provider.
+// ---------------------------------------------------------------------------
+
+Dio createAppDio({required AuthRepository authRepository}) {
+  final dio = _buildBaseDio();
+
+  // Interceptor 1: đọc access token từ memory, gán vào header
+  dio.interceptors.add(
+    AccessTokenInterceptor(() => authRepository.getAccessToken()),
   );
 
-  // Auth interceptor — attaches Firebase ID token
-  dio.interceptors.add(AuthInterceptor(dio));
+  // Interceptor 2: refresh token khi 401, retry original request
+  dio.interceptors.add(
+    RefreshTokenInterceptor(dio: dio, authRepository: authRepository),
+  );
 
-  // Logger — only in debug mode
+  // Logger — debug only
   assert(() {
     dio.interceptors.add(
       PrettyDioLogger(
@@ -40,4 +51,24 @@ Dio createDioClient() {
   }());
 
   return dio;
+}
+
+// ---------------------------------------------------------------------------
+// Shared base config
+// ---------------------------------------------------------------------------
+
+Dio _buildBaseDio() {
+  final baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:8080/api';
+
+  return Dio(
+    BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: AppConstants.connectTimeout,
+      receiveTimeout: AppConstants.receiveTimeout,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ),
+  );
 }

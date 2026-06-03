@@ -8,8 +8,9 @@ abstract final class AppRoutes {
   static const String nurseDashboard = '/nurse/dashboard';
   static const String nursePatients = '/nurse/patients';
   static const String nursePatientDetail = '/nurse/patients/:id';
-  static const String nurseMonitoring = '/nurse/monitoring';
   static const String nurseAlerts = '/nurse/alerts';
+  static const String nurseReports = '/nurse/reports';
+  static const String nurseMonitoring = '/nurse/monitoring';
   static const String nurseNotifications = '/nurse/notifications';
   static const String nurseProfile = '/nurse/profile';
 

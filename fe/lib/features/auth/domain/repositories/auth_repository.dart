@@ -1,26 +1,33 @@
 import '../models/user_model.dart';
 
 abstract interface class AuthRepository {
-  /// Stream of current user — emits null when signed out
+  /// Stream phát ra user hiện tại.
+  /// Emit [UserModel] khi authenticated, null khi signed out.
+  /// Dùng bởi GoRouter để redirect.
   Stream<UserModel?> get authStateChanges;
 
-  /// Current user synchronously (null if not signed in)
+  /// User hiện tại (synchronous, từ memory).
   UserModel? get currentUser;
 
-  /// Nurse: sign in with email and password
+  /// Đăng nhập bằng email/password.
+  /// Lưu access token vào memory, refresh token vào SecureStorage,
+  /// user profile vào memory + SharedPreferences.
   Future<UserModel> signIn({
     required String email,
     required String password,
     bool rememberMe = false,
-    String? forceRole,
   });
 
-  /// Sign out
+  /// Đăng xuất — xóa tất cả tokens và profile khỏi mọi storage.
   Future<void> signOut();
 
-  /// Get fresh Firebase ID token for API calls
-  Future<String?> getIdToken({bool forceRefresh = false});
+  /// Lấy access token hiện tại từ memory (null nếu chưa login).
+  String? getAccessToken();
 
-  /// Whether "remember me" was checked on last login
+  /// Dùng refresh token để lấy access token mới.
+  /// Throw [UnauthorizedException] nếu refresh token hết hạn.
+  Future<String> refreshAccessToken();
+
+  /// Whether "remember me" was checked on last login.
   bool get isRememberMeEnabled;
 }
