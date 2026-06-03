@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Mức độ cảnh báo AI
+/// Mức độ cảnh báo
 enum PatientStatus { red, yellow, green }
 
 extension PatientStatusX on PatientStatus {

@@ -1,0 +1,4 @@
+# VSCode — personal workspace settings (chứa absolute paths, không share)
+.vscode/settings.json
+
+.kiro/
