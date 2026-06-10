@@ -9,11 +9,11 @@ abstract interface class AuthRepository {
   /// User hiện tại (synchronous, từ memory).
   UserModel? get currentUser;
 
-  /// Đăng nhập bằng email/password.
+  /// Đăng nhập bằng username/password.
   /// Lưu access token vào memory, refresh token vào SecureStorage,
   /// user profile vào memory + SharedPreferences.
   Future<UserModel> signIn({
-    required String email,
+    required String username,
     required String password,
     bool rememberMe = false,
   });

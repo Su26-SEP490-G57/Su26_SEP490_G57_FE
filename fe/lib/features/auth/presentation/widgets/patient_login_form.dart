@@ -36,7 +36,7 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
     await ref
         .read(authNotifierProvider.notifier)
         .signIn(
-          email: _idController.text.trim(),
+          username: _idController.text.trim(),
           password: _passwordController.text,
           rememberMe: _rememberMe,
         );

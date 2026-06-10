@@ -16,9 +16,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required AuthRemoteDataSource dataSource,
     required SharedPreferences prefs,
     required TokenStorage tokenStorage,
-  }) : _dataSource = dataSource,
-       _prefs = prefs,
-       _tokenStorage = tokenStorage {
+  })  : _dataSource = dataSource,
+        _prefs = prefs,
+        _tokenStorage = tokenStorage {
     _readyCompleter = Completer<void>();
     _initSession().then((_) => _readyCompleter.complete()).catchError((e) {
       _readyCompleter.completeError(e);
@@ -29,31 +29,17 @@ class AuthRepositoryImpl implements AuthRepository {
   final SharedPreferences _prefs;
   final TokenStorage _tokenStorage;
 
-  /// Access token — in-memory only, never persisted
   String? _accessToken;
-
-  /// Cached user — updated on login/logout/restore
   UserModel? _currentUserCache;
 
-  /// Completes when _initSession() finishes — gates authStateChanges
   late final Completer<void> _readyCompleter;
 
   final _authStateController = StreamController<UserModel?>.broadcast();
 
-  // ── AuthRepository interface ─────────────────────────────────────────────
-
-  /// Stream luôn emit giá trị hiện tại ngay khi subscriber đăng ký,
-  /// rồi tiếp tục emit các thay đổi tiếp theo.
-  ///
-  /// Sau khi _initSession hoàn thành, seed _currentUserCache rồi
-  /// tiếp tục lắng nghe _authStateController cho các updates.
   @override
   Stream<UserModel?> get authStateChanges async* {
-    // Chờ init session xong
     await _readyCompleter.future;
-    // Emit giá trị hiện tại ngay
     yield _currentUserCache;
-    // Tiếp tục emit mọi thay đổi sau đó
     yield* _authStateController.stream;
   }
 
@@ -69,12 +55,15 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<UserModel> signIn({
-    required String email,
+    required String username,
     required String password,
     bool rememberMe = false,
   }) async {
     try {
-      final result = await _dataSource.login(email: email, password: password);
+      final result = await _dataSource.login(
+        username: username,
+        password: password,
+      );
 
       _accessToken = result.accessToken;
 
@@ -96,7 +85,9 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signOut() async {
     final refreshToken = await _tokenStorage.getRefreshToken();
+
     await _dataSource.logout(refreshToken);
+
     await _clearSession();
     _currentUserCache = null;
     _authStateController.add(null);
@@ -106,11 +97,14 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<String> refreshAccessToken() async {
     try {
       final refreshToken = await _tokenStorage.getRefreshToken();
+
       if (refreshToken == null) {
         throw const UnauthorizedException('Không có refresh token');
       }
+
       final newAccessToken = await _dataSource.refreshAccessToken(refreshToken);
       _accessToken = newAccessToken;
+
       return newAccessToken;
     } on UnauthorizedException {
       await _clearSession();
@@ -124,14 +118,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  // ── Session init ─────────────────────────────────────────────────────────
-
-  /// Chạy 1 lần khi constructor. Kết quả gate authStateChanges qua Completer.
-  ///
-  /// rememberMe = false → xóa mọi token & profile, cache null
-  /// rememberMe = true  → restore user từ SharedPreferences, cache user
-  ///   (access token = null; refresh token còn trong SecureStorage
-  ///    → RefreshTokenInterceptor tự lấy token mới ở request đầu tiên)
   Future<void> _initSession() async {
     final rememberMe = _prefs.getBool(AppConstants.keyRememberMe) ?? false;
 
@@ -143,8 +129,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-
   Future<void> _saveUserToPrefs(UserModel user) async {
     await _prefs.setString(
       AppConstants.keyUserProfile,
@@ -154,7 +138,9 @@ class AuthRepositoryImpl implements AuthRepository {
 
   UserModel? _loadUserFromPrefs() {
     final json = _prefs.getString(AppConstants.keyUserProfile);
+
     if (json == null) return null;
+
     try {
       return UserModel.fromJson(jsonDecode(json) as Map<String, dynamic>);
     } catch (_) {
@@ -164,6 +150,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   Future<void> _clearSession() async {
     _accessToken = null;
+
     await _tokenStorage.deleteRefreshToken();
     await _prefs.remove(AppConstants.keyUserProfile);
     await _prefs.remove(AppConstants.keyRememberMe);

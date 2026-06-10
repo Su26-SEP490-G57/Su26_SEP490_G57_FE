@@ -32,7 +32,7 @@ class PatientDashboardPage extends ConsumerWidget {
             const Icon(Icons.person_outline, size: 64),
             const SizedBox(height: 16),
             Text(
-              'Xin chào, ${user?.displayName ?? user?.email ?? 'Bệnh nhân'}',
+              'Xin chào, ${user?.displayName ?? user?.username ?? 'Bệnh nhân'}',
               style: AppTextStyles.titleLarge,
             ),
             const SizedBox(height: 8),

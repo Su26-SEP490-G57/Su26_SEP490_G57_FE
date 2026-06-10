@@ -4,47 +4,57 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../domain/models/user_model.dart';
 
-/// Gọi REST API cho các auth operations.
-/// Không có dependency vào Firebase.
 class AuthRemoteDataSource {
   AuthRemoteDataSource(this._dio);
 
-  /// Dio instance KHÔNG có auth interceptor — dùng riêng cho login & refresh
-  /// để tránh circular dependency.
   final Dio _dio;
 
-  /// POST /auth/login
-  /// Response shape mong đợi từ BE:
-  /// {
-  ///   "success": true,
-  ///   "data": {
-  ///     "accessToken": "...",
-  ///     "refreshToken": "...",
-  ///     "user": { "uid": "...", "email": "...", "role": "nurse", "displayName": "..." }
-  ///   }
-  /// }
   Future<LoginResult> login({
-    required String email,
+    required String username,
     required String password,
   }) async {
     try {
+      print('LOGIN REQUEST');
+      print(username);
+
       final response = await _dio.post<Map<String, dynamic>>(
         AppConstants.endpointLogin,
-        data: {'email': email, 'password': password},
+        data: {
+          'username': username,
+          'password': password,
+        },
       );
 
+      print('LOGIN RESPONSE');
+      print(response.data);
+
       final body = response.data;
-      if (body == null) throw const AuthException('Phản hồi không hợp lệ');
 
-      final data = body['data'] as Map<String, dynamic>?;
-      if (data == null) throw const AuthException('Phản hồi không hợp lệ');
+      if (body == null) {
+        throw const AuthException('Response body is null');
+      }
 
-      final accessToken = data['accessToken'] as String?;
-      final refreshToken = data['refreshToken'] as String?;
-      final userJson = data['user'] as Map<String, dynamic>?;
+      // Backend trả thẳng:
+      // {
+      //   accessToken,
+      //   refreshToken,
+      //   user
+      // }
 
-      if (accessToken == null || refreshToken == null || userJson == null) {
-        throw const AuthException('Thiếu dữ liệu trong phản hồi');
+      final accessToken = body['accessToken'] as String?;
+      final refreshToken = body['refreshToken'] as String?;
+      final userJson = body['user'] as Map<String, dynamic>?;
+
+      if (accessToken == null) {
+        throw const AuthException('Missing accessToken');
+      }
+
+      if (refreshToken == null) {
+        throw const AuthException('Missing refreshToken');
+      }
+
+      if (userJson == null) {
+        throw const AuthException('Missing user object');
       }
 
       return LoginResult(
@@ -53,89 +63,76 @@ class AuthRemoteDataSource {
         user: UserModel.fromJson(userJson),
       );
     } on DioException catch (e) {
+      print('LOGIN DIO ERROR');
+      print('STATUS: ${e.response?.statusCode}');
+      print('BODY: ${e.response?.data}');
+
       _handleDioError(e);
+    } catch (e) {
+      print('LOGIN PARSE ERROR');
+      print(e);
+      rethrow;
     }
   }
 
-  /// POST /auth/refresh
-  /// Body: { "refreshToken": "..." }
-  /// Response shape:
-  /// { "success": true, "data": { "accessToken": "..." } }
   Future<String> refreshAccessToken(String refreshToken) async {
-    try {
-      final response = await _dio.post<Map<String, dynamic>>(
-        AppConstants.endpointRefresh,
-        data: {'refreshToken': refreshToken},
-      );
-
-      final body = response.data;
-      final data = body?['data'] as Map<String, dynamic>?;
-      final newAccessToken = data?['accessToken'] as String?;
-
-      if (newAccessToken == null) {
-        throw const AuthException('Không nhận được access token mới');
-      }
-
-      return newAccessToken;
-    } on DioException catch (e) {
-      _handleDioError(e);
-    }
+    throw const UnauthorizedException(
+      'Refresh token endpoint is not implemented',
+    );
   }
 
-  /// POST /auth/logout — thông báo BE invalidate refresh token
-  /// Fire-and-forget: không throw nếu thất bại
   Future<void> logout(String? refreshToken) async {
-    if (refreshToken == null) return;
-    try {
-      await _dio.post<void>(
-        AppConstants.endpointLogout,
-        data: {'refreshToken': refreshToken},
-      );
-    } catch (_) {
-      // Ignore — local cleanup vẫn diễn ra bất kể BE có phản hồi hay không
-    }
+    return;
   }
-
-  // ── Error mapping ────────────────────────────────────────────────────────
 
   Never _handleDioError(DioException e) {
     final statusCode = e.response?.statusCode ?? 0;
     final responseData = e.response?.data;
-    final dataMap = responseData is Map<String, dynamic> ? responseData : null;
-    final message =
-        dataMap?['message'] as String? ?? dataMap?['error'] as String?;
+    final dataMap = responseData is Map<String, dynamic>
+        ? responseData
+        : null;
 
-    // Network/timeout errors (no response)
+    final message =
+        dataMap?['message'] as String? ??
+        dataMap?['error'] as String?;
+
     if (e.response == null) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
         throw const TimeoutException();
       }
+
       throw const NetworkException();
     }
 
     switch (statusCode) {
       case 400:
-        throw AuthException(message ?? 'Dữ liệu không hợp lệ');
+        throw AuthException(message ?? 'Bad request');
+
       case 401:
         throw const InvalidCredentialsException();
+
       case 403:
         throw const ForbiddenException();
+
       case 404:
         throw const NotFoundException();
-      case >= 500:
-        throw ServerException(
-          statusCode: statusCode,
-          message: message ?? 'Lỗi máy chủ',
-        );
+
       default:
-        throw NetworkException(message ?? 'Lỗi không xác định ($statusCode)');
+        if (statusCode >= 500) {
+          throw ServerException(
+            statusCode: statusCode,
+            message: message ?? 'Server error',
+          );
+        }
+
+        throw NetworkException(
+          message ?? 'Unknown error ($statusCode)',
+        );
     }
   }
 }
-
-// ── Result types ─────────────────────────────────────────────────────────────
 
 class LoginResult {
   const LoginResult({

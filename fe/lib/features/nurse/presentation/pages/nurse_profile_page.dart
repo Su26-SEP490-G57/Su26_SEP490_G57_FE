@@ -60,7 +60,7 @@ class NurseProfilePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  user?.displayName ?? user?.email ?? 'Điều dưỡng',
+                  user?.displayName ?? user?.username ?? 'Điều dưỡng',
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 18,
