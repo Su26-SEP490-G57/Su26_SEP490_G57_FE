@@ -136,6 +136,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _repository.signOut();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
+
+  /// Chỉ dùng trong development để test UI mà không cần BE.
+  /// Bị loại bỏ hoàn toàn trong release build nhờ assert.
+  void mockSignIn(UserRole role) {
+    assert(() {
+      final user = UserModel(
+        uid: 'mock-uid',
+        email: 'mock@poms.test',
+        role: role,
+        displayName: role == UserRole.patient
+            ? 'Nguyễn Văn Minh'
+            : 'Điều dưỡng Test',
+      );
+      // Emit vào repository stream để GoRouter redirect đúng
+      _repository.mockSignIn(user);
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      return true;
+    }());
+  }
 }
 
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
