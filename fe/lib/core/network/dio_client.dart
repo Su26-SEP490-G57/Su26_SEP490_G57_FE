@@ -58,7 +58,7 @@ Dio createAppDio({required AuthRepository authRepository}) {
 // ---------------------------------------------------------------------------
 
 Dio _buildBaseDio() {
-  final baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:8080/api';
+  final baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:3000/api';
 
   return Dio(
     BaseOptions(
