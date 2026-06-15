@@ -60,7 +60,7 @@ class PatientProfilePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  user?.displayName ?? user?.email ?? 'Bệnh nhân',
+                  user?.fullName ?? user?.username ?? 'Bệnh nhân',
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 18,

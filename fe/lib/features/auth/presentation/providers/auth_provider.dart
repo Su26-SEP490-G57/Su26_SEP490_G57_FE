@@ -140,12 +140,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void mockSignIn(UserRole role) {
     assert(() {
       final user = UserModel(
-        uid: 'mock-uid',
-        email: 'mock@poms.test',
-        role: role,
-        displayName: role == UserRole.patient
+        id: 1,
+        username: 'mock@poms.test',
+        roles: [role],
+        fullName: role == UserRole.patient
             ? 'Nguyễn Văn Minh'
             : 'Điều dưỡng Test',
+        isActive: true,
+        
       );
       // Emit vào repository stream để GoRouter redirect đúng
       _repository.mockSignIn(user);

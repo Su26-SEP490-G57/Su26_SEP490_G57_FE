@@ -255,10 +255,6 @@ class _ActionGrid extends StatelessWidget {
           children: [
             const Icon(Icons.person_outline, size: 64),
             const SizedBox(height: 16),
-            Text(
-              'Xin chào, ${user?.displayName ?? user?.username ?? 'Bệnh nhân'}',
-              style: AppTextStyles.titleLarge,
-            ),
             _ActionCard(
               backgroundColor: const Color(0xFFE6F9F1),
               borderColor: const Color(0xFFC6F6D5),
