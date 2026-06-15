@@ -31,28 +31,34 @@ final routerProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: true,
     redirect: (context, state) {
       final isLoading = authState.isLoading;
-      final isAuthenticated = authState.valueOrNull != null;
       final user = authState.valueOrNull;
+      final isAuthenticated = user != null;
 
       final isSplash = state.matchedLocation == AppRoutes.splash;
       final isLogin = state.matchedLocation == AppRoutes.login;
 
-      if (isLoading) return isSplash ? null : AppRoutes.splash;
+      if (isLoading) {
+        return isSplash ? null : AppRoutes.splash;
+      }
 
       if (!isAuthenticated) {
         return isLogin ? null : AppRoutes.login;
       }
 
+      final role = user.primaryRole;
+
       if (isSplash || isLogin) {
-        return _dashboardForRole(user?.role);
+        return _dashboardForRole(role);
       }
 
-      // Role guard
-      if (user?.role == UserRole.nurse &&
+      if ((role == UserRole.nurse ||
+              role == UserRole.headNurse ||
+              role == UserRole.admin) &&
           state.matchedLocation.startsWith('/patient')) {
         return AppRoutes.nurseDashboard;
       }
-      if (user?.role == UserRole.patient &&
+
+      if (role == UserRole.patient &&
           state.matchedLocation.startsWith('/nurse')) {
         return AppRoutes.patientDashboard;
       }
@@ -68,8 +74,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.login,
         builder: (context, state) => const LoginPage(),
       ),
-
-      // ── Nurse routes — wrapped in ShellRoute for shared bottom nav ──
       ShellRoute(
         builder: (context, state, child) => NurseShell(child: child),
         routes: [
@@ -110,31 +114,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-
-      // ── Patient routes — wrapped in ShellRoute for shared bottom nav ──
-      ShellRoute(
-        builder: (context, state, child) => PatientShell(child: child),
-        routes: [
-          GoRoute(
-            path: AppRoutes.patientDashboard,
-            builder: (context, state) => const PatientDashboardPage(),
-          ),
-          GoRoute(
-            path: AppRoutes.patientNotifications,
-            builder: (context, state) => const PatientNotificationsPage(),
-          ),
-          GoRoute(
-            path: AppRoutes.patientProfile,
-            builder: (context, state) => const PatientProfilePage(),
-          ),
-        ],
-      ),
-
-      // ── Patient full-screen routes (no bottom nav) ──
-      GoRoute(
-        path: AppRoutes.patientAssessment,
-        builder: (context, state) => const PatientAssessmentPage(),
-      ),
       GoRoute(
         path: AppRoutes.patientAssessmentResult,
         builder: (context, state) => PatientAssessmentResultPage(
@@ -142,13 +121,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
     ],
-    errorBuilder: (context, state) =>
-        Scaffold(body: Center(child: Text('Page not found: ${state.uri}'))),
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Text('Page not found: ${state.uri}'),
+      ),
+    ),
   );
 });
 
 String _dashboardForRole(UserRole? role) {
   return switch (role) {
+    UserRole.admin => AppRoutes.nurseDashboard,
+    UserRole.headNurse => AppRoutes.nurseDashboard,
     UserRole.nurse => AppRoutes.nurseDashboard,
     UserRole.patient => AppRoutes.patientDashboard,
     null => AppRoutes.login,

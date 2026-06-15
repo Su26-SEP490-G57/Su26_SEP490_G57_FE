@@ -55,7 +55,6 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     tokenStorage: tokenStorage,
   );
 
-  // Đóng StreamController khi provider bị dispose
   ref.onDispose(repo.dispose);
 
   return repo;
@@ -69,7 +68,6 @@ final appDioProvider = Provider<Dio>((ref) {
 
 // ---------------------------------------------------------------------------
 // Auth state stream — drives GoRouter redirect
-// Stream từ AuthRepositoryImpl._authStateController thay thế Firebase stream
 // ---------------------------------------------------------------------------
 
 final authStateProvider = StreamProvider<UserModel?>((ref) {
@@ -115,14 +113,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repository;
 
   Future<void> signIn({
-    required String email,
+    required String username,
     required String password,
     bool rememberMe = false,
   }) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
       final user = await _repository.signIn(
-        email: email,
+        username: username,
         password: password,
         rememberMe: rememberMe,
       );
