@@ -41,18 +41,24 @@ flutter pub get
 ### 2. Tạo file `.env`
 
 ```bash
-# Tạo file .env trong thư mục fe/
 cp .env.example .env
 ```
 
-Nội dung `.env`:
+Chỉnh `API_BASE_URL` theo môi trường:
 
 ```env
-API_BASE_URL=http://10.0.2.2:8080/api
+# Android Emulator (default)
+API_BASE_URL=http://10.0.2.2:3000
+
+# iOS Simulator
+API_BASE_URL=http://127.0.0.1:3000
+
+# Thiết bị thực (cùng WiFi với máy chạy BE)
+API_BASE_URL=http://<IP_máy_host>:3000
 ```
 
-> `10.0.2.2` là địa chỉ trỏ về `localhost` của máy host khi chạy Android Emulator.
-> Thay bằng IP thực nếu dùng thiết bị vật lý hoặc deploy lên server.
+> BE NestJS không có global prefix. Swagger UI ở `http://localhost:3000/api`.
+> Sau khi đổi `.env` phải hot restart (`R`), không phải hot reload (`r`).
 
 ### 3. Chạy app
 
@@ -60,7 +66,7 @@ API_BASE_URL=http://10.0.2.2:8080/api
 # Android emulator / thiết bị thực
 flutter run
 
-# Windows desktop (test nhanh không cần emulator)
+# Windows desktop
 flutter run -d windows
 ```
 
@@ -73,101 +79,35 @@ fe/lib/
 ├── core/
 │   ├── constants/      # AppColors, AppConstants, AppRoutes, AppStrings, AppTextStyles
 │   ├── errors/         # AppException (sealed), Failure (sealed)
-│   ├── network/        # dio_client, token_storage, access_token_interceptor,
-│   │                   # refresh_token_interceptor, api_response
+│   ├── network/        # dio_client, token_storage, interceptors, api_response
 │   ├── router/         # GoRouter config + redirect logic
 │   ├── theme/          # AppTheme — Material 3, Inter font
 │   └── utils/          # extensions, exception_handler
-│
 ├── features/
-│   ├── auth/
-│   │   ├── data/       # AuthRemoteDataSource (REST), AuthRepositoryImpl
-│   │   ├── domain/     # UserModel, UserRole, AuthRepository interface
-│   │   └── presentation/ # LoginPage, SplashPage, auth_provider, login widgets
-│   ├── nurse/
-│   │   ├── domain/     # PatientSummary, PatientStatus, kMockPatients
-│   │   └── presentation/
-│   │       ├── layouts/  # NurseShell (bottom nav)
-│   │       └── pages/    # Dashboard, Patients, PatientDetail, Alerts,
-│   │                     # Reports, Tasks, Profile
-│   └── patient/
-│       └── presentation/ # PatientDashboardPage (stub)
-│
-├── shared/
-│   └── widgets/        # AppButton, AppTextField, CustomCheckbox,
-│                       # ErrorView, LoadingOverlay
-│
-├── app.dart            # MaterialApp.router
-└── main.dart           # Entry point
+│   ├── auth/           # data / domain / presentation
+│   ├── nurse/          # domain + presentation (Dashboard, Patients, Detail...)
+│   └── patient/        # presentation (Dashboard, Assessment, Profile...)
+└── shared/widgets/     # AppButton, AppTextField, ErrorView, LoadingOverlay
 ```
-
----
-
-## Auth Flow
-
-App dùng **JWT thuần** (không Firebase Auth):
-
-```
-Login  →  POST /auth/login  →  { accessToken, refreshToken, user }
-                               ↓
-                 accessToken  →  in-memory (mất khi app kill)
-                 refreshToken →  FlutterSecureStorage
-                 user profile →  SharedPreferences (JSON)
-
-Request  →  AccessTokenInterceptor gắn Bearer header
-   401   →  RefreshTokenInterceptor gọi POST /auth/refresh
-            → nhận accessToken mới → retry original request
-            → nếu refresh thất bại → logout + redirect /login
-```
-
-**Remember Me:**
-- Tick → giữ session qua app restart (restore từ SharedPreferences)
-- Không tick → xóa session ngay khi app khởi động lại
 
 ---
 
 ## Lệnh thường dùng
 
 ```bash
-# Cài / cập nhật dependencies
-flutter pub get
-
-# Chạy app
-flutter run
-flutter run -d windows
-
-# Static analysis
-flutter analyze lib
-
-# Code generation (Riverpod, Freezed, json_serializable)
-dart run build_runner build --delete-conflicting-outputs
-
-# Clean build cache
-flutter clean && flutter pub get
+flutter pub get                                          # cài dependencies
+flutter run                                             # chạy app
+flutter analyze lib                                     # static analysis
+dart run build_runner build --delete-conflicting-outputs # code generation
+flutter clean && flutter pub get                        # clean build cache
 ```
 
 ---
 
 ## Conventions
 
-- **Tất cả UI text**: tiếng Việt, khai báo trong `AppStrings` hoặc `const` local
-- **Page trong ShellRoute** (nurse): không có `Scaffold` riêng — `NurseShell` cung cấp
+- **UI text**: tiếng Việt, dùng `AppStrings` hoặc `const` local — không hardcode inline
+- **ShellRoute pages**: không có `Scaffold` riêng — `NurseShell` / `PatientShell` cung cấp
 - **Navigation**: `context.go()` cho tabs, `context.push()` cho sub-routes
-- **Error handling**: throw `AppException` ở data layer, map sang `Failure` ở domain
-- **Private widgets**: đặt cùng file với page (`_WidgetName`), không tách file riêng trừ khi dùng nhiều nơi
-
----
-
-## Trạng thái hiện tại
-
-| Feature | Status |
-|---|---|
-| Auth (JWT login/logout/refresh/session restore) | ✅ Hoàn chỉnh |
-| Nurse Dashboard | ✅ UI xong, data mock |
-| Nurse Patient List (search + filter) | ✅ UI xong, data mock |
-| Nurse Patient Detail (tab Tổng quan) | ✅ UI xong, data mock |
-| Nurse Patient Detail (4 tabs còn lại) | 🚧 Placeholder |
-| Nurse Alerts / Reports / Tasks | 🚧 Placeholder |
-| Patient feature | 🚧 Placeholder |
-| API integration (thay mock data) | ⏳ Chờ backend |
-| Push notification (FCM) | ⏳ Chờ backend |
+- **Error handling**: `AppException` ở data layer → map sang `Failure` ở domain
+- **Private widgets**: đặt cùng file page (`_WidgetName`), không tách riêng nếu chỉ dùng 1 nơi

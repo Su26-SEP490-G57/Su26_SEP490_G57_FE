@@ -16,10 +16,13 @@ abstract final class AppRoutes {
 
   // Patient routes
   static const String patientDashboard = '/patient/dashboard';
-  static const String patientSymptoms = '/patient/symptoms';
-  static const String patientRecovery = '/patient/recovery';
   static const String patientNotifications = '/patient/notifications';
   static const String patientProfile = '/patient/profile';
+  static const String patientSymptoms = '/patient/symptoms';
+  static const String patientEducation = '/patient/education';
+  static const String patientRecovery = '/patient/recovery';
+  static const String patientAssessment = '/patient/assessment';
+  static const String patientAssessmentResult = '/patient/assessment/result';
 
   // Helpers for parameterized routes
   static String nursePatientDetailPath(String id) => '/nurse/patients/$id';

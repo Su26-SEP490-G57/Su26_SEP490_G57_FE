@@ -15,7 +15,12 @@ import '../../features/nurse/presentation/pages/nurse_patients_page.dart';
 import '../../features/nurse/presentation/pages/nurse_profile_page.dart';
 import '../../features/nurse/presentation/pages/nurse_reports_page.dart';
 import '../../features/nurse/presentation/pages/nurse_tasks_page.dart';
+import '../../features/patient/presentation/layouts/patient_shell.dart';
+import '../../features/patient/presentation/pages/patient_assessment_page.dart';
+import '../../features/patient/presentation/pages/patient_assessment_result_page.dart';
 import '../../features/patient/presentation/pages/patient_dashboard_page.dart';
+import '../../features/patient/presentation/pages/patient_notifications_page.dart';
+import '../../features/patient/presentation/pages/patient_profile_page.dart';
 import '../constants/app_routes.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -110,8 +115,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        path: AppRoutes.patientDashboard,
-        builder: (context, state) => const PatientDashboardPage(),
+        path: AppRoutes.patientAssessmentResult,
+        builder: (context, state) => PatientAssessmentResultPage(
+          totalScore: state.extra is int ? state.extra as int : 0,
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
