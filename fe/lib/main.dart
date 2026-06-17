@@ -20,7 +20,7 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
 
   // Session restore (Remember Me) được xử lý bên trong AuthRepositoryImpl
-  // constructor — không cần logic ở đây nữa.
+  // constructor
 
   runApp(
     ProviderScope(

@@ -25,6 +25,7 @@ macos/Flutter/ephemeral/
 
 # Android
 android/.gradle/
+android/.kotlin/
 android/local.properties
 
 # Xcode

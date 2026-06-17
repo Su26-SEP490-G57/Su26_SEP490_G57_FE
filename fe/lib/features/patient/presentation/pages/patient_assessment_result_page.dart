@@ -5,27 +5,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../domain/models/survey_models.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Score thresholds
-// Tổng điểm max = 11 (5 câu: 2+3+2+2+2)
-// GREEN  : 0–2  — dung nạp tốt
-// YELLOW : 3–5  — cần theo dõi thêm
-// RED    : 6+   — cần can thiệp sớm
+// Level config — GREEN / YELLOW / RED
 // ─────────────────────────────────────────────────────────────────────────────
-
-enum _ResultLevel { green, yellow, red }
-
-_ResultLevel _levelFromScore(int score) {
-  if (score <= 2) return _ResultLevel.green;
-  if (score <= 5) return _ResultLevel.yellow;
-  return _ResultLevel.red;
-}
 
 class _LevelConfig {
   const _LevelConfig({
     required this.label,
-    required this.scoreRange,
     required this.primaryColor,
     required this.bgColor,
     required this.cardBgColor,
@@ -37,7 +25,6 @@ class _LevelConfig {
   });
 
   final String label;
-  final String scoreRange;
   final Color primaryColor;
   final Color bgColor;
   final Color cardBgColor;
@@ -47,11 +34,10 @@ class _LevelConfig {
   final String subtext;
   final String tip;
 
-  static _LevelConfig from(_ResultLevel level) {
+  static _LevelConfig from(TriageColor level) {
     return switch (level) {
-      _ResultLevel.green => const _LevelConfig(
+      TriageColor.green => const _LevelConfig(
         label: 'GREEN',
-        scoreRange: '(0–2 điểm)',
         primaryColor: Color(0xFF006E2F),
         bgColor: Color(0xFFF0FFF4),
         cardBgColor: Color(0xFFD1FAE5),
@@ -62,9 +48,8 @@ class _LevelConfig {
         tip:
             'Mẹo nhỏ: Hãy nhai thật kỹ và ăn từng miếng nhỏ để hỗ trợ hệ tiêu hóa của bạn tốt nhất nhé.',
       ),
-      _ResultLevel.yellow => const _LevelConfig(
+      TriageColor.yellow => const _LevelConfig(
         label: 'YELLOW',
-        scoreRange: '(3–5 điểm)',
         primaryColor: Color(0xFF735C00),
         bgColor: Color(0xFFFFFBEB),
         cardBgColor: Color(0xFFFEF9C3),
@@ -76,9 +61,8 @@ class _LevelConfig {
         tip:
             'Lưu ý: Nếu triệu chứng không cải thiện sau vài giờ, hãy báo ngay cho điều dưỡng phụ trách.',
       ),
-      _ResultLevel.red => const _LevelConfig(
+      TriageColor.red => const _LevelConfig(
         label: 'RED',
-        scoreRange: '(6+ điểm)',
         primaryColor: Color(0xFFBA1A1A),
         bgColor: Color(0xFFFFF5F5),
         cardBgColor: Color(0xFFFFDAD6),
@@ -99,9 +83,9 @@ class _LevelConfig {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class PatientAssessmentResultPage extends StatefulWidget {
-  const PatientAssessmentResultPage({super.key, required this.totalScore});
+  const PatientAssessmentResultPage({super.key, required this.result});
 
-  final int totalScore;
+  final SurveySubmitResult result;
 
   @override
   State<PatientAssessmentResultPage> createState() =>
@@ -112,22 +96,19 @@ class _PatientAssessmentResultPageState
     extends State<PatientAssessmentResultPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _confettiCtrl;
-  late final _ResultLevel _level;
   late final _LevelConfig _config;
 
   @override
   void initState() {
     super.initState();
-    _level = _levelFromScore(widget.totalScore);
-    _config = _LevelConfig.from(_level);
+    _config = _LevelConfig.from(widget.result.triageColor);
 
     _confettiCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2500),
     );
 
-    // Chỉ chạy confetti cho GREEN
-    if (_level == _ResultLevel.green) {
+    if (widget.result.triageColor == TriageColor.green) {
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) _confettiCtrl.forward();
       });
@@ -146,17 +127,16 @@ class _PatientAssessmentResultPageState
       backgroundColor: _config.bgColor,
       body: Stack(
         children: [
-          // ── Confetti (GREEN only) ──────────────────────────────────
-          if (_level == _ResultLevel.green)
+          // Confetti (GREEN only)
+          if (widget.result.triageColor == TriageColor.green)
             AnimatedBuilder(
               animation: _confettiCtrl,
-              builder: (_, _) => CustomPaint(
+              builder: (_, __) => CustomPaint(
                 painter: _ConfettiPainter(_confettiCtrl.value),
                 size: Size.infinite,
               ),
             ),
 
-          // ── Main content ───────────────────────────────────────────
           Column(
             children: [
               _Header(onBack: () => context.pop()),
@@ -166,23 +146,18 @@ class _PatientAssessmentResultPageState
                   child: Column(
                     children: [
                       const SizedBox(height: 32),
-
-                      // Hero
-                      _HeroSection(level: _level, config: _config),
-                      const SizedBox(height: 32),
-
-                      // Assessment card
-                      _AssessmentCard(
+                      _HeroSection(
+                        level: widget.result.triageColor,
                         config: _config,
-                        totalScore: widget.totalScore,
+                        totalScore: widget.result.totalScore,
                       ),
                       const SizedBox(height: 32),
-
-                      // Action buttons
-                      _ActionButtons(level: _level),
+                      _AssessmentCard(config: _config, result: widget.result),
+                      const SizedBox(height: 32),
+                      _ActionButtons(
+                        onHome: () => context.go(AppRoutes.patientDashboard),
+                      ),
                       const SizedBox(height: 24),
-
-                      // Tip
                       _TipCard(config: _config),
                     ],
                   ),
@@ -191,12 +166,11 @@ class _PatientAssessmentResultPageState
             ],
           ),
 
-          // ── Bottom fixed button ────────────────────────────────────
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: _BottomBar(level: _level),
+            child: _BottomBar(level: widget.result.triageColor),
           ),
         ],
       ),
@@ -240,7 +214,7 @@ class _Header extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(width: 48), // balance back button
+              const SizedBox(width: 48),
             ],
           ),
         ),
@@ -254,15 +228,20 @@ class _Header extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _HeroSection extends StatelessWidget {
-  const _HeroSection({required this.level, required this.config});
-  final _ResultLevel level;
+  const _HeroSection({
+    required this.level,
+    required this.config,
+    required this.totalScore,
+  });
+
+  final TriageColor level;
   final _LevelConfig config;
+  final int totalScore;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Circle icon
         Container(
           width: 96,
           height: 96,
@@ -279,17 +258,15 @@ class _HeroSection extends StatelessWidget {
           ),
           child: Icon(
             switch (level) {
-              _ResultLevel.green => Icons.check_circle_rounded,
-              _ResultLevel.yellow => Icons.warning_rounded,
-              _ResultLevel.red => Icons.notifications_active_rounded,
+              TriageColor.green => Icons.check_circle_rounded,
+              TriageColor.yellow => Icons.warning_rounded,
+              TriageColor.red => Icons.notifications_active_rounded,
             },
             color: Colors.white,
             size: 48,
           ),
         ),
         const SizedBox(height: 16),
-
-        // Level label
         Text(
           config.label,
           style: TextStyle(
@@ -302,7 +279,7 @@ class _HeroSection extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          config.scoreRange,
+          'Tổng điểm: $totalScore',
           style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 16,
@@ -319,12 +296,15 @@ class _HeroSection extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AssessmentCard extends StatelessWidget {
-  const _AssessmentCard({required this.config, required this.totalScore});
+  const _AssessmentCard({required this.config, required this.result});
   final _LevelConfig config;
-  final int totalScore;
+  final SurveySubmitResult result;
 
   @override
   Widget build(BuildContext context) {
+    // Dùng recommendation từ BE nếu có, fallback về config text
+    final subtext = result.recommendation ?? config.subtext;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(28),
@@ -347,7 +327,7 @@ class _AssessmentCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            config.subtext,
+            subtext,
             style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
@@ -355,24 +335,6 @@ class _AssessmentCard extends StatelessWidget {
               height: 1.5,
             ),
             textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          // Score display
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              'Tổng điểm: $totalScore',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: config.primaryColor,
-              ),
-            ),
           ),
         ],
       ),
@@ -385,14 +347,13 @@ class _AssessmentCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ActionButtons extends StatelessWidget {
-  const _ActionButtons({required this.level});
-  final _ResultLevel level;
+  const _ActionButtons({required this.onHome});
+  final VoidCallback onHome;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Xem hướng dẫn ăn
         SizedBox(
           width: double.infinity,
           height: 56,
@@ -416,13 +377,11 @@ class _ActionButtons extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-
-        // Về trang chủ
         SizedBox(
           width: double.infinity,
           height: 56,
           child: OutlinedButton.icon(
-            onPressed: () => context.go(AppRoutes.patientDashboard),
+            onPressed: onHome,
             icon: const Icon(Icons.home_rounded),
             label: const Text('Về trang chủ'),
             style: OutlinedButton.styleFrom(
@@ -463,7 +422,11 @@ class _TipCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lightbulb_rounded, color: AppColors.primary, size: 22),
+          const Icon(
+            Icons.lightbulb_rounded,
+            color: AppColors.primary,
+            size: 22,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -484,16 +447,16 @@ class _TipCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bottom bar — "Báo điều dưỡng" fixed
+// Bottom bar
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BottomBar extends StatelessWidget {
   const _BottomBar({required this.level});
-  final _ResultLevel level;
+  final TriageColor level;
 
   @override
   Widget build(BuildContext context) {
-    final isUrgent = level == _ResultLevel.red;
+    final isUrgent = level == TriageColor.red;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -513,7 +476,7 @@ class _BottomBar extends StatelessWidget {
         height: 56,
         child: ElevatedButton.icon(
           onPressed: () {},
-          icon: Icon(
+          icon: const Icon(
             Icons.notifications_active_rounded,
             size: 22,
             color: Colors.white,
@@ -539,17 +502,17 @@ class _BottomBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Confetti painter (GREEN only)
+// Confetti painter
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ConfettiPainter extends CustomPainter {
   _ConfettiPainter(this.progress);
-
   final double progress;
 
   static final _rng = math.Random(42);
-  static final _particles = List.generate(40, (i) {
-    return _Particle(
+  static final _particles = List.generate(
+    40,
+    (i) => _Particle(
       x: _rng.nextDouble(),
       delay: _rng.nextDouble() * 0.4,
       size: _rng.nextDouble() * 6 + 4,
@@ -560,8 +523,8 @@ class _ConfettiPainter extends CustomPainter {
         Colors.white,
       ][_rng.nextInt(4)],
       rotation: _rng.nextDouble() * math.pi * 2,
-    );
-  });
+    ),
+  );
 
   @override
   void paint(Canvas canvas, Size size) {
