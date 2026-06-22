@@ -4,11 +4,11 @@ enum UserRole { admin, headNurse, nurse, patient }
 
 extension UserRoleX on UserRole {
   String get displayName => switch (this) {
-        UserRole.admin => 'Quản trị viên',
-        UserRole.headNurse => 'Điều dưỡng trưởng',
-        UserRole.nurse => 'Điều dưỡng',
-        UserRole.patient => 'Bệnh nhân',
-      };
+    UserRole.admin => 'Quản trị viên',
+    UserRole.headNurse => 'Điều dưỡng trưởng',
+    UserRole.nurse => 'Điều dưỡng',
+    UserRole.patient => 'Bệnh nhân',
+  };
 
   bool get isAdmin => this == UserRole.admin;
   bool get isHeadNurse => this == UserRole.headNurse;
@@ -26,11 +26,11 @@ extension UserRoleX on UserRole {
   }
 
   String get backendValue => switch (this) {
-        UserRole.admin => 'Admin',
-        UserRole.headNurse => 'Head_Nurse',
-        UserRole.nurse => 'Nurse',
-        UserRole.patient => 'Patient',
-      };
+    UserRole.admin => 'Admin',
+    UserRole.headNurse => 'Head_Nurse',
+    UserRole.nurse => 'Nurse',
+    UserRole.patient => 'Patient',
+  };
 }
 
 class UserModel extends Equatable {
@@ -41,6 +41,7 @@ class UserModel extends Equatable {
     required this.roles,
     required this.isActive,
     this.phoneNumber,
+    this.caseId,
     this.createdAt,
     this.updatedAt,
   });
@@ -51,11 +52,11 @@ class UserModel extends Equatable {
   final List<UserRole> roles;
   final bool isActive;
   final String? phoneNumber;
+  final String? caseId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  UserRole get primaryRole =>
-      roles.isNotEmpty ? roles.first : UserRole.nurse;
+  UserRole get primaryRole => roles.isNotEmpty ? roles.first : UserRole.nurse;
 
   String get displayName => fullName;
 
@@ -69,6 +70,7 @@ class UserModel extends Equatable {
           .toList(),
       isActive: json['isActive'] as bool? ?? true,
       phoneNumber: json['phoneNumber'] as String?,
+      caseId: json['caseId'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String)
           : null,
@@ -79,15 +81,16 @@ class UserModel extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'username': username,
-        'fullName': fullName,
-        'roles': roles.map((r) => r.backendValue).toList(),
-        'isActive': isActive,
-        'phoneNumber': phoneNumber,
-        'createdAt': createdAt?.toIso8601String(),
-        'updatedAt': updatedAt?.toIso8601String(),
-      };
+    'id': id,
+    'username': username,
+    'fullName': fullName,
+    'roles': roles.map((r) => r.backendValue).toList(),
+    'isActive': isActive,
+    'phoneNumber': phoneNumber,
+    'caseId': caseId,
+    'createdAt': createdAt?.toIso8601String(),
+    'updatedAt': updatedAt?.toIso8601String(),
+  };
 
   String get initials {
     if (fullName.isNotEmpty) {
@@ -110,6 +113,7 @@ class UserModel extends Equatable {
     List<UserRole>? roles,
     bool? isActive,
     String? phoneNumber,
+    String? caseId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -120,6 +124,7 @@ class UserModel extends Equatable {
       roles: roles ?? this.roles,
       isActive: isActive ?? this.isActive,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      caseId: caseId ?? this.caseId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -127,13 +132,14 @@ class UserModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        username,
-        fullName,
-        roles,
-        isActive,
-        phoneNumber,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    username,
+    fullName,
+    roles,
+    isActive,
+    phoneNumber,
+    caseId,
+    createdAt,
+    updatedAt,
+  ];
 }

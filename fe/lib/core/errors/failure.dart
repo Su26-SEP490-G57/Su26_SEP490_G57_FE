@@ -32,7 +32,7 @@ final class AuthFailure extends Failure {
 
 final class InvalidCredentialsFailure extends Failure {
   const InvalidCredentialsFailure([
-    super.message = 'Email hoặc mật khẩu không đúng',
+    super.message = 'Tên đăng nhập hoặc mật khẩu không đúng',
   ]);
 }
 

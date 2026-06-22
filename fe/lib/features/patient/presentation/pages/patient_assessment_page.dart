@@ -1,318 +1,286 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Data model
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AssessmentOption {
-  const _AssessmentOption({
-    required this.label,
-    required this.score,
-    required this.icon,
-    required this.iconBgColor,
-    required this.iconColor,
-  });
-
-  final String label;
-  final int score;
-  final IconData icon;
-  final Color iconBgColor;
-  final Color iconColor;
-}
-
-class _AssessmentQuestion {
-  const _AssessmentQuestion({
-    required this.question,
-    required this.subtitle,
-    required this.options,
-  });
-
-  final String question;
-  final String subtitle;
-  final List<_AssessmentOption> options;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Mock data — thay bằng API call khi BE sẵn sàng
-// ─────────────────────────────────────────────────────────────────────────────
-
-const _kQuestions = [
-  _AssessmentQuestion(
-    question: 'Bạn có buồn nôn không?',
-    subtitle: 'Hãy chọn mức độ cảm nhận của bạn hiện tại.',
-    options: [
-      _AssessmentOption(
-        label: 'Không',
-        score: 0,
-        icon: Icons.sentiment_satisfied_rounded,
-        iconBgColor: Color(0xFF6BFF8F),
-        iconColor: Color(0xFF005321),
-      ),
-      _AssessmentOption(
-        label: 'Nhẹ',
-        score: 1,
-        icon: Icons.sentiment_neutral_rounded,
-        iconBgColor: Color(0xFFFFE083),
-        iconColor: Color(0xFF574500),
-      ),
-      _AssessmentOption(
-        label: 'Nhiều',
-        score: 2,
-        icon: Icons.sentiment_very_dissatisfied_rounded,
-        iconBgColor: Color(0xFFFFDAD6),
-        iconColor: AppColors.error,
-      ),
-    ],
-  ),
-  _AssessmentQuestion(
-    question: 'Mức độ đau của bạn?',
-    subtitle: 'Đánh giá cơn đau tại vết mổ hoặc vùng phẫu thuật.',
-    options: [
-      _AssessmentOption(
-        label: 'Không đau',
-        score: 0,
-        icon: Icons.sentiment_very_satisfied_rounded,
-        iconBgColor: Color(0xFF6BFF8F),
-        iconColor: Color(0xFF005321),
-      ),
-      _AssessmentOption(
-        label: 'Đau nhẹ',
-        score: 1,
-        icon: Icons.sentiment_neutral_rounded,
-        iconBgColor: Color(0xFFFFE083),
-        iconColor: Color(0xFF574500),
-      ),
-      _AssessmentOption(
-        label: 'Đau vừa',
-        score: 2,
-        icon: Icons.sentiment_dissatisfied_rounded,
-        iconBgColor: Color(0xFFFFE0B2),
-        iconColor: Color(0xFFE65100),
-      ),
-      _AssessmentOption(
-        label: 'Đau nhiều',
-        score: 3,
-        icon: Icons.sentiment_very_dissatisfied_rounded,
-        iconBgColor: Color(0xFFFFDAD6),
-        iconColor: AppColors.error,
-      ),
-    ],
-  ),
-  _AssessmentQuestion(
-    question: 'Bạn có sốt không?',
-    subtitle: 'Cảm giác ớn lạnh hoặc nhiệt độ cơ thể tăng cao.',
-    options: [
-      _AssessmentOption(
-        label: 'Không',
-        score: 0,
-        icon: Icons.sentiment_satisfied_rounded,
-        iconBgColor: Color(0xFF6BFF8F),
-        iconColor: Color(0xFF005321),
-      ),
-      _AssessmentOption(
-        label: 'Có (< 38.5°C)',
-        score: 1,
-        icon: Icons.thermostat_rounded,
-        iconBgColor: Color(0xFFFFE083),
-        iconColor: Color(0xFF574500),
-      ),
-      _AssessmentOption(
-        label: 'Có (≥ 38.5°C)',
-        score: 2,
-        icon: Icons.thermostat_rounded,
-        iconBgColor: Color(0xFFFFDAD6),
-        iconColor: AppColors.error,
-      ),
-    ],
-  ),
-  _AssessmentQuestion(
-    question: 'Bạn đã đi lại được chưa?',
-    subtitle: 'Khả năng vận động sau phẫu thuật rất quan trọng.',
-    options: [
-      _AssessmentOption(
-        label: 'Đi lại bình thường',
-        score: 0,
-        icon: Icons.directions_walk_rounded,
-        iconBgColor: Color(0xFF6BFF8F),
-        iconColor: Color(0xFF005321),
-      ),
-      _AssessmentOption(
-        label: 'Đi được nhưng khó',
-        score: 1,
-        icon: Icons.accessibility_new_rounded,
-        iconBgColor: Color(0xFFFFE083),
-        iconColor: Color(0xFF574500),
-      ),
-      _AssessmentOption(
-        label: 'Chưa đi được',
-        score: 2,
-        icon: Icons.airline_seat_flat_rounded,
-        iconBgColor: Color(0xFFFFDAD6),
-        iconColor: AppColors.error,
-      ),
-    ],
-  ),
-  _AssessmentQuestion(
-    question: 'Bạn có ăn uống được không?',
-    subtitle: 'Khả năng ăn uống giúp cơ thể phục hồi nhanh hơn.',
-    options: [
-      _AssessmentOption(
-        label: 'Ăn uống bình thường',
-        score: 0,
-        icon: Icons.restaurant_rounded,
-        iconBgColor: Color(0xFF6BFF8F),
-        iconColor: Color(0xFF005321),
-      ),
-      _AssessmentOption(
-        label: 'Ăn được ít',
-        score: 1,
-        icon: Icons.no_food_rounded,
-        iconBgColor: Color(0xFFFFE083),
-        iconColor: Color(0xFF574500),
-      ),
-      _AssessmentOption(
-        label: 'Không ăn được',
-        score: 2,
-        icon: Icons.do_not_disturb_rounded,
-        iconBgColor: Color(0xFFFFDAD6),
-        iconColor: AppColors.error,
-      ),
-    ],
-  ),
-];
+import '../../../../core/utils/extensions.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../domain/models/survey_models.dart';
+import '../providers/survey_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
-class PatientAssessmentPage extends StatefulWidget {
+class PatientAssessmentPage extends ConsumerStatefulWidget {
   const PatientAssessmentPage({super.key});
 
   @override
-  State<PatientAssessmentPage> createState() => _PatientAssessmentPageState();
+  ConsumerState<PatientAssessmentPage> createState() =>
+      _PatientAssessmentPageState();
 }
 
-class _PatientAssessmentPageState extends State<PatientAssessmentPage> {
+class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
   int _currentIndex = 0;
-  // null = chưa chọn, int = index của option đã chọn
-  final List<int?> _answers = List.filled(_kQuestions.length, null);
-
-  bool get _isLastQuestion => _currentIndex == _kQuestions.length - 1;
-  bool get _hasAnswer => _answers[_currentIndex] != null;
-  _AssessmentQuestion get _current => _kQuestions[_currentIndex];
-
-  void _selectOption(int optionIndex) {
-    setState(() => _answers[_currentIndex] = optionIndex);
-  }
-
-  void _goNext() {
-    if (!_hasAnswer) return;
-    if (_isLastQuestion) {
-      // Tính tổng điểm và navigate sang màn kết quả
-      final totalScore = _answers.asMap().entries.fold<int>(0, (sum, e) {
-        final qIdx = e.key;
-        final aIdx = e.value;
-        if (aIdx == null) return sum;
-        return sum + _kQuestions[qIdx].options[aIdx].score;
-      });
-      context.push(AppRoutes.patientAssessmentResult, extra: totalScore);
-    } else {
-      setState(() => _currentIndex++);
-    }
-  }
-
-  void _goBack() {
-    if (_currentIndex == 0) {
-      context.pop();
-    } else {
-      setState(() => _currentIndex--);
-    }
-  }
+  // questionId → selectedOptionId
+  final Map<int, int> _answers = {};
 
   @override
   Widget build(BuildContext context) {
-    final progress = (_currentIndex + 1) / _kQuestions.length;
+    final questionsAsync = ref.watch(surveyQuestionsProvider);
+    final assessmentState = ref.watch(assessmentNotifierProvider);
 
+    return questionsAsync.when(
+      loading: () => _LoadingScreen(onBack: () => context.pop()),
+      error: (e, _) => _ErrorScreen(
+        error: e.toString(),
+        onBack: () => context.pop(),
+        onRetry: () => ref.invalidate(surveyQuestionsProvider),
+      ),
+      data: (questions) {
+        if (questions.isEmpty) {
+          return _ErrorScreen(
+            error: 'Không có câu hỏi nào.',
+            onBack: () => context.pop(),
+            onRetry: () => ref.invalidate(surveyQuestionsProvider),
+          );
+        }
+
+        final current = questions[_currentIndex];
+        final isLastQuestion = _currentIndex == questions.length - 1;
+        final hasAnswer = _answers.containsKey(current.questionId);
+        final progress = (_currentIndex + 1) / questions.length;
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              _Header(
+                onBack: () {
+                  if (_currentIndex == 0) {
+                    context.pop();
+                  } else {
+                    setState(() => _currentIndex--);
+                  }
+                },
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ProgressBar(
+                        progress: progress,
+                        current: _currentIndex + 1,
+                        total: questions.length,
+                      ),
+                      const SizedBox(height: 32),
+                      _QuestionHeader(question: current),
+                      const SizedBox(height: 32),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        transitionBuilder: (child, anim) => FadeTransition(
+                          opacity: anim,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.05, 0),
+                              end: Offset.zero,
+                            ).animate(anim),
+                            child: child,
+                          ),
+                        ),
+                        child: _OptionsList(
+                          key: ValueKey(_currentIndex),
+                          options: current.options,
+                          selectedOptionId: _answers[current.questionId],
+                          onSelect: (optionId) {
+                            setState(() {
+                              _answers[current.questionId] = optionId;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Center(
+                        child: Text(
+                          'Chúng tôi luôn ở đây để giúp bạn phục hồi tốt nhất.',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.onSurfaceVariant.withValues(
+                              alpha: 0.8,
+                            ),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: _BottomActions(
+            isLastQuestion: isLastQuestion,
+            hasAnswer: hasAnswer,
+            isSubmitting: assessmentState.isLoading,
+            onBack: () {
+              if (_currentIndex == 0) {
+                context.pop();
+              } else {
+                setState(() => _currentIndex--);
+              }
+            },
+            onNext: () async {
+              if (!hasAnswer) return;
+              if (isLastQuestion) {
+                await _submit(questions);
+              } else {
+                setState(() => _currentIndex++);
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _submit(List<SurveyQuestion> questions) async {
+    final user = ref.read(authNotifierProvider).user;
+    final caseId = user?.caseId;
+
+    if (caseId == null || caseId.isEmpty) {
+      context.showTopToast(
+        'Không tìm thấy mã bệnh nhân. Vui lòng liên hệ điều dưỡng.',
+        isError: true,
+      );
+      return;
+    }
+
+    final answers = questions
+        .where((q) => _answers.containsKey(q.questionId))
+        .map(
+          (q) => SurveyAnswer(
+            questionId: q.questionId,
+            selectedOptionId: _answers[q.questionId]!,
+          ),
+        )
+        .toList();
+
+    await ref
+        .read(assessmentNotifierProvider.notifier)
+        .submit(caseId: caseId, answers: answers);
+
+    final state = ref.read(assessmentNotifierProvider);
+
+    if (!mounted) return;
+
+    if (state.status == AssessmentStatus.success && state.result != null) {
+      context.push(AppRoutes.patientAssessmentResult, extra: state.result);
+    } else if (state.status == AssessmentStatus.error) {
+      context.showTopToast(
+        state.errorMessage ?? 'Có lỗi xảy ra. Vui lòng thử lại.',
+        isError: true,
+      );
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Loading screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LoadingScreen extends StatelessWidget {
+  const _LoadingScreen({required this.onBack});
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // ── Header ────────────────────────────────────────────────
-          _Header(onBack: _goBack),
-
-          // ── Body ──────────────────────────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Progress bar
-                  _ProgressBar(
-                    progress: progress,
-                    current: _currentIndex + 1,
-                    total: _kQuestions.length,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Question
-                  _QuestionHeader(question: _current),
-                  const SizedBox(height: 32),
-
-                  // Options
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    transitionBuilder: (child, anim) => FadeTransition(
-                      opacity: anim,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0.05, 0),
-                          end: Offset.zero,
-                        ).animate(anim),
-                        child: child,
-                      ),
-                    ),
-                    child: _OptionsList(
-                      key: ValueKey(_currentIndex),
-                      options: _current.options,
-                      selectedIndex: _answers[_currentIndex],
-                      onSelect: _selectOption,
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-                  // Caption
-                  Center(
-                    child: Text(
-                      'Chúng tôi luôn ở đây để giúp bạn phục hồi tốt nhất.',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        fontStyle: FontStyle.italic,
-                        color: AppColors.onSurfaceVariant.withValues(
-                          alpha: 0.8,
-                        ),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
+          _Header(onBack: onBack),
+          const Expanded(
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
             ),
           ),
         ],
       ),
+    );
+  }
+}
 
-      // ── Bottom action bar ──────────────────────────────────────────
-      bottomNavigationBar: _BottomActions(
-        isLastQuestion: _isLastQuestion,
-        hasAnswer: _hasAnswer,
-        onBack: _goBack,
-        onNext: _goNext,
+// ─────────────────────────────────────────────────────────────────────────────
+// Error screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ErrorScreen extends StatelessWidget {
+  const _ErrorScreen({
+    required this.error,
+    required this.onBack,
+    required this.onRetry,
+  });
+
+  final String error;
+  final VoidCallback onBack;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          _Header(onBack: onBack),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.wifi_off_rounded,
+                      size: 56,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      error,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: onRetry,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Thử lại'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -324,7 +292,6 @@ class _PatientAssessmentPageState extends State<PatientAssessmentPage> {
 
 class _Header extends StatelessWidget {
   const _Header({required this.onBack});
-
   final VoidCallback onBack;
 
   @override
@@ -347,7 +314,7 @@ class _Header extends StatelessWidget {
               ),
               const Expanded(
                 child: Text(
-                  'Trả lời 5 câu hỏi',
+                  'Trả lời câu hỏi',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 22,
@@ -396,9 +363,7 @@ class _ProgressBar extends StatelessWidget {
               height: 12,
               child: Stack(
                 children: [
-                  // Track
                   Container(color: const Color(0xFFE1E2ED)),
-                  // Fill
                   AnimatedFractionallySizedBox(
                     duration: const Duration(milliseconds: 400),
                     curve: Curves.easeOutCubic,
@@ -439,8 +404,7 @@ class _ProgressBar extends StatelessWidget {
 
 class _QuestionHeader extends StatelessWidget {
   const _QuestionHeader({required this.question});
-
-  final _AssessmentQuestion question;
+  final SurveyQuestion question;
 
   @override
   Widget build(BuildContext context) {
@@ -448,7 +412,7 @@ class _QuestionHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          question.question,
+          question.questionText,
           style: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 22,
@@ -457,9 +421,9 @@ class _QuestionHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          question.subtitle,
-          style: const TextStyle(
+        const Text(
+          'Hãy chọn mức độ cảm nhận của bạn hiện tại.',
+          style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 16,
             color: AppColors.onSurfaceVariant,
@@ -478,28 +442,25 @@ class _OptionsList extends StatelessWidget {
   const _OptionsList({
     super.key,
     required this.options,
-    required this.selectedIndex,
+    required this.selectedOptionId,
     required this.onSelect,
   });
 
-  final List<_AssessmentOption> options;
-  final int? selectedIndex;
+  final List<SurveyOption> options;
+  final int? selectedOptionId;
   final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: options.asMap().entries.map((e) {
-        final i = e.key;
-        final opt = e.value;
-        final isSelected = selectedIndex == i;
-
+      children: options.map((opt) {
+        final isSelected = selectedOptionId == opt.optionId;
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: _OptionCard(
             option: opt,
             isSelected: isSelected,
-            onTap: () => onSelect(i),
+            onTap: () => onSelect(opt.optionId),
           ),
         );
       }).toList(),
@@ -514,7 +475,7 @@ class _OptionCard extends StatefulWidget {
     required this.onTap,
   });
 
-  final _AssessmentOption option;
+  final SurveyOption option;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -524,6 +485,26 @@ class _OptionCard extends StatefulWidget {
 
 class _OptionCardState extends State<_OptionCard> {
   bool _pressed = false;
+
+  // Màu icon theo score_value
+  Color get _iconBg => switch (widget.option.scoreValue) {
+    0 => const Color(0xFF6BFF8F),
+    1 => const Color(0xFFFFE083),
+    _ => const Color(0xFFFFDAD6),
+  };
+
+  Color get _iconColor => switch (widget.option.scoreValue) {
+    0 => const Color(0xFF005321),
+    1 => const Color(0xFF574500),
+    _ => AppColors.error,
+  };
+
+  IconData get _icon => switch (widget.option.scoreValue) {
+    0 => Icons.sentiment_very_satisfied_rounded,
+    1 => Icons.sentiment_neutral_rounded,
+    2 => Icons.sentiment_dissatisfied_rounded,
+    _ => Icons.sentiment_very_dissatisfied_rounded,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -560,29 +541,22 @@ class _OptionCardState extends State<_OptionCard> {
           ),
           child: Row(
             children: [
-              // Icon circle
               Container(
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: widget.option.iconBgColor,
+                  color: _iconBg,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  widget.option.icon,
-                  color: widget.option.iconColor,
-                  size: 30,
-                ),
+                child: Icon(_icon, color: _iconColor, size: 30),
               ),
               const SizedBox(width: 16),
-
-              // Label + score
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.option.label,
+                      widget.option.optionText,
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 18,
@@ -591,7 +565,7 @@ class _OptionCardState extends State<_OptionCard> {
                       ),
                     ),
                     Text(
-                      '(${widget.option.score} điểm)',
+                      '(${widget.option.scoreValue} điểm)',
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
@@ -601,8 +575,6 @@ class _OptionCardState extends State<_OptionCard> {
                   ],
                 ),
               ),
-
-              // Radio icon
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: widget.isSelected
@@ -635,12 +607,14 @@ class _BottomActions extends StatelessWidget {
   const _BottomActions({
     required this.isLastQuestion,
     required this.hasAnswer,
+    required this.isSubmitting,
     required this.onBack,
     required this.onNext,
   });
 
   final bool isLastQuestion;
   final bool hasAnswer;
+  final bool isSubmitting;
   final VoidCallback onBack;
   final VoidCallback onNext;
 
@@ -666,12 +640,11 @@ class _BottomActions extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Quay lại
           Expanded(
             child: SizedBox(
               height: 56,
               child: OutlinedButton(
-                onPressed: onBack,
+                onPressed: isSubmitting ? null : onBack,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.onSurface,
                   side: const BorderSide(color: Color(0xFFC3C6D7), width: 2),
@@ -687,14 +660,12 @@ class _BottomActions extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-
-          // Tiếp tục / Đánh giá
           Expanded(
             flex: 2,
             child: SizedBox(
               height: 56,
               child: ElevatedButton(
-                onPressed: hasAnswer ? onNext : null,
+                onPressed: (hasAnswer && !isSubmitting) ? onNext : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -702,7 +673,7 @@ class _BottomActions extends StatelessWidget {
                     alpha: 0.4,
                   ),
                   disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
-                  elevation: hasAnswer ? 4 : 0,
+                  elevation: (hasAnswer && !isSubmitting) ? 4 : 0,
                   shape: const StadiumBorder(),
                   textStyle: const TextStyle(
                     fontFamily: 'Inter',
@@ -710,7 +681,16 @@ class _BottomActions extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                child: Text(isLastQuestion ? 'Đánh giá' : 'Tiếp tục'),
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(isLastQuestion ? 'Đánh giá' : 'Tiếp tục'),
               ),
             ),
           ),

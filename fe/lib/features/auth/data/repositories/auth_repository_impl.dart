@@ -16,9 +16,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required AuthRemoteDataSource dataSource,
     required SharedPreferences prefs,
     required TokenStorage tokenStorage,
-  })  : _dataSource = dataSource,
-        _prefs = prefs,
-        _tokenStorage = tokenStorage {
+  }) : _dataSource = dataSource,
+       _prefs = prefs,
+       _tokenStorage = tokenStorage {
     _readyCompleter = Completer<void>();
     _initSession().then((_) => _readyCompleter.complete()).catchError((e) {
       _readyCompleter.completeError(e);
@@ -107,9 +107,10 @@ class AuthRepositoryImpl implements AuthRepository {
 
       return newAccessToken;
     } on UnauthorizedException {
-      await _clearSession();
-      _currentUserCache = null;
-      _authStateController.add(null);
+      // TODO: khi BE implement /auth/refresh, bỏ comment dưới và xóa rethrow
+      // await _clearSession();
+      // _currentUserCache = null;
+      // _authStateController.add(null);
       rethrow;
     } on AppException {
       rethrow;

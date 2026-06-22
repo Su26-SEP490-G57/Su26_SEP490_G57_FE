@@ -6,13 +6,29 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-class NurseDashboardPage extends ConsumerWidget {
+class NurseDashboardPage extends ConsumerStatefulWidget {
   const NurseDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NurseDashboardPage> createState() => _NurseDashboardPageState();
+}
+
+class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.showTopToast('Đăng nhập thành công!', isSuccess: true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).user;
     final displayName = user?.displayName ?? 'Điều dưỡng';
 

@@ -53,22 +53,17 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Patient ID field ────────────────────────────────────────
-          const _FieldLabel(label: 'MÃ BỆNH NHÂN'),
+          // ── Username field ──────────────────────────────────────────
+          const _FieldLabel(label: 'TÊN ĐĂNG NHẬP'),
           const SizedBox(height: 6),
           _GlassInputField(
             controller: _idController,
-            hint: 'VD: POMS123456',
-            prefixIcon: Icons.badge_outlined,
+            hint: 'Nhập tên đăng nhập',
+            prefixIcon: Icons.person_outline_rounded,
             textInputAction: TextInputAction.next,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Vui lòng nhập mã bệnh nhân';
-              }
-              final trimmed = value.trim();
-              // Mã bệnh nhân: chữ + số, tối thiểu 4 ký tự
-              if (!RegExp(r'^[A-Za-z0-9]{4,}$').hasMatch(trimmed)) {
-                return 'Mã bệnh nhân không hợp lệ. VD: POMS123456';
+                return 'Vui lòng nhập tên đăng nhập';
               }
               return null;
             },
@@ -78,7 +73,7 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () {
-                // TODO: forgot patient ID flow
+                // TODO: forgot username flow
               },
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -86,7 +81,7 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: const Text(
-                'QUÊN MÃ SỐ?',
+                'QUÊN TÊN ĐĂNG NHẬP?',
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 12,

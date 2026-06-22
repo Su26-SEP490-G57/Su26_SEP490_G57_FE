@@ -71,6 +71,7 @@ final appDioProvider = Provider<Dio>((ref) {
 // ---------------------------------------------------------------------------
 
 final authStateProvider = StreamProvider<UserModel?>((ref) {
+  ref.keepAlive(); // Không dispose khi không còn listener — giữ stream ổn định
   return ref.watch(authRepositoryProvider).authStateChanges;
 });
 
@@ -147,7 +148,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
             ? 'Nguyễn Văn Minh'
             : 'Điều dưỡng Test',
         isActive: true,
-        
       );
       // Emit vào repository stream để GoRouter redirect đúng
       _repository.mockSignIn(user);
