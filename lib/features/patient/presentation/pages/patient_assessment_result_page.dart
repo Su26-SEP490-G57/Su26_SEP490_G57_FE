@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../domain/models/survey_models.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Score thresholds
@@ -99,9 +100,9 @@ class _LevelConfig {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class PatientAssessmentResultPage extends StatefulWidget {
-  const PatientAssessmentResultPage({super.key, required this.totalScore});
+  const PatientAssessmentResultPage({super.key, required this.result});
 
-  final int totalScore;
+  final SurveySubmitResult result;
 
   @override
   State<PatientAssessmentResultPage> createState() =>
@@ -118,7 +119,7 @@ class _PatientAssessmentResultPageState
   @override
   void initState() {
     super.initState();
-    _level = _levelFromScore(widget.totalScore);
+    _level = _levelFromScore(widget.result.totalScore);
     _config = _LevelConfig.from(_level);
 
     _confettiCtrl = AnimationController(
@@ -174,7 +175,7 @@ class _PatientAssessmentResultPageState
                       // Assessment card
                       _AssessmentCard(
                         config: _config,
-                        totalScore: widget.totalScore,
+                        totalScore: widget.result.totalScore,
                       ),
                       const SizedBox(height: 32),
 

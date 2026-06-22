@@ -16,9 +16,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required AuthRemoteDataSource dataSource,
     required SharedPreferences prefs,
     required TokenStorage tokenStorage,
-  })  : _dataSource = dataSource,
-        _prefs = prefs,
-        _tokenStorage = tokenStorage {
+  }) : _dataSource = dataSource,
+       _prefs = prefs,
+       _tokenStorage = tokenStorage {
     _readyCompleter = Completer<void>();
     _initSession().then((_) => _readyCompleter.complete()).catchError((e) {
       _readyCompleter.completeError(e);
@@ -158,6 +158,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   /// Chỉ dùng trong development — bypass API, inject mock user vào stream.
+  @override
   void mockSignIn(UserModel user) {
     assert(() {
       _currentUserCache = user;

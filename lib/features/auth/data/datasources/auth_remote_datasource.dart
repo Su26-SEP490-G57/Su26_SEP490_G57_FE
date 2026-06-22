@@ -14,19 +14,10 @@ class AuthRemoteDataSource {
     required String password,
   }) async {
     try {
-      print('LOGIN REQUEST');
-      print(username);
-
       final response = await _dio.post<Map<String, dynamic>>(
         AppConstants.endpointLogin,
-        data: {
-          'username': username,
-          'password': password,
-        },
+        data: {'username': username, 'password': password},
       );
-
-      print('LOGIN RESPONSE');
-      print(response.data);
 
       final body = response.data;
 
@@ -63,14 +54,8 @@ class AuthRemoteDataSource {
         user: UserModel.fromJson(userJson),
       );
     } on DioException catch (e) {
-      print('LOGIN DIO ERROR');
-      print('STATUS: ${e.response?.statusCode}');
-      print('BODY: ${e.response?.data}');
-
       _handleDioError(e);
     } catch (e) {
-      print('LOGIN PARSE ERROR');
-      print(e);
       rethrow;
     }
   }
@@ -88,13 +73,10 @@ class AuthRemoteDataSource {
   Never _handleDioError(DioException e) {
     final statusCode = e.response?.statusCode ?? 0;
     final responseData = e.response?.data;
-    final dataMap = responseData is Map<String, dynamic>
-        ? responseData
-        : null;
+    final dataMap = responseData is Map<String, dynamic> ? responseData : null;
 
     final message =
-        dataMap?['message'] as String? ??
-        dataMap?['error'] as String?;
+        dataMap?['message'] as String? ?? dataMap?['error'] as String?;
 
     if (e.response == null) {
       if (e.type == DioExceptionType.connectionTimeout ||
@@ -127,9 +109,7 @@ class AuthRemoteDataSource {
           );
         }
 
-        throw NetworkException(
-          message ?? 'Unknown error ($statusCode)',
-        );
+        throw NetworkException(message ?? 'Unknown error ($statusCode)');
     }
   }
 }

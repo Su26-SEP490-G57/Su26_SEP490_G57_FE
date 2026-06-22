@@ -12,7 +12,7 @@ class PatientDashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).user;
-    final displayName = user?.displayName?.split(' ').first ?? 'bạn';
+    final displayName = user?.displayName.split(' ').first ?? 'bạn';
 
     return Column(
       children: [

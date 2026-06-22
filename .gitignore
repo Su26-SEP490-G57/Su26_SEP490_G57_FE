@@ -2,3 +2,9 @@
 /.vscode/settings.json
 
 .kiro/
+
+# Flutter build artifacts (old fe/ folder remnants after restructure)
+fe/
+.dart_tool/
+.flutter-plugins-dependencies
+build/

@@ -15,6 +15,7 @@ import '../../features/nurse/presentation/pages/nurse_patients_page.dart';
 import '../../features/nurse/presentation/pages/nurse_profile_page.dart';
 import '../../features/nurse/presentation/pages/nurse_reports_page.dart';
 import '../../features/nurse/presentation/pages/nurse_tasks_page.dart';
+import '../../features/patient/domain/models/survey_models.dart';
 import '../../features/patient/presentation/layouts/patient_shell.dart';
 import '../../features/patient/presentation/pages/patient_assessment_page.dart';
 import '../../features/patient/presentation/pages/patient_assessment_result_page.dart';
@@ -23,13 +24,21 @@ import '../../features/patient/presentation/pages/patient_notifications_page.dar
 import '../../features/patient/presentation/pages/patient_profile_page.dart';
 import '../constants/app_routes.dart';
 
+// GoRouter được tạo 1 lần duy nhất, dùng refreshListenable để trigger redirect
+// khi auth state thay đổi — tránh recreate router mỗi lần emit.
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
+  final refreshNotifier = _AuthRefreshNotifier();
 
-  return GoRouter(
+  ref.listen<AsyncValue<UserModel?>>(authStateProvider, (_, _) {
+    refreshNotifier.notify();
+  });
+
+  final router = GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      final authState = ref.read(authStateProvider);
       final isLoading = authState.isLoading;
       final user = authState.valueOrNull;
       final isAuthenticated = user != null;
@@ -37,20 +46,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isSplash = state.matchedLocation == AppRoutes.splash;
       final isLogin = state.matchedLocation == AppRoutes.login;
 
-      if (isLoading) {
-        return isSplash ? null : AppRoutes.splash;
-      }
+      if (isLoading) return isSplash ? null : AppRoutes.splash;
 
-      if (!isAuthenticated) {
-        return isLogin ? null : AppRoutes.login;
-      }
+      if (!isAuthenticated) return isLogin ? null : AppRoutes.login;
 
       final role = user.primaryRole;
 
-      if (isSplash || isLogin) {
-        return _dashboardForRole(role);
-      }
+      if (isSplash || isLogin) return _dashboardForRole(role);
 
+      // Role guard
       if ((role == UserRole.nurse ||
               role == UserRole.headNurse ||
               role == UserRole.admin) &&
@@ -74,6 +78,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.login,
         builder: (context, state) => const LoginPage(),
       ),
+
+      // ── Nurse routes ────────────────────────────────────────────────
       ShellRoute(
         builder: (context, state, child) => NurseShell(child: child),
         routes: [
@@ -114,20 +120,61 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+
+      // ── Patient routes — bottom nav ─────────────────────────────────
+      ShellRoute(
+        builder: (context, state, child) => PatientShell(child: child),
+        routes: [
+          GoRoute(
+            path: AppRoutes.patientDashboard,
+            builder: (context, state) => const PatientDashboardPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.patientNotifications,
+            builder: (context, state) => const PatientNotificationsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.patientProfile,
+            builder: (context, state) => const PatientProfilePage(),
+          ),
+        ],
+      ),
+
+      // ── Patient full-screen (no shell) ──────────────────────────────
+      GoRoute(
+        path: AppRoutes.patientAssessment,
+        builder: (context, state) => const PatientAssessmentPage(),
+      ),
       GoRoute(
         path: AppRoutes.patientAssessmentResult,
         builder: (context, state) => PatientAssessmentResultPage(
-          totalScore: state.extra is int ? state.extra as int : 0,
+          result: state.extra is SurveySubmitResult
+              ? state.extra as SurveySubmitResult
+              : const SurveySubmitResult(
+                  assessmentId: 0,
+                  caseId: '',
+                  totalScore: 0,
+                  triageColor: TriageColor.green,
+                ),
         ),
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Text('Page not found: ${state.uri}'),
-      ),
-    ),
+    errorBuilder: (context, state) =>
+        Scaffold(body: Center(child: Text('Page not found: ${state.uri}'))),
   );
+
+  ref.onDispose(router.dispose);
+
+  return router;
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Listenable để GoRouter trigger redirect mà không recreate instance
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AuthRefreshNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
 
 String _dashboardForRole(UserRole? role) {
   return switch (role) {
