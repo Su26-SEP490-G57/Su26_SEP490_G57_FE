@@ -107,9 +107,10 @@ class AuthRepositoryImpl implements AuthRepository {
 
       return newAccessToken;
     } on UnauthorizedException {
-      await _clearSession();
-      _currentUserCache = null;
-      _authStateController.add(null);
+      // TODO: khi BE implement /auth/refresh, bỏ comment dưới và xóa rethrow
+      // await _clearSession();
+      // _currentUserCache = null;
+      // _authStateController.add(null);
       rethrow;
     } on AppException {
       rethrow;

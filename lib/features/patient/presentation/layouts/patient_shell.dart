@@ -59,12 +59,11 @@ class _PatientBottomNav extends StatelessWidget {
                 onTap: () => context.go(AppRoutes.patientDashboard),
               ),
               _NavItem(
-                icon: Icons.notifications_outlined,
-                iconFilled: Icons.notifications_rounded,
-                label: 'Thông báo',
+                icon: Icons.history_outlined,
+                iconFilled: Icons.history_rounded,
+                label: 'Lịch sử',
                 isActive: location == AppRoutes.patientNotifications,
                 onTap: () => context.go(AppRoutes.patientNotifications),
-                badge: true,
               ),
               _NavItem(
                 icon: Icons.person_outlined,

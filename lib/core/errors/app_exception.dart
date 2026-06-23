@@ -44,7 +44,7 @@ final class AuthException extends AppException {
 
 final class InvalidCredentialsException extends AppException {
   const InvalidCredentialsException([
-    super.message = 'Email hoặc mật khẩu không đúng',
+    super.message = 'Tên đăng nhập hoặc mật khẩu không đúng',
   ]);
 }
 

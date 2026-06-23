@@ -58,9 +58,9 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AuthState>(authNotifierProvider, (_, next) {
+    ref.listen<AuthState>(authNotifierProvider, (prev, next) {
       if (next.status == AuthStatus.error && next.errorMessage != null) {
-        context.showSnackBar(next.errorMessage!, isError: true);
+        context.showTopToast(next.errorMessage!, isError: true);
       }
     });
 
