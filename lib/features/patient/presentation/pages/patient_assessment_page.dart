@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -179,7 +181,9 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
     if (!mounted) return;
 
     if (state.status == AssessmentStatus.success && state.result != null) {
-      context.push(AppRoutes.patientAssessmentResult, extra: state.result);
+      unawaited(
+        context.push(AppRoutes.patientAssessmentResult, extra: state.result),
+      );
     } else if (state.status == AssessmentStatus.error) {
       context.showTopToast(
         state.errorMessage ?? 'Có lỗi xảy ra. Vui lòng thử lại.',
