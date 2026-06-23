@@ -6,13 +6,32 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-class NurseDashboardPage extends ConsumerWidget {
+class NurseDashboardPage extends ConsumerStatefulWidget {
   const NurseDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NurseDashboardPage> createState() => _NurseDashboardPageState();
+}
+
+class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final justLoggedIn = ref.read(authNotifierProvider).justLoggedIn;
+      if (justLoggedIn) {
+        ref.read(authNotifierProvider.notifier).clearLoginToast();
+        context.showTopToast('Đăng nhập thành công!', isSuccess: true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).user;
     final displayName = user?.displayName ?? 'Điều dưỡng';
 
@@ -174,16 +193,27 @@ class _DateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: replace with real date
-    const dateStr = 'Thứ Sáu, 12/05/2025';
+    final now = DateTime.now();
+    final weekdays = [
+      'Thứ Hai',
+      'Thứ Ba',
+      'Thứ Tư',
+      'Thứ Năm',
+      'Thứ Sáu',
+      'Thứ Bảy',
+      'Chủ Nhật',
+    ];
+    final weekday = weekdays[now.weekday - 1];
+    final dateStr =
+        '$weekday, ${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             dateStr,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
               fontWeight: FontWeight.w700,

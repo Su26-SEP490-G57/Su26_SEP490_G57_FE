@@ -4,13 +4,33 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-class PatientDashboardPage extends ConsumerWidget {
+class PatientDashboardPage extends ConsumerStatefulWidget {
   const PatientDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PatientDashboardPage> createState() =>
+      _PatientDashboardPageState();
+}
+
+class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final justLoggedIn = ref.read(authNotifierProvider).justLoggedIn;
+      if (justLoggedIn) {
+        ref.read(authNotifierProvider.notifier).clearLoginToast();
+        context.showTopToast('Đăng nhập thành công!', isSuccess: true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).user;
     final displayName = user?.displayName.split(' ').first ?? 'bạn';
 
@@ -253,8 +273,14 @@ class _ActionGrid extends StatelessWidget {
           crossAxisSpacing: 16,
           childAspectRatio: 0.95,
           children: [
-            const Icon(Icons.person_outline, size: 64),
-            const SizedBox(height: 16),
+            const _ActionCard(
+              backgroundColor: Color(0xFFFFF7E6),
+              borderColor: Color(0xFFFFE7C4),
+              iconColor: Color(0xFFF59E0B),
+              icon: Icons.restaurant_rounded,
+              label: 'Hướng dẫn ăn hôm nay',
+              labelColor: Color(0xFF854D0E),
+            ),
             _ActionCard(
               backgroundColor: const Color(0xFFE6F9F1),
               borderColor: const Color(0xFFC6F6D5),
