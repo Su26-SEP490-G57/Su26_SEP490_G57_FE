@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
-import '../../../auth/domain/models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/nurse_login_form.dart';
 import '../widgets/patient_login_form.dart';
@@ -139,20 +138,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
                           ),
 
                           const SizedBox(height: 16),
-
-                          // ── Debug shortcuts — chỉ hiện trong debug build ──
-                          if (true) // assert trick: luôn true trong debug
-                            Builder(
-                              builder: (context) {
-                                bool isDebug = false;
-                                assert(() {
-                                  isDebug = true;
-                                  return true;
-                                }());
-                                if (!isDebug) return const SizedBox.shrink();
-                                return _DebugLoginButtons(ref: ref);
-                              },
-                            ),
                         ],
                       ),
                     ),
@@ -580,97 +565,6 @@ class _NurseFooter extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Debug login shortcuts — CHỈ HIỆN TRONG DEBUG BUILD
-// Không bao giờ xuất hiện trong release APK
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DebugLoginButtons extends StatelessWidget {
-  const _DebugLoginButtons({required this.ref});
-
-  final WidgetRef ref;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Column(
-        children: [
-          const Row(
-            children: [
-              Expanded(child: Divider()),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  'DEV ONLY',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                    color: Color(0xFFBA1A1A),
-                  ),
-                ),
-              ),
-              Expanded(child: Divider()),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => ref
-                      .read(authNotifierProvider.notifier)
-                      .mockSignIn(UserRole.patient),
-                  icon: const Icon(Icons.person_rounded, size: 16),
-                  label: const Text('Patient'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF10B981),
-                    side: const BorderSide(color: Color(0xFF10B981)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    textStyle: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => ref
-                      .read(authNotifierProvider.notifier)
-                      .mockSignIn(UserRole.nurse),
-                  icon: const Icon(Icons.medical_services_rounded, size: 16),
-                  label: const Text('Nurse'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    textStyle: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

@@ -85,11 +85,15 @@ class AuthState {
     this.status = AuthStatus.initial,
     this.user,
     this.errorMessage,
+    this.justLoggedIn = false,
   });
 
   final AuthStatus status;
   final UserModel? user;
   final String? errorMessage;
+
+  /// true chỉ ngay sau khi signIn thành công — dashboard đọc xong phải clear
+  final bool justLoggedIn;
 
   bool get isLoading => status == AuthStatus.loading;
   bool get isAuthenticated => status == AuthStatus.authenticated;
@@ -98,11 +102,13 @@ class AuthState {
     AuthStatus? status,
     UserModel? user,
     String? errorMessage,
+    bool? justLoggedIn,
   }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
       errorMessage: errorMessage,
+      justLoggedIn: justLoggedIn ?? this.justLoggedIn,
     );
   }
 }
@@ -124,7 +130,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
         rememberMe: rememberMe,
       );
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        justLoggedIn: true,
+      );
     } catch (e) {
       state = AuthState(status: AuthStatus.error, errorMessage: e.toString());
     }
@@ -135,25 +145,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
-  /// Chỉ dùng trong development để test UI mà không cần BE.
-  /// Bị loại bỏ hoàn toàn trong release build nhờ assert.
-  void mockSignIn(UserRole role) {
-    assert(() {
-      final user = UserModel(
-        id: 1,
-        username: 'mock@poms.test',
-        roles: [role],
-        fullName: role == UserRole.patient
-            ? 'Nguyễn Văn Minh'
-            : 'Điều dưỡng Test',
-        isActive: true,
-        
-      );
-      // Emit vào repository stream để GoRouter redirect đúng
-      _repository.mockSignIn(user);
-      state = AuthState(status: AuthStatus.authenticated, user: user);
-      return true;
-    }());
+  /// Xóa flag justLoggedIn sau khi dashboard đã hiển thị toast
+  void clearLoginToast() {
+    if (state.justLoggedIn) {
+      state = state.copyWith(justLoggedIn: false);
+    }
   }
 }
 

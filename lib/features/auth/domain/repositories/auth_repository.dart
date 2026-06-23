@@ -30,7 +30,4 @@ abstract interface class AuthRepository {
 
   /// Whether "remember me" was checked on last login.
   bool get isRememberMeEnabled;
-
-  /// Chỉ dùng trong development — bypass API, inject mock user.
-  void mockSignIn(UserModel user);
 }

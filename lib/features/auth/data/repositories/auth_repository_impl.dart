@@ -157,16 +157,6 @@ class AuthRepositoryImpl implements AuthRepository {
     await _prefs.remove(AppConstants.keyUserRole);
   }
 
-  /// Chỉ dùng trong development — bypass API, inject mock user vào stream.
-  @override
-  void mockSignIn(UserModel user) {
-    assert(() {
-      _currentUserCache = user;
-      _authStateController.add(user);
-      return true;
-    }());
-  }
-
   void dispose() {
     _authStateController.close();
   }
