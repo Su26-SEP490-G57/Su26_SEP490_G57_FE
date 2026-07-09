@@ -160,10 +160,10 @@ class _PatientAssessmentResultPageState
           // ── Main content ───────────────────────────────────────────
           Column(
             children: [
-              _Header(onBack: () => context.pop()),
+              const SizedBox(height: 16),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
                   child: Column(
                     children: [
                       const SizedBox(height: 32),
@@ -191,60 +191,7 @@ class _PatientAssessmentResultPageState
               ),
             ],
           ),
-
-          // ── Bottom fixed button ────────────────────────────────────
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _BottomBar(level: _level),
-          ),
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Header
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.transparent,
-      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-      child: SizedBox(
-        height: 56,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                color: AppColors.onSurface,
-                onPressed: onBack,
-              ),
-              const Expanded(
-                child: Text(
-                  'Kết quả đánh giá',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onSurface,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(width: 48), // balance back button
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -479,61 +426,6 @@ class _TipCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Bottom bar — "Báo điều dưỡng" fixed
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _BottomBar extends StatelessWidget {
-  const _BottomBar({required this.level});
-  final _ResultLevel level;
-
-  @override
-  Widget build(BuildContext context) {
-    final isUrgent = level == _ResultLevel.red;
-
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        12 + MediaQuery.of(context).padding.bottom,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.9),
-        border: Border(
-          top: BorderSide(color: AppColors.outline.withValues(alpha: 0.5)),
-        ),
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton.icon(
-          onPressed: () {},
-          icon: Icon(
-            Icons.notifications_active_rounded,
-            size: 22,
-            color: Colors.white,
-          ),
-          label: const Text('Báo điều dưỡng'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isUrgent
-                ? AppColors.error
-                : const Color(0xFFEF4444),
-            foregroundColor: Colors.white,
-            elevation: isUrgent ? 4 : 2,
-            shape: const StadiumBorder(),
-            textStyle: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
       ),
     );
   }
