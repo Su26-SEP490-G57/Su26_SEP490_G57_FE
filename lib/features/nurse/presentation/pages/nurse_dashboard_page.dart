@@ -8,6 +8,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../domain/models/patient_summary.dart';
+import '../providers/priority_patients_provider.dart';
 
 class NurseDashboardPage extends ConsumerStatefulWidget {
   const NurseDashboardPage({super.key});
@@ -57,7 +59,7 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
                 // ── Nhóm cần ưu tiên ─────────────────────────────────
                 _SectionHeader(
                   label: 'NHÓM CẦN ƯU TIÊN',
-                  onViewAll: () => context.go(AppRoutes.nursePatients),
+                  onViewAll: () => context.push(AppRoutes.nursePriorityPatients),
                 ),
                 const SizedBox(height: 10),
                 const _PriorityPatientList(),
@@ -446,48 +448,61 @@ class _WardStatCard extends StatelessWidget {
 // Priority patient list
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PriorityPatientList extends StatelessWidget {
+class _PriorityPatientList extends ConsumerWidget {
   const _PriorityPatientList();
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: const [
-        _PriorityPatientCard(
-          code: 'BN001',
-          name: 'Nguyễn Văn A',
-          status: _PatientStatus.red,
-          pod: 'POD 2',
-          room: 'Buồng 305 - Giường 01',
-          symptom: 'Buồn nôn nhiều, chướng bụng nhiều',
-          dimmed: false,
-        ),
-        SizedBox(height: 10),
-        _PriorityPatientCard(
-          code: 'BN008',
-          name: 'Trần Thị B',
-          status: _PatientStatus.red,
-          pod: 'POD 1',
-          room: 'Buồng 306 - Giường 02',
-          symptom: 'Nôn 2 lần, chưa trung tiện',
-          dimmed: true,
-        ),
-        SizedBox(height: 10),
-        _PriorityPatientCard(
-          code: 'BN012',
-          name: 'Lê Văn C',
-          status: _PatientStatus.yellow,
-          pod: 'POD 2',
-          room: 'Buồng 303 - Giường 03',
-          symptom: 'Ăn uống kém, đầy bụng nhẹ',
-          dimmed: false,
-        ),
-      ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the priorityPatientsProvider which already fetches RED and YELLOW
+    final patientsAsync = ref.watch(priorityPatientsProvider);
+
+    return patientsAsync.when(
+      data: (patients) {
+        if (patients.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Không có bệnh nhân ưu tiên nào.',
+                style: TextStyle(color: Color(0xFF727687)),
+              ),
+            ),
+          );
+        }
+
+        final top3 = patients.take(3).toList();
+        
+        return Column(
+          children: top3.asMap().entries.map((entry) {
+            final p = entry.value;
+            final isLast = entry.key == top3.length - 1;
+            
+            // Map PatientStatus from summary to the local _PatientStatus if needed,
+            // or just use PatientSummary fields directly.
+            // Since _PriorityPatientCard is local, we pass values directly.
+            return Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+              child: GestureDetector(
+                onTap: () => context.push(AppRoutes.nursePatientDetailPath(p.code), extra: p),
+                child: _PriorityPatientCard(
+                  code: p.code,
+                  name: p.name,
+                  status: p.status, // We need to update _PriorityPatientCard to use PatientStatus
+                  pod: p.pod,
+                  room: p.room,
+                  symptom: 'Cần chú ý', // Symptom is not provided by the summary API currently
+                  dimmed: false,
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(child: Text('Lỗi tải dữ liệu: $error')),
     );
   }
 }
-
-enum _PatientStatus { red, yellow, green }
 
 class _PriorityPatientCard extends StatelessWidget {
   const _PriorityPatientCard({
@@ -502,29 +517,15 @@ class _PriorityPatientCard extends StatelessWidget {
 
   final String code;
   final String name;
-  final _PatientStatus status;
+  final PatientStatus status;
   final String pod;
   final String room;
   final String symptom;
   final bool dimmed;
 
-  Color get _statusColor => switch (status) {
-    _PatientStatus.red => AppColors.error,
-    _PatientStatus.yellow => const Color(0xFFF57F17),
-    _PatientStatus.green => const Color(0xFF2E7D32),
-  };
-
-  Color get _statusBg => switch (status) {
-    _PatientStatus.red => const Color(0x1ABA1A1A),
-    _PatientStatus.yellow => const Color(0x1AFFC107),
-    _PatientStatus.green => const Color(0x1A4CAF50),
-  };
-
-  String get _statusLabel => switch (status) {
-    _PatientStatus.red => 'RED',
-    _PatientStatus.yellow => 'YELLOW',
-    _PatientStatus.green => 'GREEN',
-  };
+  Color get _statusColor => status.badgeText;
+  Color get _statusBg => status.badgeBg;
+  String get _statusLabel => status.label;
 
   @override
   Widget build(BuildContext context) {

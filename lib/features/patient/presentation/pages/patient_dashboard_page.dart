@@ -273,13 +273,14 @@ class _ActionGrid extends StatelessWidget {
           crossAxisSpacing: 16,
           childAspectRatio: 0.95,
           children: [
-            const _ActionCard(
-              backgroundColor: Color(0xFFFFF7E6),
-              borderColor: Color(0xFFFFE7C4),
-              iconColor: Color(0xFFF59E0B),
+            _ActionCard(
+              backgroundColor: const Color(0xFFFFF7E6),
+              borderColor: const Color(0xFFFFE7C4),
+              iconColor: const Color(0xFFF59E0B),
               icon: Icons.restaurant_rounded,
               label: 'Hướng dẫn ăn hôm nay',
-              labelColor: Color(0xFF854D0E),
+              labelColor: const Color(0xFF854D0E),
+              onTap: () => context.push(AppRoutes.patientDietGuidance),
             ),
             _ActionCard(
               backgroundColor: const Color(0xFFE6F9F1),
