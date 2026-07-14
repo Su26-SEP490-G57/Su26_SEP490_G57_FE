@@ -7,6 +7,7 @@ abstract final class AppRoutes {
   // Nurse routes
   static const String nurseDashboard = '/nurse/dashboard';
   static const String nursePatients = '/nurse/patients';
+  static const String nursePriorityPatients = '/nurse/priority-patients';
   static const String nursePatientDetail = '/nurse/patients/:id';
   static const String nurseAlerts = '/nurse/alerts';
   static const String nurseReports = '/nurse/reports';
@@ -23,6 +24,7 @@ abstract final class AppRoutes {
   static const String patientRecovery = '/patient/recovery';
   static const String patientAssessment = '/patient/assessment';
   static const String patientAssessmentResult = '/patient/assessment/result';
+  static const String patientDietGuidance = '/patient/diet-guidance';
 
   // Helpers for parameterized routes
   static String nursePatientDetailPath(String id) => '/nurse/patients/$id';

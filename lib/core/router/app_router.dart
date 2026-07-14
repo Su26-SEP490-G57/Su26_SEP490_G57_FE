@@ -12,6 +12,7 @@ import '../../features/nurse/presentation/pages/nurse_alerts_page.dart';
 import '../../features/nurse/presentation/pages/nurse_dashboard_page.dart';
 import '../../features/nurse/presentation/pages/nurse_patient_detail_page.dart';
 import '../../features/nurse/presentation/pages/nurse_patients_page.dart';
+import '../../features/nurse/presentation/pages/nurse_priority_patients_page.dart';
 import '../../features/nurse/presentation/pages/nurse_profile_page.dart';
 import '../../features/nurse/presentation/pages/nurse_reports_page.dart';
 import '../../features/nurse/presentation/pages/nurse_tasks_page.dart';
@@ -20,6 +21,7 @@ import '../../features/patient/presentation/layouts/patient_shell.dart';
 import '../../features/patient/presentation/pages/patient_assessment_page.dart';
 import '../../features/patient/presentation/pages/patient_assessment_result_page.dart';
 import '../../features/patient/presentation/pages/patient_dashboard_page.dart';
+import '../../features/patient/presentation/pages/patient_diet_guidance_page.dart';
 import '../../features/patient/presentation/pages/patient_notifications_page.dart';
 import '../../features/patient/presentation/pages/patient_profile_page.dart';
 import '../constants/app_routes.dart';
@@ -103,6 +105,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
+            path: AppRoutes.nursePriorityPatients,
+            builder: (context, state) => const NursePriorityPatientsPage(),
+          ),
+          GoRoute(
             path: AppRoutes.nurseAlerts,
             builder: (context, state) => const NurseAlertsPage(),
           ),
@@ -157,6 +163,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   triageColor: TriageColor.green,
                 ),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.patientDietGuidance,
+        builder: (context, state) => const PatientDietGuidancePage(),
       ),
     ],
     errorBuilder: (context, state) =>
