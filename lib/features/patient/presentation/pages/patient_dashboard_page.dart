@@ -6,6 +6,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../providers/current_pod_provider.dart';
+import '../widgets/locked_pod_banner.dart';
 
 class PatientDashboardPage extends ConsumerStatefulWidget {
   const PatientDashboardPage({super.key});
@@ -132,72 +134,99 @@ class _TopAppBar extends StatelessWidget {
 // Patient info card
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PatientInfoCard extends StatelessWidget {
+class _PatientInfoCard extends ConsumerWidget {
   const _PatientInfoCard();
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFEDEDF9)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 20,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          // Thông tin rows
-          const _InfoRow(
-            label: 'Mã bệnh nhân',
-            value: 'BN001',
-            valueColor: AppColors.primary,
-          ),
-          const SizedBox(height: 16),
-          _InfoRow(
-            label: 'POD hiện tại',
-            value: 'POD1',
-            valueColor: const Color(0xFF006E2F), // secondary
-          ),
-          const SizedBox(height: 16),
-          const _InfoRow(
-            label: 'Ngày bắt đầu phẫu thuật',
-            value: '12/05/2025',
-            valueColor: AppColors.onSurface,
-          ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).user;
+    final currentPodAsync = ref.watch(currentPodProvider);
 
-          // Divider + info message
-          const Padding(
-            padding: EdgeInsets.only(top: 24),
-            child: Divider(height: 1, color: Color(0xFFEDEDF9)),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Icon(
-                Icons.info_rounded,
-                color: AppColors.primary,
-                size: 22,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Hôm nay là một ngày tuyệt vời để hồi phục!',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 16,
-                    color: AppColors.onSurface.withValues(alpha: 0.8),
+    return currentPodAsync.when(
+      data: (pod) {
+        final podText = pod?.currentPod != null ? 'POD ${pod!.currentPod}' : 'Chưa bắt đầu';
+        final isLocked = pod?.isLocked ?? false;
+
+        return Column(
+          children: [
+            if (pod != null && pod.isLocked)
+              LockedPodBanner(currentPod: pod),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFFEDEDF9)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A000000),
+                    blurRadius: 20,
+                    offset: Offset(0, 4),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  // Thông tin rows
+                  _InfoRow(
+                    label: 'Mã bệnh nhân',
+                    value: user?.caseId ?? '---',
+                    valueColor: AppColors.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  _InfoRow(
+                    label: 'POD hiện tại',
+                    value: isLocked ? '$podText (Đã tạm dừng)' : podText,
+                    valueColor: isLocked ? const Color(0xFFE65100) : const Color(0xFF006E2F), // secondary or warning
+                  ),
+                  const SizedBox(height: 16),
+                  _InfoRow(
+                    label: 'Ngày bắt đầu',
+                    value: user?.createdAt != null 
+                        ? '${user!.createdAt!.day.toString().padLeft(2, '0')}/${user.createdAt!.month.toString().padLeft(2, '0')}/${user.createdAt!.year}'
+                        : '---',
+                    valueColor: AppColors.onSurface,
+                  ),
+
+                  // Divider + info message
+                  const Padding(
+                    padding: EdgeInsets.only(top: 24),
+                    child: Divider(height: 1, color: Color(0xFFEDEDF9)),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(
+                        isLocked ? Icons.warning_rounded : Icons.info_rounded,
+                        color: isLocked ? const Color(0xFFE65100) : AppColors.primary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          isLocked 
+                            ? 'Vui lòng thực hiện theo hướng dẫn hiện tại.' 
+                            : 'Hôm nay là một ngày tuyệt vời để hồi phục!',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 16,
+                            color: AppColors.onSurface.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(child: Text('Lỗi tải dữ liệu: $error')),
+    );
+  }
+}
         ],
       ),
     );

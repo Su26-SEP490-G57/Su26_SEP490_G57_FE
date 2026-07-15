@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/models/pod_protocol_model.dart';
 import '../providers/diet_guidance_provider.dart';
+import '../providers/current_pod_provider.dart';
+import '../widgets/locked_pod_banner.dart';
 
 class PatientDietGuidancePage extends ConsumerWidget {
   const PatientDietGuidancePage({super.key});
@@ -13,6 +15,7 @@ class PatientDietGuidancePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dietGuidanceAsync = ref.watch(currentDietGuidanceProvider);
+    final currentPodAsync = ref.watch(currentPodProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -25,7 +28,23 @@ class PatientDietGuidancePage extends ConsumerWidget {
                 if (protocol == null) {
                   return _buildEmptyState(context);
                 }
-                return _DietGuidanceContent(protocol: protocol);
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 24),
+                      currentPodAsync.when(
+                        data: (pod) => pod != null && pod.isLocked
+                            ? LockedPodBanner(currentPod: pod)
+                            : const SizedBox.shrink(),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                      _DietGuidanceContent(protocol: protocol),
+                    ],
+                  ),
+                );
               },
               loading: () => const Padding(
                 padding: EdgeInsets.only(top: 100.0),

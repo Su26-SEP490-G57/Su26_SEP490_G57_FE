@@ -21,7 +21,7 @@ class DietGuidanceRepositoryImpl implements DietGuidanceRepository {
 
     // 2. Get Current POD
     final podInfo = await _remoteDataSource.getCurrentPod(caseId);
-    final currentPod = podInfo['currentPod'] as int?;
+    final currentPod = podInfo.currentPod;
 
     if (currentPod == null) {
       // Patient has not started ERAS or has no current POD

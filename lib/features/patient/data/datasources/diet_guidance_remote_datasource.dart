@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../domain/models/current_pod.dart';
 import '../../domain/models/pod_protocol_model.dart';
 
 class DietGuidanceRemoteDataSource {
@@ -25,11 +26,11 @@ class DietGuidanceRemoteDataSource {
     return PodProtocolModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<Map<String, dynamic>> getCurrentPod(String caseId) async {
+  Future<CurrentPod> getCurrentPod(String caseId) async {
     // Endpoint: GET /patients/:id/current-pod
     // Wait, the backend uses `id` as `case_id` for this specific endpoint.
     final response = await _dio.get('/patients/$caseId/current-pod');
-    return response.data as Map<String, dynamic>;
+    return CurrentPod.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<Map<String, dynamic>> getPatientByCaseId(String caseId) async {
