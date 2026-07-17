@@ -14,9 +14,14 @@ class AuthRemoteDataSource {
     required String password,
   }) async {
     try {
+      final requestData = <String, dynamic>{
+        'username': username,
+        'password': password,
+      };
+
       final response = await _dio.post<Map<String, dynamic>>(
         AppConstants.endpointLogin,
-        data: {'username': username, 'password': password},
+        data: requestData,
       );
 
       final body = response.data;

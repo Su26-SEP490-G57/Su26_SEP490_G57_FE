@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../domain/models/current_pod.dart';
+import 'package:poms/features/patient/domain/models/current_pod.dart';
 
 class LockedPodBanner extends StatelessWidget {
-  const LockedPodBanner({super.key, required this.currentPod});
+  const LockedPodBanner({required this.currentPod, super.key});
 
   final CurrentPod currentPod;
 
@@ -21,7 +20,9 @@ class LockedPodBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFF4E5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFB74D).withValues(alpha: 0.5)),
+        border: Border.all(
+          color: const Color(0xFFFFB74D).withValues(alpha: 0.5),
+        ),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),

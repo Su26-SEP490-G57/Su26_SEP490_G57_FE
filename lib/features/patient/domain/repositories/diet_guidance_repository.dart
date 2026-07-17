@@ -1,4 +1,4 @@
-import '../models/pod_protocol_model.dart';
+import 'package:poms/features/patient/domain/models/pod_protocol_model.dart';
 
 abstract class DietGuidanceRepository {
   /// Fetches the current PodProtocol for the given caseId

@@ -48,21 +48,17 @@ class UserModel extends Equatable {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] as int,
-      username: json['username'] as String,
-      fullName: json['fullName'] as String,
+      id: json['id'] as int? ?? 0,
+      username: json['username'] as String? ?? '',
+      fullName: json['fullName'] as String? ?? '',
       roles: (json['roles'] as List<dynamic>? ?? [])
           .map((r) => UserRoleX.fromString(r as String))
           .toList(),
       isActive: json['isActive'] as bool? ?? true,
       phoneNumber: json['phoneNumber'] as String?,
       caseId: json['caseId'] as String?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'] as String)
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'] as String)
-          : null,
+      createdAt: _parseDateTime(json['createdAt']),
+      updatedAt: _parseDateTime(json['updatedAt']),
     );
   }
 
@@ -75,6 +71,13 @@ class UserModel extends Equatable {
   final String? caseId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  static DateTime? _parseDateTime(Object? value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
 
   UserRole get primaryRole => roles.isNotEmpty ? roles.first : UserRole.nurse;
 

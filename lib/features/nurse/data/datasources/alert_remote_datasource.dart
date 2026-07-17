@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../domain/models/alert_model.dart';
+import 'package:poms/features/nurse/domain/models/alert_model.dart';
 
 class AlertRemoteDataSource {
   const AlertRemoteDataSource(this._dio);
@@ -12,10 +12,7 @@ class AlertRemoteDataSource {
     int limit = 20,
     String? status,
   }) async {
-    final queryParameters = <String, dynamic>{
-      'page': page,
-      'limit': limit,
-    };
+    final queryParameters = <String, dynamic>{'page': page, 'limit': limit};
     if (status != null) {
       queryParameters['status'] = status;
     }
@@ -26,6 +23,8 @@ class AlertRemoteDataSource {
     );
 
     final data = response.data['data'] as List<dynamic>;
-    return data.map((e) => AlertModel.fromJson(e as Map<String, dynamic>)).toList();
+    return data
+        .map((e) => AlertModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

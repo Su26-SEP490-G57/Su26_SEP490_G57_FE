@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
-import '../../domain/models/alert_model.dart';
-import '../providers/alert_provider.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/nurse/domain/models/alert_model.dart';
+import 'package:poms/features/nurse/presentation/providers/alert_provider.dart';
 
 class NurseAlertsPage extends ConsumerWidget {
   const NurseAlertsPage({super.key});
@@ -52,7 +52,7 @@ class NurseAlertsPage extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               itemCount: alerts.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              separatorBuilder: (_, _) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
                 final alert = alerts[index];
                 return _AlertCard(alert: alert);
@@ -67,7 +67,11 @@ class NurseAlertsPage extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.red, size: 48),
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.red,
+                  size: 48,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Lỗi tải dữ liệu cảnh báo:\n$error',
@@ -77,8 +81,13 @@ class NurseAlertsPage extends ConsumerWidget {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () => ref.invalidate(activeAlertsProvider),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                  child: const Text('Thử lại', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
+                  child: const Text(
+                    'Thử lại',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
@@ -131,10 +140,18 @@ class _AlertCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCritical = alert.alertType == 'RED';
-    final cardColor = isCritical ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB);
-    final borderColor = isCritical ? const Color(0xFFFECACA) : const Color(0xFFFDE68A);
-    final iconColor = isCritical ? const Color(0xFFDC2626) : const Color(0xFFD97706);
-    final badgeColor = isCritical ? const Color(0xFFEF4444) : const Color(0xFFF59E0B);
+    final cardColor = isCritical
+        ? const Color(0xFFFEF2F2)
+        : const Color(0xFFFFFBEB);
+    final borderColor = isCritical
+        ? const Color(0xFFFECACA)
+        : const Color(0xFFFDE68A);
+    final iconColor = isCritical
+        ? const Color(0xFFDC2626)
+        : const Color(0xFFD97706);
+    final badgeColor = isCritical
+        ? const Color(0xFFEF4444)
+        : const Color(0xFFF59E0B);
     final badgeText = isCritical ? 'NGUY KỊCH' : 'CẦN CHÚ Ý';
 
     return GestureDetector(
@@ -164,10 +181,10 @@ class _AlertCard extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
                         color: Color(0x10000000),
                         blurRadius: 4,
@@ -175,7 +192,11 @@ class _AlertCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(Icons.warning_amber_rounded, color: iconColor, size: 28),
+                  child: Icon(
+                    Icons.warning_amber_rounded,
+                    color: iconColor,
+                    size: 28,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -195,7 +216,10 @@ class _AlertCard extends StatelessWidget {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: badgeColor,
                               borderRadius: BorderRadius.circular(8),
@@ -218,7 +242,9 @@ class _AlertCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                          color: AppColors.onSurfaceVariant.withValues(
+                            alpha: 0.8,
+                          ),
                           fontFamily: 'Inter',
                         ),
                       ),
@@ -228,7 +254,7 @@ class _AlertCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Status and Details
             Container(
               padding: const EdgeInsets.all(12),
@@ -261,7 +287,7 @@ class _AlertCard extends StatelessWidget {
                               color: AppColors.onSurfaceVariant,
                             ),
                           ),
-                        ]
+                        ],
                       ],
                     ),
                   ),
@@ -298,14 +324,11 @@ class _AlertCard extends StatelessWidget {
       default:
         color = Colors.grey;
     }
-    
+
     return Container(
       width: 12,
       height: 12,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }

@@ -1,13 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../domain/models/current_pod.dart';
-import 'diet_guidance_provider.dart'; // To get the remote datasource provider
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/patient/domain/models/current_pod.dart';
+import 'package:poms/features/patient/presentation/providers/diet_guidance_provider.dart'; // To get the remote datasource provider
 
 final currentPodProvider = FutureProvider.autoDispose<CurrentPod?>((ref) async {
   final user = ref.watch(authNotifierProvider).user;
   final caseId = user?.caseId;
-  
+
   if (caseId == null || caseId.isEmpty) {
     return null;
   }

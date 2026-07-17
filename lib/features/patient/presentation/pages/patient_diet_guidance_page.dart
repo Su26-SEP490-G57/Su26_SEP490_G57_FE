@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../domain/models/pod_protocol_model.dart';
-import '../providers/diet_guidance_provider.dart';
-import '../providers/current_pod_provider.dart';
-import '../widgets/locked_pod_banner.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/features/patient/domain/models/pod_protocol_model.dart';
+import 'package:poms/features/patient/presentation/providers/diet_guidance_provider.dart';
+import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
+import 'package:poms/features/patient/presentation/widgets/locked_pod_banner.dart';
 
 class PatientDietGuidancePage extends ConsumerWidget {
   const PatientDietGuidancePage({super.key});
@@ -39,7 +39,7 @@ class PatientDietGuidancePage extends ConsumerWidget {
                             ? LockedPodBanner(currentPod: pod)
                             : const SizedBox.shrink(),
                         loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
+                        error: (_, _) => const SizedBox.shrink(),
                       ),
                       _DietGuidanceContent(protocol: protocol),
                     ],
@@ -282,7 +282,10 @@ class _DietGuidanceContent extends StatelessWidget {
                   color: const Color(0xFFFFF7E6),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.wb_sunny_rounded, color: Color(0xFFF59E0B)),
+                child: const Icon(
+                  Icons.wb_sunny_rounded,
+                  color: Color(0xFFF59E0B),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -348,8 +351,10 @@ class _DietGuidanceContent extends StatelessWidget {
                   color: const Color(0xFFE6F9F1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.soup_kitchen_rounded,
-                    color: Color(0xFF10B981)),
+                child: const Icon(
+                  Icons.soup_kitchen_rounded,
+                  color: Color(0xFF10B981),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -409,7 +414,7 @@ class _DietGuidanceContent extends StatelessWidget {
     if (items.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     return _buildGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,10 +475,7 @@ class _DietGuidanceContent extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: child,
-          ),
+          child: Padding(padding: const EdgeInsets.all(24.0), child: child),
         ),
       ),
     );

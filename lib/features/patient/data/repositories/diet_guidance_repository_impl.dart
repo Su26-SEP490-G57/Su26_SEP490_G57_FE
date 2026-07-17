@@ -1,6 +1,6 @@
-import '../../domain/models/pod_protocol_model.dart';
-import '../../domain/repositories/diet_guidance_repository.dart';
-import '../datasources/diet_guidance_remote_datasource.dart';
+import 'package:poms/features/patient/domain/models/pod_protocol_model.dart';
+import 'package:poms/features/patient/domain/repositories/diet_guidance_repository.dart';
+import 'package:poms/features/patient/data/datasources/diet_guidance_remote_datasource.dart';
 
 class DietGuidanceRepositoryImpl implements DietGuidanceRepository {
   const DietGuidanceRepositoryImpl(this._remoteDataSource);
@@ -11,12 +11,13 @@ class DietGuidanceRepositoryImpl implements DietGuidanceRepository {
   Future<PodProtocolModel?> getCurrentDietGuidance(String caseId) async {
     // 1. Get Patient Details to get operationTypeId
     final patientDetail = await _remoteDataSource.getPatientByCaseId(caseId);
-    final operationType = patientDetail['operationType'] as Map<String, dynamic>?;
-    
+    final operationType =
+        patientDetail['operationType'] as Map<String, dynamic>?;
+
     if (operationType == null) {
       throw Exception('Patient does not have an assigned operation type.');
     }
-    
+
     final operationTypeId = operationType['id'] as int;
 
     // 2. Get Current POD
@@ -29,7 +30,9 @@ class DietGuidanceRepositoryImpl implements DietGuidanceRepository {
     }
 
     // 3. Get all Pod Protocols for this operation type
-    final podProtocols = await _remoteDataSource.getPodProtocols(operationTypeId);
+    final podProtocols = await _remoteDataSource.getPodProtocols(
+      operationTypeId,
+    );
 
     // 4. Find the matching protocol. The label could be 'POD 1' or just match the index/order if label is arbitrary.
     // However, POD labels usually follow 'POD X' or 'PODX'. We try to find a protocol whose label contains the current POD number.
