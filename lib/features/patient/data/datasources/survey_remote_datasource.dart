@@ -32,7 +32,9 @@ class SurveyRemoteDataSource {
         data: request.toJson(),
       );
       final data = response.data;
-      if (data == null) throw const ServerException(statusCode: 500);
+      if (data is! Map<String, dynamic>) {
+        throw const ServerException(statusCode: 500);
+      }
       return SurveySubmitResult.fromJson(data);
     } on DioException catch (e) {
       _handleError(e);
@@ -45,7 +47,9 @@ class SurveyRemoteDataSource {
         '$_baseEndpoint/$surveyId',
       );
       final data = response.data;
-      if (data == null) throw const ServerException(statusCode: 500);
+      if (data is! Map<String, dynamic>) {
+        throw const ServerException(statusCode: 500);
+      }
       return SurveySubmitResult.fromJson(data);
     } on DioException catch (e) {
       _handleError(e);
