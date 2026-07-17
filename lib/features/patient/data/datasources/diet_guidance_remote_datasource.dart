@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../../domain/models/current_pod.dart';
-import '../../domain/models/pod_protocol_model.dart';
+import 'package:poms/features/patient/domain/models/current_pod.dart';
+import 'package:poms/features/patient/domain/models/pod_protocol_model.dart';
 
 class DietGuidanceRemoteDataSource {
   const DietGuidanceRemoteDataSource(this._dio);
@@ -13,7 +13,9 @@ class DietGuidanceRemoteDataSource {
       '/diet-guidance/operation-types/$operationTypeId/pods',
     );
     final data = response.data as List<dynamic>;
-    return data.map((e) => PodProtocolModel.fromJson(e as Map<String, dynamic>)).toList();
+    return data
+        .map((e) => PodProtocolModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<PodProtocolModel> getPodProtocolDetail(
@@ -35,10 +37,11 @@ class DietGuidanceRemoteDataSource {
 
   Future<Map<String, dynamic>> getPatientByCaseId(String caseId) async {
     // Endpoint: GET /patients?search={caseId}
-    final response = await _dio.get('/patients', queryParameters: {
-      'search': caseId,
-    });
-    
+    final response = await _dio.get(
+      '/patients',
+      queryParameters: {'search': caseId},
+    );
+
     final data = response.data as Map<String, dynamic>;
     final items = data['data'] as List<dynamic>;
     if (items.isEmpty) {

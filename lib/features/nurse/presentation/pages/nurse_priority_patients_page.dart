@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
-import '../../domain/models/patient_summary.dart';
-import '../providers/priority_patients_provider.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/presentation/providers/priority_patients_provider.dart';
 
 class NursePriorityPatientsPage extends ConsumerStatefulWidget {
   const NursePriorityPatientsPage({super.key});
 
   @override
-  ConsumerState<NursePriorityPatientsPage> createState() => _NursePriorityPatientsPageState();
+  ConsumerState<NursePriorityPatientsPage> createState() =>
+      _NursePriorityPatientsPageState();
 }
 
-class _NursePriorityPatientsPageState extends ConsumerState<NursePriorityPatientsPage> {
+class _NursePriorityPatientsPageState
+    extends ConsumerState<NursePriorityPatientsPage> {
   final _searchController = TextEditingController();
 
   String? _selectedPod;
@@ -87,9 +89,9 @@ class _NursePriorityPatientsPageState extends ConsumerState<NursePriorityPatient
     BuildContext context, {
     required String title,
     required List<String> options,
+    required ValueChanged<String?> onSelect,
     List<String>? optionLabels,
     String? selected,
-    required ValueChanged<String?> onSelect,
   }) {
     showModalBottomSheet<void>(
       context: context,
@@ -168,7 +170,13 @@ class _NursePriorityPatientsPageState extends ConsumerState<NursePriorityPatient
               children: [
                 _SearchBar(
                   controller: _searchController,
-                  onChanged: (v) => ref.read(priorityPatientsSearchQueryProvider.notifier).state = v,
+                  onChanged: (v) =>
+                      ref
+                              .read(
+                                priorityPatientsSearchQueryProvider.notifier,
+                              )
+                              .state =
+                          v,
                 ),
                 const SizedBox(height: 12),
                 _FilterChipsRow(
@@ -184,8 +192,11 @@ class _NursePriorityPatientsPageState extends ConsumerState<NursePriorityPatient
                   data: (patients) {
                     // Local filtering for POD and Level since API might not handle all
                     final filtered = patients.where((p) {
-                      final matchPod = _selectedPod == null || p.pod == _selectedPod;
-                      final matchLevel = _selectedAiLevel == null || p.status.name == _selectedAiLevel;
+                      final matchPod =
+                          _selectedPod == null || p.pod == _selectedPod;
+                      final matchLevel =
+                          _selectedAiLevel == null ||
+                          p.status.name == _selectedAiLevel;
                       return matchPod && matchLevel;
                     }).toList();
 
@@ -257,7 +268,8 @@ class _NursePriorityPatientsPageState extends ConsumerState<NursePriorityPatient
                       ],
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (err, _) => Center(child: Text('Lỗi: $err')),
                 ),
               ],
@@ -616,10 +628,10 @@ class _StatusPill extends StatelessWidget {
 
 class _FilterSheet extends StatelessWidget {
   const _FilterSheet({
-    this.selectedPod,
-    this.selectedAiLevel,
     required this.onApply,
     required this.onReset,
+    this.selectedPod,
+    this.selectedAiLevel,
   });
 
   final String? selectedPod;
@@ -732,7 +744,9 @@ class _PickerItem extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontSize: 14,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? AppColors.primary : const Color(0xFF191B24),
+                  color: isSelected
+                      ? AppColors.primary
+                      : const Color(0xFF191B24),
                 ),
               ),
             ),

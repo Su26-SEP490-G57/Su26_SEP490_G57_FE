@@ -3,15 +3,10 @@ import 'package:equatable/equatable.dart';
 class CurrentPod extends Equatable {
   const CurrentPod({
     required this.caseId,
-    this.currentPod,
     required this.isLocked,
+    this.currentPod,
     this.holdReason,
   });
-
-  final String caseId;
-  final int? currentPod;
-  final bool isLocked;
-  final String? holdReason;
 
   factory CurrentPod.fromJson(Map<String, dynamic> json) {
     return CurrentPod(
@@ -21,6 +16,11 @@ class CurrentPod extends Equatable {
       holdReason: json['holdReason'] as String?,
     );
   }
+
+  final String caseId;
+  final int? currentPod;
+  final bool isLocked;
+  final String? holdReason;
 
   @override
   List<Object?> get props => [caseId, currentPod, isLocked, holdReason];

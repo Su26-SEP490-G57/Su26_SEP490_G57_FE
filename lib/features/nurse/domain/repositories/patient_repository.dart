@@ -1,4 +1,4 @@
-import '../../domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
 abstract class PatientRepository {
   Future<List<PatientSummary>> getPatients({

@@ -5,27 +5,15 @@ class AlertModel extends Equatable {
     required this.alertId,
     required this.caseId,
     required this.assessmentId,
-    this.surveyScore,
     required this.alertType,
     required this.status,
+    this.surveyScore,
     this.isAutoProgression,
     this.triggeredAt,
     this.nurseAction,
     this.nursingNote,
     this.closedAt,
   });
-
-  final int alertId;
-  final String caseId;
-  final int assessmentId;
-  final int? surveyScore;
-  final String alertType; // e.g., 'YELLOW', 'RED'
-  final String status; // e.g., 'Pending', 'Acknowledged', 'Closed'
-  final bool? isAutoProgression;
-  final DateTime? triggeredAt;
-  final String? nurseAction;
-  final String? nursingNote;
-  final DateTime? closedAt;
 
   factory AlertModel.fromJson(Map<String, dynamic> json) {
     return AlertModel(
@@ -47,32 +35,44 @@ class AlertModel extends Equatable {
     );
   }
 
+  final int alertId;
+  final String caseId;
+  final int assessmentId;
+  final int? surveyScore;
+  final String alertType; // e.g., 'YELLOW', 'RED'
+  final String status; // e.g., 'Pending', 'Acknowledged', 'Closed'
+  final bool? isAutoProgression;
+  final DateTime? triggeredAt;
+  final String? nurseAction;
+  final String? nursingNote;
+  final DateTime? closedAt;
+
   Map<String, dynamic> toJson() => {
-        'alert_id': alertId,
-        'case_id': caseId,
-        'assessment_id': assessmentId,
-        'survey_score': surveyScore,
-        'alert_type': alertType,
-        'status': status,
-        'is_auto_progression': isAutoProgression,
-        'triggered_at': triggeredAt?.toIso8601String(),
-        'nurse_action': nurseAction,
-        'nursing_note': nursingNote,
-        'closed_at': closedAt?.toIso8601String(),
-      };
+    'alert_id': alertId,
+    'case_id': caseId,
+    'assessment_id': assessmentId,
+    'survey_score': surveyScore,
+    'alert_type': alertType,
+    'status': status,
+    'is_auto_progression': isAutoProgression,
+    'triggered_at': triggeredAt?.toIso8601String(),
+    'nurse_action': nurseAction,
+    'nursing_note': nursingNote,
+    'closed_at': closedAt?.toIso8601String(),
+  };
 
   @override
   List<Object?> get props => [
-        alertId,
-        caseId,
-        assessmentId,
-        surveyScore,
-        alertType,
-        status,
-        isAutoProgression,
-        triggeredAt,
-        nurseAction,
-        nursingNote,
-        closedAt,
-      ];
+    alertId,
+    caseId,
+    assessmentId,
+    surveyScore,
+    alertType,
+    status,
+    isAutoProgression,
+    triggeredAt,
+    nurseAction,
+    nursingNote,
+    closedAt,
+  ];
 }

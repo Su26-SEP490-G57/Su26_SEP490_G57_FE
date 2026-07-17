@@ -5,17 +5,47 @@ class PodProtocolModel extends Equatable {
     required this.podId,
     required this.operationTypeId,
     required this.label,
+    required this.recommendedFoods,
+    required this.recommendedDrinks,
     this.mealsPerDayMin,
     this.mealsPerDayMax,
     this.mealInstruction,
     this.volumePerMealMin,
     this.volumePerMealMax,
     this.volumeInstruction,
-    required this.recommendedFoods,
-    required this.recommendedDrinks,
     this.updatedAt,
     this.createdAt,
   });
+
+  factory PodProtocolModel.fromJson(Map<String, dynamic> json) {
+    return PodProtocolModel(
+      podId: json['podId'] as int,
+      operationTypeId: json['operationTypeId'] as int,
+      label: json['label'] as String,
+      mealsPerDayMin: json['mealsPerDayMin'] as int?,
+      mealsPerDayMax: json['mealsPerDayMax'] as int?,
+      mealInstruction: json['mealInstruction'] as String?,
+      volumePerMealMin: json['volumePerMealMin'] as int?,
+      volumePerMealMax: json['volumePerMealMax'] as int?,
+      volumeInstruction: json['volumeInstruction'] as String?,
+      recommendedFoods:
+          (json['recommendedFoods'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      recommendedDrinks:
+          (json['recommendedDrinks'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'] as String)
+          : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'] as String)
+          : null,
+    );
+  }
 
   final int podId;
   final int operationTypeId;
@@ -31,64 +61,36 @@ class PodProtocolModel extends Equatable {
   final DateTime? updatedAt;
   final DateTime? createdAt;
 
-  factory PodProtocolModel.fromJson(Map<String, dynamic> json) {
-    return PodProtocolModel(
-      podId: json['podId'] as int,
-      operationTypeId: json['operationTypeId'] as int,
-      label: json['label'] as String,
-      mealsPerDayMin: json['mealsPerDayMin'] as int?,
-      mealsPerDayMax: json['mealsPerDayMax'] as int?,
-      mealInstruction: json['mealInstruction'] as String?,
-      volumePerMealMin: json['volumePerMealMin'] as int?,
-      volumePerMealMax: json['volumePerMealMax'] as int?,
-      volumeInstruction: json['volumeInstruction'] as String?,
-      recommendedFoods: (json['recommendedFoods'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          [],
-      recommendedDrinks: (json['recommendedDrinks'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          [],
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'] as String)
-          : null,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'] as String)
-          : null,
-    );
-  }
-
   Map<String, dynamic> toJson() => {
-        'podId': podId,
-        'operationTypeId': operationTypeId,
-        'label': label,
-        'mealsPerDayMin': mealsPerDayMin,
-        'mealsPerDayMax': mealsPerDayMax,
-        'mealInstruction': mealInstruction,
-        'volumePerMealMin': volumePerMealMin,
-        'volumePerMealMax': volumePerMealMax,
-        'volumeInstruction': volumeInstruction,
-        'recommendedFoods': recommendedFoods,
-        'recommendedDrinks': recommendedDrinks,
-        'updatedAt': updatedAt?.toIso8601String(),
-        'createdAt': createdAt?.toIso8601String(),
-      };
+    'podId': podId,
+    'operationTypeId': operationTypeId,
+    'label': label,
+    'mealsPerDayMin': mealsPerDayMin,
+    'mealsPerDayMax': mealsPerDayMax,
+    'mealInstruction': mealInstruction,
+    'volumePerMealMin': volumePerMealMin,
+    'volumePerMealMax': volumePerMealMax,
+    'volumeInstruction': volumeInstruction,
+    'recommendedFoods': recommendedFoods,
+    'recommendedDrinks': recommendedDrinks,
+    'updatedAt': updatedAt?.toIso8601String(),
+    'createdAt': createdAt?.toIso8601String(),
+  };
 
   @override
   List<Object?> get props => [
-        podId,
-        operationTypeId,
-        label,
-        mealsPerDayMin,
-        mealsPerDayMax,
-        mealInstruction,
-        volumePerMealMin,
-        volumePerMealMax,
-        volumeInstruction,
-        recommendedFoods,
-        recommendedDrinks,
-        updatedAt,
-        createdAt,
-      ];
+    podId,
+    operationTypeId,
+    label,
+    mealsPerDayMin,
+    mealsPerDayMax,
+    mealInstruction,
+    volumePerMealMin,
+    volumePerMealMax,
+    volumeInstruction,
+    recommendedFoods,
+    recommendedDrinks,
+    updatedAt,
+    createdAt,
+  ];
 }

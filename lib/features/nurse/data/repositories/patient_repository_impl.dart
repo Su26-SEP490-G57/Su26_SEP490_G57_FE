@@ -1,11 +1,10 @@
-import '../../domain/models/patient_summary.dart';
-import '../../domain/repositories/patient_repository.dart';
-import '../datasources/patient_remote_datasource.dart';
+import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/domain/repositories/patient_repository.dart';
+import 'package:poms/features/nurse/data/datasources/patient_remote_datasource.dart';
 
 class PatientRepositoryImpl implements PatientRepository {
-  final PatientRemoteDataSource _remoteDataSource;
-
   PatientRepositoryImpl(this._remoteDataSource);
+  final PatientRemoteDataSource _remoteDataSource;
 
   @override
   Future<List<PatientSummary>> getPatients({
