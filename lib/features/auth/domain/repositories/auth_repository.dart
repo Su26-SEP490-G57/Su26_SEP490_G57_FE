@@ -1,4 +1,6 @@
-import '../models/user_model.dart';
+import 'package:poms/core/errors/app_exception.dart' show UnauthorizedException;
+
+import 'package:poms/features/auth/domain/models/user_model.dart';
 
 abstract interface class AuthRepository {
   /// Stream phát ra user hiện tại.

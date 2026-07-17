@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 
-import '../../features/auth/domain/repositories/auth_repository.dart';
+import 'package:poms/features/auth/domain/repositories/auth_repository.dart';
 
 /// Interceptor 2 — xử lý 401 Unauthorized.
 ///

@@ -3,12 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../core/network/dio_client.dart';
-import '../../../../core/network/token_storage.dart';
-import '../../data/datasources/auth_remote_datasource.dart';
-import '../../data/repositories/auth_repository_impl.dart';
-import '../../domain/models/user_model.dart';
-import '../../domain/repositories/auth_repository.dart';
+import 'package:poms/core/network/dio_client.dart';
+import 'package:poms/core/network/token_storage.dart';
+import 'package:poms/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:poms/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:poms/features/auth/domain/models/user_model.dart';
+import 'package:poms/features/auth/domain/repositories/auth_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Infrastructure providers
@@ -22,7 +22,7 @@ final tokenStorageProvider = Provider<TokenStorage>((ref) {
   const secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
-  return TokenStorage(secureStorage);
+  return const TokenStorage(secureStorage);
 });
 
 // ---------------------------------------------------------------------------

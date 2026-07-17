@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
-import '../../../../core/utils/extensions.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../domain/models/patient_summary.dart';
-import '../providers/priority_patients_provider.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/core/utils/extensions.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/presentation/providers/priority_patients_provider.dart';
 
 class NurseDashboardPage extends ConsumerStatefulWidget {
   const NurseDashboardPage({super.key});
@@ -59,7 +59,8 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
                 // ── Nhóm cần ưu tiên ─────────────────────────────────
                 _SectionHeader(
                   label: 'NHÓM CẦN ƯU TIÊN',
-                  onViewAll: () => context.push(AppRoutes.nursePriorityPatients),
+                  onViewAll: () =>
+                      context.push(AppRoutes.nursePriorityPatients),
                 ),
                 const SizedBox(height: 10),
                 const _PriorityPatientList(),
@@ -311,7 +312,7 @@ class _WardOverviewGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       children: [
         Expanded(
           child: _WardStatCard(
@@ -321,27 +322,27 @@ class _WardOverviewGrid extends StatelessWidget {
             leftBorderColor: Colors.transparent,
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Expanded(
           child: _WardStatCard(
             label: 'GREEN',
-            labelColor: const Color(0xFF2E7D32),
+            labelColor: Color(0xFF2E7D32),
             value: '15',
             sub: '(62.5%)',
-            leftBorderColor: const Color(0xFF4CAF50),
+            leftBorderColor: Color(0xFF4CAF50),
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Expanded(
           child: _WardStatCard(
             label: 'YELLOW',
-            labelColor: const Color(0xFFF57F17),
+            labelColor: Color(0xFFF57F17),
             value: '6',
             sub: '(25.0%)',
-            leftBorderColor: const Color(0xFFFFC107),
+            leftBorderColor: Color(0xFFFFC107),
           ),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         Expanded(
           child: _WardStatCard(
             label: 'RED',
@@ -471,26 +472,31 @@ class _PriorityPatientList extends ConsumerWidget {
         }
 
         final top3 = patients.take(3).toList();
-        
+
         return Column(
           children: top3.asMap().entries.map((entry) {
             final p = entry.value;
             final isLast = entry.key == top3.length - 1;
-            
+
             // Map PatientStatus from summary to the local _PatientStatus if needed,
             // or just use PatientSummary fields directly.
             // Since _PriorityPatientCard is local, we pass values directly.
             return Padding(
               padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
               child: GestureDetector(
-                onTap: () => context.push(AppRoutes.nursePatientDetailPath(p.code), extra: p),
+                onTap: () => context.push(
+                  AppRoutes.nursePatientDetailPath(p.code),
+                  extra: p,
+                ),
                 child: _PriorityPatientCard(
                   code: p.code,
                   name: p.name,
-                  status: p.status, // We need to update _PriorityPatientCard to use PatientStatus
+                  status: p
+                      .status, // We need to update _PriorityPatientCard to use PatientStatus
                   pod: p.pod,
                   room: p.room,
-                  symptom: 'Cần chú ý', // Symptom is not provided by the summary API currently
+                  symptom:
+                      'Cần chú ý', // Symptom is not provided by the summary API currently
                   dimmed: false,
                 ),
               ),
@@ -551,8 +557,8 @@ class _PriorityPatientCard extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFECEDFA),
+              decoration: const BoxDecoration(
+                color: Color(0xFFECEDFA),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -677,7 +683,7 @@ class _AlertSummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       children: [
         Expanded(
           child: _AlertSummaryCard(
@@ -689,12 +695,12 @@ class _AlertSummaryRow extends StatelessWidget {
             label: 'CẦN XỬ LÝ',
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: _AlertSummaryCard(
             icon: Icons.schedule_rounded,
             iconColor: AppColors.primary,
-            iconBg: const Color(0x1A0050CB),
+            iconBg: Color(0x1A0050CB),
             count: '1',
             countColor: AppColors.primary,
             label: 'ĐANG XỬ LÝ',
@@ -814,7 +820,7 @@ class _RoomDistributionCard extends StatelessWidget {
       child: Row(
         children: [
           // Donut chart
-          SizedBox(
+          const SizedBox(
             width: 120,
             height: 120,
             child: _DonutChart(rooms: _rooms, total: 24),

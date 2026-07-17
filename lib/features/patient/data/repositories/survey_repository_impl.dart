@@ -1,7 +1,7 @@
-import '../../../../core/utils/exception_handler.dart';
-import '../../domain/models/survey_models.dart';
-import '../../domain/repositories/survey_repository.dart';
-import '../datasources/survey_remote_datasource.dart';
+import 'package:poms/core/utils/exception_handler.dart';
+import 'package:poms/features/patient/domain/models/survey_models.dart';
+import 'package:poms/features/patient/domain/repositories/survey_repository.dart';
+import 'package:poms/features/patient/data/datasources/survey_remote_datasource.dart';
 
 class SurveyRepositoryImpl implements SurveyRepository {
   SurveyRepositoryImpl(this._dataSource);

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../constants/app_colors.dart';
-import '../constants/app_text_styles.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_text_styles.dart';
 
 abstract final class AppTheme {
   static ThemeData get light => _buildTheme(Brightness.light);

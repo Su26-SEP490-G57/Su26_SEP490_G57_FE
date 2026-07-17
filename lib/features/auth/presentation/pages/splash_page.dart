@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
-import '../../../../core/constants/app_text_styles.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_strings.dart';
+import 'package:poms/core/constants/app_text_styles.dart';
 
 class SplashPage extends StatelessWidget {
   const SplashPage({super.key});

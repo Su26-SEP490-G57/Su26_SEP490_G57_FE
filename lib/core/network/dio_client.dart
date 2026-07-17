@@ -1,11 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:poms/main.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
-import '../../features/auth/domain/repositories/auth_repository.dart';
-import '../constants/app_constants.dart';
-import 'access_token_interceptor.dart';
-import 'refresh_token_interceptor.dart';
+import 'package:poms/features/auth/domain/repositories/auth_repository.dart';
+import 'package:poms/core/network/access_token_interceptor.dart';
+import 'package:poms/core/network/refresh_token_interceptor.dart';
 
 // ---------------------------------------------------------------------------
 // Auth Dio — không có interceptor, chỉ dùng cho /auth/login & /auth/refresh
@@ -58,13 +57,11 @@ Dio createAppDio({required AuthRepository authRepository}) {
 // ---------------------------------------------------------------------------
 
 Dio _buildBaseDio() {
-  final baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://10.0.2.2:3000/api';
-
   return Dio(
     BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: AppConstants.connectTimeout,
-      receiveTimeout: AppConstants.receiveTimeout,
+      baseUrl: appFlavorConfig.apiBaseUrl,
+      connectTimeout: Duration(milliseconds: appFlavorConfig.apiConnectTimeout),
+      receiveTimeout: Duration(milliseconds: appFlavorConfig.apiReceiveTimeout),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

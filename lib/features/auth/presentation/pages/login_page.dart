@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/utils/extensions.dart';
-import '../providers/auth_provider.dart';
-import '../widgets/nurse_login_form.dart';
-import '../widgets/patient_login_form.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/utils/extensions.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/auth/presentation/widgets/nurse_login_form.dart';
+import 'package:poms/features/auth/presentation/widgets/patient_login_form.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -463,11 +463,11 @@ class _PatientFooter extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Opacity(
+        const Opacity(
           opacity: 0.55,
           child: Column(
             children: [
-              const Text(
+              Text(
                 'HOSPITAL ID: POMS-VN-001',
                 style: TextStyle(
                   fontFamily: 'Inter',
@@ -477,8 +477,8 @@ class _PatientFooter extends StatelessWidget {
                   color: Color(0xFF191B24),
                 ),
               ),
-              const SizedBox(height: 2),
-              const Text(
+              SizedBox(height: 2),
+              Text(
                 'App Version 2.4.0 (Stable)',
                 style: TextStyle(
                   fontFamily: 'Inter',
@@ -533,11 +533,11 @@ class _NurseFooter extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Opacity(
+        const Opacity(
           opacity: 0.55,
           child: Column(
             children: [
-              const Text(
+              Text(
                 'HỆ THỐNG POMS © 2024. ĐÃ ĐƯỢC MÃ HÓA ĐẦU CUỐI.',
                 style: TextStyle(
                   fontFamily: 'Inter',
@@ -549,7 +549,7 @@ class _NurseFooter extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const Text(
+              Text(
                 'CHỈ DÀNH CHO NHÂN VIÊN Y TẾ ĐƯỢC ỦY QUYỀN.',
                 style: TextStyle(
                   fontFamily: 'Inter',

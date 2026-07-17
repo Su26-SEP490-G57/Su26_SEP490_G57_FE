@@ -12,10 +12,6 @@ class SurveyOption {
     required this.scoreValue,
   });
 
-  final int optionId;
-  final String optionText;
-  final int scoreValue;
-
   factory SurveyOption.fromJson(Map<String, dynamic> json) {
     return SurveyOption(
       optionId: json['option_id'] as int,
@@ -23,6 +19,10 @@ class SurveyOption {
       scoreValue: json['score_value'] as int,
     );
   }
+
+  final int optionId;
+  final String optionText;
+  final int scoreValue;
 }
 
 class SurveyQuestion {
@@ -32,11 +32,6 @@ class SurveyQuestion {
     required this.orderNumber,
     required this.options,
   });
-
-  final int questionId;
-  final String questionText;
-  final int orderNumber;
-  final List<SurveyOption> options;
 
   factory SurveyQuestion.fromJson(Map<String, dynamic> json) {
     return SurveyQuestion(
@@ -48,6 +43,11 @@ class SurveyQuestion {
           .toList(),
     );
   }
+
+  final int questionId;
+  final String questionText;
+  final int orderNumber;
+  final List<SurveyOption> options;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -123,13 +123,6 @@ class SurveySubmitResult {
     this.recommendation,
   });
 
-  final int assessmentId;
-  final String caseId;
-  final int totalScore;
-  final TriageColor triageColor;
-  final String? evaluationDatetime;
-  final String? recommendation;
-
   factory SurveySubmitResult.fromJson(Map<String, dynamic> json) {
     return SurveySubmitResult(
       assessmentId: json['assessment_id'] as int,
@@ -142,4 +135,11 @@ class SurveySubmitResult {
       recommendation: json['recommendation'] as String?,
     );
   }
+
+  final int assessmentId;
+  final String caseId;
+  final int totalScore;
+  final TriageColor triageColor;
+  final String? evaluationDatetime;
+  final String? recommendation;
 }

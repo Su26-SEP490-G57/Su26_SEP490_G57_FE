@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/utils/extensions.dart';
-import '../../../../shared/widgets/custom_checkbox.dart';
-import '../providers/auth_provider.dart';
-import 'login_shared_widgets.dart';
+import 'package:poms/core/utils/extensions.dart';
+import 'package:poms/shared/widgets/custom_checkbox.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/auth/presentation/widgets/login_shared_widgets.dart';
 
 class NurseLoginForm extends ConsumerStatefulWidget {
-  const NurseLoginForm({super.key, required this.onSwitchToPatient});
+  const NurseLoginForm({required this.onSwitchToPatient, super.key});
 
   final VoidCallback onSwitchToPatient;
 

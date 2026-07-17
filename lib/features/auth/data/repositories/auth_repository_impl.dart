@@ -3,13 +3,13 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../core/constants/app_constants.dart';
-import '../../../../core/errors/app_exception.dart';
-import '../../../../core/network/token_storage.dart';
-import '../../../../core/utils/exception_handler.dart';
-import '../../domain/models/user_model.dart';
-import '../../domain/repositories/auth_repository.dart';
-import '../datasources/auth_remote_datasource.dart';
+import 'package:poms/core/constants/app_constants.dart';
+import 'package:poms/core/errors/app_exception.dart';
+import 'package:poms/core/network/token_storage.dart';
+import 'package:poms/core/utils/exception_handler.dart';
+import 'package:poms/features/auth/domain/models/user_model.dart';
+import 'package:poms/features/auth/domain/repositories/auth_repository.dart';
+import 'package:poms/features/auth/data/datasources/auth_remote_datasource.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({

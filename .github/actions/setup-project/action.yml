@@ -1,0 +1,25 @@
+name: "Setup Flutter Environment with Cache"
+description: "Checkouts code, initializes Flutter SDK, and configures smart dependencies caching."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version-file: .fvmrc
+        cache: true
+
+    - name: Cache Pub dependencies
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/.pub-cache
+          ${{ github.workspace }}/.dart_tool/pub/
+        key: ${{ runner.os }}-pub-${{ hashFiles(format('{0}/pubspec.lock', github.workspace)) }}
+        restore-keys: |
+          ${{ runner.os }}-pub-
+
+    - name: Install dependencies
+      shell: bash
+      run: flutter pub get --enforce-lockfile

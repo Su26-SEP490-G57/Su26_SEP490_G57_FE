@@ -3,9 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
-import '../../domain/models/survey_models.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/patient/domain/models/survey_models.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Score thresholds
@@ -100,7 +100,7 @@ class _LevelConfig {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class PatientAssessmentResultPage extends StatefulWidget {
-  const PatientAssessmentResultPage({super.key, required this.result});
+  const PatientAssessmentResultPage({required this.result, super.key});
 
   final SurveySubmitResult result;
 
@@ -411,7 +411,11 @@ class _TipCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lightbulb_rounded, color: AppColors.primary, size: 22),
+          const Icon(
+            Icons.lightbulb_rounded,
+            color: AppColors.primary,
+            size: 22,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -426,6 +430,61 @@ class _TipCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bottom bar — "Báo điều dưỡng" fixed
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({required this.level});
+  final _ResultLevel level;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUrgent = level == _ResultLevel.red;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.background.withValues(alpha: 0.9),
+        border: Border(
+          top: BorderSide(color: AppColors.outline.withValues(alpha: 0.5)),
+        ),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton.icon(
+          onPressed: () {},
+          icon: const Icon(
+            Icons.notifications_active_rounded,
+            size: 22,
+            color: Colors.white,
+          ),
+          label: const Text('Báo điều dưỡng'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isUrgent
+                ? AppColors.error
+                : const Color(0xFFEF4444),
+            foregroundColor: Colors.white,
+            elevation: isUrgent ? 4 : 2,
+            shape: const StadiumBorder(),
+            textStyle: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }

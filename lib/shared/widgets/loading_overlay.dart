@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_colors.dart';
 
 class LoadingOverlay extends StatelessWidget {
   const LoadingOverlay({
-    super.key,
     required this.isLoading,
     required this.child,
+    super.key,
     this.message,
   });
 

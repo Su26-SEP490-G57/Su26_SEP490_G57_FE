@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../../../../core/errors/app_exception.dart';
-import '../../domain/models/survey_models.dart';
+import 'package:poms/core/errors/app_exception.dart';
+import 'package:poms/features/patient/domain/models/survey_models.dart';
 
 class SurveyRemoteDataSource {
   SurveyRemoteDataSource(this._dio);

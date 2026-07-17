@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
 
 /// Shell cho toàn bộ patient feature — cung cấp Scaffold + bottom nav.
 /// Các page con không có Scaffold riêng.
 class PatientShell extends StatelessWidget {
-  const PatientShell({super.key, required this.child});
+  const PatientShell({required this.child, super.key});
 
   final Widget child;
 

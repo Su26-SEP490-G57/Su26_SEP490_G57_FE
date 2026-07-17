@@ -6,101 +6,140 @@
 
 ## Tech Stack
 
-| | |
-|---|---|
-| Framework | Flutter 3.44.0 / Dart 3.12.0 |
-| State management | Riverpod 2.x (`flutter_riverpod`) |
-| Navigation | GoRouter 15.x |
-| Network | Dio 5.x + 2 custom interceptors |
-| Auth | JWT (access token in-memory, refresh token in SecureStorage) |
-| Local storage | SharedPreferences (user profile) + FlutterSecureStorage (refresh token) |
+|                  |                                                                         |
+| ---------------- | ----------------------------------------------------------------------- |
+| Framework        | Flutter 3.44.0 / Dart 3.12.0                                            |
+| State management | Riverpod 2.x (`flutter_riverpod`)                                       |
+| Navigation       | GoRouter 15.x                                                           |
+| Network          | Dio 5.x + 2 custom interceptors                                         |
+| Auth             | JWT (access token in-memory, refresh token in SecureStorage)            |
+| Local storage    | SharedPreferences (user profile) + FlutterSecureStorage (refresh token) |
 
 ---
 
 ## Yêu cầu môi trường
 
-| Tool | Version |
-|---|---|
-| Flutter | 3.44.0+ |
-| Dart | 3.12.0+ |
-| Android Studio | Hedgehog+ (emulator) |
-| JDK | 17+ |
+| Tool                                                   | Version                   |
+| ------------------------------------------------------ | ------------------------- |
+| [Dart](https://dart.dev/get-dart#install)              | 3.12.0+                   |
+| Flutter                                                | 3.44.0 (quản lý bằng FVM) |
+| [Android Studio](https://developer.android.com/studio) | Hedgehog+ (emulator)      |
+| JDK                                                    | 17+                       |
 
 ---
 
 ## Setup
 
-### 1. Clone & cài dependencies
+### 1. Clone project
 
 ```bash
 git clone https://github.com/Su26-SEP490-G57/Su26_SEP490_G57_FE.git
-cd fe
-flutter pub get
 ```
 
-### 2. Tạo file `.env`
+### 2. Cài FVM, Flutter, dependencies
+
+> Phiên bản của Flutter đã được cố định trong [`.fvmrc`](./.fvmrc) để đảm bảo mọi người dùng cùng phiên bản, tránh lỗi do khác version.
+
+```bash
+dart pub global activate fvm # Nếu chưa có FVM
+fvm install
+
+fvm flutter doctor # Kiểm tra setup Flutter, Android SDK, emulator, v.v.
+fvm flutter pub get # Cài dependencies
+```
+
+### 3. Setup Git Hooks:
+
+Dự án có sử dụng Husky để chạy pre-commit hook, đảm bảo code được format và lint trước khi commit:
+
+```bash
+fvm dart run husky install
+```
+
+### 4. Tạo file `.env` (Chỉ dùng trên local)
 
 ```bash
 cp .env.example .env
 ```
 
-Chỉnh `API_BASE_URL` theo môi trường:
+### 5. Chạy app
 
-```env
-# Android Emulator (default)
-API_BASE_URL=http://10.0.2.2:3000
-
-# iOS Simulator
-API_BASE_URL=http://127.0.0.1:3000
-
-# Thiết bị thực (cùng WiFi với máy chạy BE)
-API_BASE_URL=http://<IP_máy_host>:3000
-```
-
-> BE NestJS không có global prefix. Swagger UI ở `http://localhost:3000/api`.
-> Sau khi đổi `.env` phải hot restart (`R`), không phải hot reload (`r`).
-
-### 3. Chạy app
+#### 5.1. Sử dụng command line:
 
 ```bash
-# Android emulator / thiết bị thực
-flutter run
+# Develop
+fvm flutter run --flavor dev -t lib/main_dev.dart
 
-# Windows desktop
-flutter run -d windows
+# Staging
+fvm flutter run --flavor staging -t lib/main_staging.dart
+
+# Production (no debug)
+fvm flutter run --flavor prod --release -t lib/main_prod.dart
 ```
 
----
+#### 5.2. Đối với VSCode:
+
+- Mở Command Palette (Ctrl+Shift+P) → chọn "Flutter: Select Device" → chọn emulator hoặc thiết bị thật
+- Mở Run and Debug view (Ctrl+Shift+D) → chọn một trong 3 cấu hình `Develop (Debug)`, `Staging (Debug)`, `Production (Release)` → nhấn F5 để chạy
 
 ## Cấu trúc project
 
 ```
-fe/lib/
+lib/
 ├── core/
 │   ├── constants/      # AppColors, AppConstants, AppRoutes, AppStrings, AppTextStyles
 │   ├── errors/         # AppException (sealed), Failure (sealed)
-│   ├── network/        # dio_client, token_storage, interceptors, api_response
+│   ├── network/        # dio_client, token_storage, access_token_interceptor,
+│   │                   # refresh_token_interceptor, api_response
 │   ├── router/         # GoRouter config + redirect logic
 │   ├── theme/          # AppTheme — Material 3, Inter font
 │   └── utils/          # extensions, exception_handler
+│
 ├── features/
-│   ├── auth/           # data / domain / presentation
-│   ├── nurse/          # domain + presentation (Dashboard, Patients, Detail...)
-│   └── patient/        # presentation (Dashboard, Assessment, Profile...)
-└── shared/widgets/     # AppButton, AppTextField, ErrorView, LoadingOverlay
+│   ├── auth/
+│   │   ├── data/       # AuthRemoteDataSource (REST), AuthRepositoryImpl
+│   │   ├── domain/     # UserModel, UserRole, AuthRepository interface
+│   │   └── presentation/ # LoginPage, SplashPage, auth_provider, login widgets
+│   ├── nurse/
+│   │   ├── domain/     # PatientSummary, PatientStatus, kMockPatients
+│   │   └── presentation/
+│   │       ├── layouts/  # NurseShell (bottom nav)
+│   │       └── pages/    # Dashboard, Patients, PatientDetail, Alerts,
+│   │                     # Reports, Tasks, Profile
+│   └── patient/
+│       └── presentation/ # PatientDashboardPage (stub)
+│
+├── shared/
+│   └── widgets/        # AppButton, AppTextField, CustomCheckbox,
+│                       # ErrorView, LoadingOverlay
+│
+├── app.dart            # MaterialApp.router
+└── main.dart           # Entry point
 ```
 
 ---
 
-## Lệnh thường dùng
+## Auth Flow
 
-```bash
-flutter pub get                                          # cài dependencies
-flutter run                                             # chạy app
-flutter analyze lib                                     # static analysis
-dart run build_runner build --delete-conflicting-outputs # code generation
-flutter clean && flutter pub get                        # clean build cache
+App dùng **JWT thuần** (không Firebase Auth):
+
 ```
+Login  →  POST /auth/login  →  { accessToken, refreshToken, user }
+                               ↓
+                 accessToken  →  in-memory (mất khi app kill)
+                 refreshToken →  FlutterSecureStorage
+                 user profile →  SharedPreferences (JSON)
+
+Request  →  AccessTokenInterceptor gắn Bearer header
+   401   →  RefreshTokenInterceptor gọi POST /auth/refresh
+            → nhận accessToken mới → retry original request
+            → nếu refresh thất bại → logout + redirect /login
+```
+
+**Remember Me:**
+
+- Tick → giữ session qua app restart (restore từ SharedPreferences)
+- Không tick → xóa session ngay khi app khởi động lại
 
 ---
 
