@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../features/auth/presentation/providers/auth_provider.dart';
-import '../../data/datasources/survey_remote_datasource.dart';
-import '../../data/repositories/survey_repository_impl.dart';
-import '../../domain/models/survey_models.dart';
-import '../../domain/repositories/survey_repository.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/patient/data/datasources/survey_remote_datasource.dart';
+import 'package:poms/features/patient/data/repositories/survey_repository_impl.dart';
+import 'package:poms/features/patient/domain/models/survey_models.dart';
+import 'package:poms/features/patient/domain/repositories/survey_repository.dart';
 
 // ── DI ────────────────────────────────────────────────────────────────────────
 

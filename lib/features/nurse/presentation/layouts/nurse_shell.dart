@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
 
 /// Single Scaffold cho toàn bộ nurse feature.
 /// Các page con chỉ return body widget, không có Scaffold riêng.
 class NurseShell extends StatelessWidget {
-  const NurseShell({super.key, required this.child});
+  const NurseShell({required this.child, super.key});
 
   final Widget child;
 

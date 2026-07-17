@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
-import '../../../../core/utils/extensions.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../domain/models/survey_models.dart';
-import '../providers/survey_provider.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/core/utils/extensions.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/patient/domain/models/survey_models.dart';
+import 'package:poms/features/patient/presentation/providers/survey_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
@@ -444,10 +444,10 @@ class _QuestionHeader extends StatelessWidget {
 
 class _OptionsList extends StatelessWidget {
   const _OptionsList({
-    super.key,
     required this.options,
     required this.selectedOptionId,
     required this.onSelect,
+    super.key,
   });
 
   final List<SurveyOption> options;

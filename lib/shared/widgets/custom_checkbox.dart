@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 /// trên Flutter Windows desktop — flutter/flutter#138627)
 class CustomCheckbox extends StatelessWidget {
   const CustomCheckbox({
-    super.key,
     required this.value,
     required this.onChanged,
+    super.key,
     this.label,
     this.activeColor = const Color(0xFF0050CB),
     this.borderColor = const Color(0xFFC2C6D8),

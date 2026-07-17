@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../domain/models/patient_summary.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
 class NursePatientDetailPage extends StatefulWidget {
   const NursePatientDetailPage({
-    super.key,
     required this.patientId,
+    super.key,
     this.patient,
   });
 

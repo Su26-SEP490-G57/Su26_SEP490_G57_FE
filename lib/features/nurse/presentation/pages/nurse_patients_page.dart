@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
-import '../../domain/models/patient_summary.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
 class NursePatientsPage extends StatefulWidget {
   const NursePatientsPage({super.key});
@@ -203,9 +203,9 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
     BuildContext context, {
     required String title,
     required List<String> options,
+    required ValueChanged<String?> onSelect,
     List<String>? optionLabels,
     String? selected,
-    required ValueChanged<String?> onSelect,
   }) {
     showModalBottomSheet<void>(
       context: context,
@@ -517,8 +517,8 @@ class _PatientCard extends StatelessWidget {
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE6E7F4),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE6E7F4),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

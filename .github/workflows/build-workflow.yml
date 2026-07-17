@@ -1,0 +1,104 @@
+name: Build Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select the environment to build the APK for"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+  workflow_call:
+    inputs:
+      environment:
+        description: "Select the environment to build the APK for"
+        required: true
+        type: string
+
+jobs:
+  build_apk:
+    name: Build APK (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    concurrency:
+      group: poms-android-build-${{ inputs.environment }}-${{ github.sha }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Project
+        uses: ./.github/actions/setup-project
+
+      - name: Compute App Versioning
+        id: versioning
+        run: |
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            VERSION_NAME="1.0.0"
+          else
+            VERSION_NAME="0.1.0"
+          fi
+
+          VERSION_CODE="${{ github.run_number }}"
+
+          echo "🚀 [Versioning] Target Env: ${{ inputs.environment }} | Name: v$VERSION_NAME | Code: +$VERSION_CODE"
+
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
+      - name: Build APK
+        run: |
+          flutter build apk \
+            --flavor ${{ inputs.environment }} \
+            --build-name="${{ steps.versioning.outputs.version_name }}" \
+            --build-number="${{ steps.versioning.outputs.version_code }}" \
+            --dart-define=API_BASE_URL=${{ vars.API_BASE_URL }} \
+            --dart-define=API_RECEIVE_TIMEOUT=${{ vars.API_RECEIVE_TIMEOUT }} \
+            --dart-define=API_CONNECT_TIMEOUT=${{ vars.API_CONNECT_TIMEOUT }} \
+            --obfuscate \
+            --split-debug-info=build/app/outputs/symbols \
+            -t lib/main_${{ inputs.environment }}.dart
+
+      - name: Prepare APK Files (Versioned & Latest)
+        id: prepare_apks
+        run: |
+          SHORT_SHA=$(echo '${{ github.sha }}' | cut -c1-7)
+          ENV="${{ inputs.environment }}"
+          V_NAME="${{ steps.versioning.outputs.version_name }}"
+          V_CODE="${{ steps.versioning.outputs.version_code }}"
+          APK_DIR="build/app/outputs/flutter-apk"
+
+          ORIGINAL_FILE="$APK_DIR/app-$ENV-release.apk"
+
+          VERSIONED_NAME="poms-$ENV-v$V_NAME+$V_CODE-$SHORT_SHA.apk"
+          VERSIONED_PATH="$APK_DIR/$VERSIONED_NAME"
+          mv "$ORIGINAL_FILE" "$VERSIONED_PATH"
+
+          LATEST_NAME="poms-$ENV-latest.apk"
+          LATEST_PATH="$APK_DIR/$LATEST_NAME"
+          cp "$VERSIONED_PATH" "$LATEST_PATH"
+
+          echo "versioned_apk_path=$VERSIONED_PATH" >> $GITHUB_OUTPUT
+          echo "versioned_apk_name=$VERSIONED_NAME" >> $GITHUB_OUTPUT
+          echo "latest_apk_path=$LATEST_PATH" >> $GITHUB_OUTPUT
+          echo "latest_apk_name=$LATEST_NAME" >> $GITHUB_OUTPUT
+
+      - name: Upload Versioned APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepare_apks.outputs.versioned_apk_name }}
+          path: ${{ steps.prepare_apks.outputs.versioned_apk_path }}
+          retention-days: 7
+
+      - name: Upload Latest APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: poms-${{ inputs.environment }}-latest
+          path: ${{ steps.prepare_apks.outputs.latest_apk_path }}

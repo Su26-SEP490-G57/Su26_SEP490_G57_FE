@@ -46,20 +46,6 @@ class UserModel extends Equatable {
     this.updatedAt,
   });
 
-  final int id;
-  final String username;
-  final String fullName;
-  final List<UserRole> roles;
-  final bool isActive;
-  final String? phoneNumber;
-  final String? caseId;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-
-  UserRole get primaryRole => roles.isNotEmpty ? roles.first : UserRole.nurse;
-
-  String get displayName => fullName;
-
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as int,
@@ -79,6 +65,20 @@ class UserModel extends Equatable {
           : null,
     );
   }
+
+  final int id;
+  final String username;
+  final String fullName;
+  final List<UserRole> roles;
+  final bool isActive;
+  final String? phoneNumber;
+  final String? caseId;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  UserRole get primaryRole => roles.isNotEmpty ? roles.first : UserRole.nurse;
+
+  String get displayName => fullName;
 
   Map<String, dynamic> toJson() => {
     'id': id,

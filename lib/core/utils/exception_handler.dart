@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../errors/app_exception.dart';
-import '../errors/failure.dart';
+import 'package:poms/core/errors/app_exception.dart';
+import 'package:poms/core/errors/failure.dart';
 
 /// Maps raw exceptions to typed [AppException]
 AppException mapException(Object error) {

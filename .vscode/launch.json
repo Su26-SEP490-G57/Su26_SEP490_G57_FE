@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Local dev (Debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/lib/main_dev.dart",
+      "flutterMode": "debug",
+      "args": ["--flavor", "dev", "--dart-define-from-file=.env.local"]
+    },
+    {
+      "name": "Local dev (Release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/lib/main_dev.dart",
+      "flutterMode": "release",
+      "args": ["--flavor", "dev", "--dart-define-from-file=.env.local"]
+    }
+  ]
+}

@@ -7,11 +7,6 @@ class ApiResponse<T> {
     this.errors,
   });
 
-  final bool success;
-  final String message;
-  final T? data;
-  final List<String>? errors;
-
   factory ApiResponse.fromJson(
     Map<String, dynamic> json,
     T Function(Object? json) fromJsonT,
@@ -25,6 +20,11 @@ class ApiResponse<T> {
           .toList(),
     );
   }
+
+  final bool success;
+  final String message;
+  final T? data;
+  final List<String>? errors;
 }
 
 /// Paginated response wrapper
@@ -36,15 +36,6 @@ class PaginatedResponse<T> {
     required this.currentPage,
     required this.pageSize,
   });
-
-  final List<T> items;
-  final int totalItems;
-  final int totalPages;
-  final int currentPage;
-  final int pageSize;
-
-  bool get hasNextPage => currentPage < totalPages;
-  bool get hasPreviousPage => currentPage > 1;
 
   factory PaginatedResponse.fromJson(
     Map<String, dynamic> json,
@@ -60,4 +51,13 @@ class PaginatedResponse<T> {
       pageSize: json['pageSize'] as int? ?? 20,
     );
   }
+
+  final List<T> items;
+  final int totalItems;
+  final int totalPages;
+  final int currentPage;
+  final int pageSize;
+
+  bool get hasNextPage => currentPage < totalPages;
+  bool get hasPreviousPage => currentPage > 1;
 }

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 
 class LoginPrimaryButton extends StatefulWidget {
   const LoginPrimaryButton({
-    super.key,
     required this.label,
     required this.isLoading,
     required this.onPressed,
+    super.key,
   });
 
   final String label;

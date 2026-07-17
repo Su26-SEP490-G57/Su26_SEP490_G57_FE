@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_colors.dart';
 
 class PatientNotificationsPage extends StatelessWidget {
   const PatientNotificationsPage({super.key});

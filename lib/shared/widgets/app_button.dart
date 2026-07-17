@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_constants.dart';
+import 'package:poms/core/constants/app_constants.dart';
 
 enum AppButtonVariant { primary, outlined, text }
 
 class AppButton extends StatelessWidget {
   const AppButton({
-    super.key,
     required this.label,
+    super.key,
     this.onPressed,
     this.isLoading = false,
     this.variant = AppButtonVariant.primary,
@@ -100,9 +100,9 @@ class AppButton extends StatelessWidget {
 /// Compact icon-only button
 class AppIconButton extends StatelessWidget {
   const AppIconButton({
-    super.key,
     required this.icon,
     required this.onPressed,
+    super.key,
     this.tooltip,
     this.size = AppConstants.spacingXL,
   });

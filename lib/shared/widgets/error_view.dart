@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_strings.dart';
-import '../../core/constants/app_text_styles.dart';
-import 'app_button.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_strings.dart';
+import 'package:poms/core/constants/app_text_styles.dart';
+import 'package:poms/shared/widgets/app_button.dart';
 
 class ErrorView extends StatelessWidget {
   const ErrorView({super.key, this.message, this.onRetry, this.icon});

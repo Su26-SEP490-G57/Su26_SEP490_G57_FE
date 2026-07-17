@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_routes.dart';
-import '../../../../core/utils/extensions.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
-import '../providers/current_pod_provider.dart';
-import '../widgets/locked_pod_banner.dart';
+import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/core/utils/extensions.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
+import 'package:poms/features/patient/presentation/widgets/locked_pod_banner.dart';
 
 class PatientDashboardPage extends ConsumerStatefulWidget {
   const PatientDashboardPage({super.key});
@@ -39,17 +39,17 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     return Column(
       children: [
         _TopAppBar(displayName: displayName),
-        Expanded(
+        const Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
-                const _PatientInfoCard(),
-                const SizedBox(height: 32),
-                const _ActionGrid(),
-                const SizedBox(height: 32),
+                SizedBox(height: 16),
+                _PatientInfoCard(),
+                SizedBox(height: 32),
+                _ActionGrid(),
+                SizedBox(height: 32),
               ],
             ),
           ),
@@ -144,13 +144,14 @@ class _PatientInfoCard extends ConsumerWidget {
 
     return currentPodAsync.when(
       data: (pod) {
-        final podText = pod?.currentPod != null ? 'POD ${pod!.currentPod}' : 'Chưa bắt đầu';
+        final podText = pod?.currentPod != null
+            ? 'POD ${pod!.currentPod}'
+            : 'Chưa bắt đầu';
         final isLocked = pod?.isLocked ?? false;
 
         return Column(
           children: [
-            if (pod != null && pod.isLocked)
-              LockedPodBanner(currentPod: pod),
+            if (pod != null && pod.isLocked) LockedPodBanner(currentPod: pod),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -177,12 +178,14 @@ class _PatientInfoCard extends ConsumerWidget {
                   _InfoRow(
                     label: 'POD hiện tại',
                     value: isLocked ? '$podText (Đã tạm dừng)' : podText,
-                    valueColor: isLocked ? const Color(0xFFE65100) : const Color(0xFF006E2F), // secondary or warning
+                    valueColor: isLocked
+                        ? const Color(0xFFE65100)
+                        : const Color(0xFF006E2F), // secondary or warning
                   ),
                   const SizedBox(height: 16),
                   _InfoRow(
                     label: 'Ngày bắt đầu',
-                    value: user?.createdAt != null 
+                    value: user?.createdAt != null
                         ? '${user!.createdAt!.day.toString().padLeft(2, '0')}/${user.createdAt!.month.toString().padLeft(2, '0')}/${user.createdAt!.year}'
                         : '---',
                     valueColor: AppColors.onSurface,
@@ -198,15 +201,17 @@ class _PatientInfoCard extends ConsumerWidget {
                     children: [
                       Icon(
                         isLocked ? Icons.warning_rounded : Icons.info_rounded,
-                        color: isLocked ? const Color(0xFFE65100) : AppColors.primary,
+                        color: isLocked
+                            ? const Color(0xFFE65100)
+                            : AppColors.primary,
                         size: 22,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          isLocked 
-                            ? 'Vui lòng thực hiện theo hướng dẫn hiện tại.' 
-                            : 'Hôm nay là một ngày tuyệt vời để hồi phục!',
+                          isLocked
+                              ? 'Vui lòng thực hiện theo hướng dẫn hiện tại.'
+                              : 'Hôm nay là một ngày tuyệt vời để hồi phục!',
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 16,
@@ -224,11 +229,6 @@ class _PatientInfoCard extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(child: Text('Lỗi tải dữ liệu: $error')),
-    );
-  }
-}
-        ],
-      ),
     );
   }
 }

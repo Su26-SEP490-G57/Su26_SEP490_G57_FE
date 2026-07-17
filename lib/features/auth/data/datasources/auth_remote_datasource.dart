@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 
-import '../../../../core/constants/app_constants.dart';
-import '../../../../core/errors/app_exception.dart';
-import '../../domain/models/user_model.dart';
+import 'package:poms/core/constants/app_constants.dart';
+import 'package:poms/core/errors/app_exception.dart';
+import 'package:poms/features/auth/domain/models/user_model.dart';
 
 class AuthRemoteDataSource {
   AuthRemoteDataSource(this._dio);

@@ -1,6 +1,6 @@
-name: fe
+name: poms
 description: "POMS - Post-Operative Monitoring System Mobile App"
-publish_to: 'none'
+publish_to: "none"
 version: 0.1.0
 
 environment:
@@ -26,7 +26,6 @@ dependencies:
   flutter_secure_storage: ^9.2.4
 
   # Utilities
-  flutter_dotenv: ^5.2.1
   intl: ^0.20.2
   equatable: ^2.0.7
 
@@ -45,8 +44,15 @@ dev_dependencies:
   json_serializable: ^6.9.5
   freezed: ^2.5.8
   freezed_annotation: ^2.4.4
+  husky: ^0.1.7
+  lint_staged: ^0.5.1
 
 flutter:
   uses-material-design: true
-  assets:
-    - .env
+
+lint_staged:
+  "lib/**.dart":
+    - fvm dart format
+    - fvm dart fix --apply
+    - git add
+    - fvm flutter analyze

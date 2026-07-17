@@ -1,0 +1,45 @@
+name: Main Branch CI/CD Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  code_quality:
+    name: Verify Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Project
+        uses: ./.github/actions/setup-project
+        with:
+          environment: staging
+        env:
+          STAGING_API_BASE_URL: ${{ vars.STAGING_API_BASE_URL }}
+          STAGING_API_TIMEOUT: ${{ vars.STAGING_API_TIMEOUT }}
+
+      - name: Static Check
+        run: |
+          dart format --output=none --set-exit-if-changed . || {
+            echo "=========================================================================" >&2
+            echo "❌ CODE FORMAT CHECK FAILED!" >&2
+            echo "👉 Some files in your commit do not follow the project's formatting rules." >&2
+            echo "💡 FIX: Run the following command on your local machine to auto-format:" >&2
+            echo "   dart format ." >&2
+            echo "👉 Once done, stage the changes, commit, and push again. Thank you!" >&2
+            echo "=========================================================================" >&2
+            exit 1
+          }
+
+          flutter analyze
+
+  build_staging:
+    needs: code_quality
+    uses: ./.github/workflows/build-workflow.yml
+    with:
+      environment: staging
+    secrets: inherit

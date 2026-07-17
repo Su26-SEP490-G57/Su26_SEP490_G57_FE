@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 
 /// Không dùng Scaffold — NurseShell đã cung cấp.
 class NurseProfilePage extends ConsumerWidget {
