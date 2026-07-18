@@ -1,5 +1,8 @@
 name: Feature Branches CI/CD Workflow
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:

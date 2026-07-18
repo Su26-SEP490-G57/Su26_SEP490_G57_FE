@@ -1,5 +1,8 @@
 name: Main Branch CI/CD Workflow
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
