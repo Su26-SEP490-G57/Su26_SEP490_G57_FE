@@ -4,6 +4,17 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "lib/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - "analysis_options.yaml"
+      - "android/**"
+      - "ios/**"
+      - "scripts/**"
+      - ".github/workflows/main-workflow.yml"
+      - ".github/workflows/deploy-workflow.yml"
+      - ".github/actions/**"
 
 jobs:
   code_quality:
@@ -16,11 +27,6 @@ jobs:
 
       - name: Setup Project
         uses: ./.github/actions/setup-project
-        with:
-          environment: staging
-        env:
-          STAGING_API_BASE_URL: ${{ vars.STAGING_API_BASE_URL }}
-          STAGING_API_TIMEOUT: ${{ vars.STAGING_API_TIMEOUT }}
 
       - name: Static Check
         run: |
@@ -38,6 +44,7 @@ jobs:
           flutter analyze
 
   build_staging:
+    name: Build Staging App
     needs: code_quality
     uses: ./.github/workflows/build-workflow.yml
     with:
