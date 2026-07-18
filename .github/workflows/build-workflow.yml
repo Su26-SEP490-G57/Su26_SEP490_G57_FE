@@ -1,5 +1,8 @@
 name: Build Workflow
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -43,10 +46,6 @@ jobs:
     name: Build APK (${{ inputs.environment }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-
-    # 🔑 Grant write permissions to manage GitHub Tags and Releases
-    permissions:
-      contents: write
 
     # 🚦 Maintain a sequential build queue per environment to protect server and build resources
     concurrency:
