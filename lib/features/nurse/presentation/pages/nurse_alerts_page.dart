@@ -254,7 +254,6 @@ class _AlertCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-
             // Status and Details
             Container(
               padding: const EdgeInsets.all(12),

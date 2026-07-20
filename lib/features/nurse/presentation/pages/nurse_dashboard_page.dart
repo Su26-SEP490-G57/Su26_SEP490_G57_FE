@@ -9,7 +9,7 @@ import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
-import 'package:poms/features/nurse/presentation/providers/priority_patients_provider.dart';
+import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 
 class NurseDashboardPage extends ConsumerStatefulWidget {
   const NurseDashboardPage({super.key});
@@ -34,6 +34,7 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final patientState = ref.watch(patientNotifierProvider);
     final user = ref.watch(authNotifierProvider).user;
     final displayName = user?.displayName ?? 'Điều dưỡng';
 
@@ -53,7 +54,7 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
                 // ── Tổng quan toàn khoa ───────────────────────────────
                 const _SectionLabel(label: 'TỔNG QUAN TOÀN KHOA'),
                 const SizedBox(height: 10),
-                const _WardOverviewGrid(),
+                _WardOverviewGrid(patients: patientState.patients),
                 const SizedBox(height: 24),
 
                 // ── Nhóm cần ưu tiên ─────────────────────────────────
@@ -63,16 +64,7 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
                       context.push(AppRoutes.nursePriorityPatients),
                 ),
                 const SizedBox(height: 10),
-                const _PriorityPatientList(),
-                const SizedBox(height: 24),
-
-                // ── Alert chưa xử lý ──────────────────────────────────
-                _SectionHeader(
-                  label: 'ALERT CHƯA XỬ LÝ',
-                  onViewAll: () => context.go(AppRoutes.nurseAlerts),
-                ),
-                const SizedBox(height: 10),
-                const _AlertSummaryRow(),
+                _PriorityPatientList(patients: patientState.patients),
                 const SizedBox(height: 24),
 
                 // ── Phân bố theo phòng ────────────────────────────────
@@ -82,7 +74,7 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
                   onViewAll: () {},
                 ),
                 const SizedBox(height: 10),
-                const _RoomDistributionCard(),
+                _RoomDistributionCard(patients: patientState.patients),
                 const SizedBox(height: 8),
               ],
             ),
@@ -308,16 +300,31 @@ class _SectionHeader extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _WardOverviewGrid extends StatelessWidget {
-  const _WardOverviewGrid();
+  const _WardOverviewGrid({required this.patients});
+
+  final List<PatientSummary> patients;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    final total = patients.length;
+
+    final green = patients.where((e) => e.status == PatientStatus.green).length;
+    final yellow = patients
+        .where((e) => e.status == PatientStatus.yellow)
+        .length;
+    final red = patients.where((e) => e.status == PatientStatus.red).length;
+
+    String percent(int count) {
+      if (total == 0) return '(0%)';
+      return '(${(count / total * 100).toStringAsFixed(1)}%)';
+    }
+
+    return Row(
       children: [
         Expanded(
           child: _WardStatCard(
             label: 'TỔNG BN',
-            value: '24',
+            value: '$total',
             valueColor: AppColors.primary,
             leftBorderColor: Colors.transparent,
           ),
@@ -326,20 +333,20 @@ class _WardOverviewGrid extends StatelessWidget {
         Expanded(
           child: _WardStatCard(
             label: 'GREEN',
-            labelColor: Color(0xFF2E7D32),
-            value: '15',
-            sub: '(62.5%)',
-            leftBorderColor: Color(0xFF4CAF50),
+            labelColor: const Color(0xFF2E7D32),
+            value: '$green',
+            sub: percent(green),
+            leftBorderColor: const Color(0xFF4CAF50),
           ),
         ),
         SizedBox(width: 6),
         Expanded(
           child: _WardStatCard(
             label: 'YELLOW',
-            labelColor: Color(0xFFF57F17),
-            value: '6',
-            sub: '(25.0%)',
-            leftBorderColor: Color(0xFFFFC107),
+            labelColor: const Color(0xFFF57F17),
+            value: '$yellow',
+            sub: percent(yellow),
+            leftBorderColor: const Color(0xFFFFC107),
           ),
         ),
         SizedBox(width: 6),
@@ -347,8 +354,8 @@ class _WardOverviewGrid extends StatelessWidget {
           child: _WardStatCard(
             label: 'RED',
             labelColor: AppColors.error,
-            value: '3',
-            sub: '(12.5%)',
+            value: '$red',
+            sub: percent(red),
             leftBorderColor: AppColors.error,
           ),
         ),
@@ -449,85 +456,77 @@ class _WardStatCard extends StatelessWidget {
 // Priority patient list
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PriorityPatientList extends ConsumerWidget {
-  const _PriorityPatientList();
+class _PriorityPatientList extends StatelessWidget {
+  const _PriorityPatientList({required this.patients});
 
+  final List<PatientSummary> patients;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Watch the priorityPatientsProvider which already fetches RED and YELLOW
-    final patientsAsync = ref.watch(priorityPatientsProvider);
+  Widget build(BuildContext context) {
+    final priorityPatients = [...patients];
 
-    return patientsAsync.when(
-      data: (patients) {
-        if (patients.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'Không có bệnh nhân ưu tiên nào.',
-                style: TextStyle(color: Color(0xFF727687)),
+    priorityPatients.sort((a, b) {
+      final priority = {
+        PatientStatus.red: 0,
+        PatientStatus.yellow: 1,
+        PatientStatus.green: 2,
+      };
+
+      final compare = priority[a.status]!.compareTo(priority[b.status]!);
+
+      if (compare != 0) {
+        return compare;
+      }
+
+      return a.pod.compareTo(b.pod);
+    });
+
+    final displayPatients = priorityPatients.take(3).toList();
+
+    return Column(
+      children: displayPatients
+          .map(
+            (patient) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _PriorityPatientCard(
+                patient: patient,
+                onTap: () => context.push(
+                  AppRoutes.nursePatientDetailPath(patient.code),
+                  extra: patient,
+                ),
               ),
             ),
-          );
-        }
-
-        final top3 = patients.take(3).toList();
-
-        return Column(
-          children: top3.asMap().entries.map((entry) {
-            final p = entry.value;
-            final isLast = entry.key == top3.length - 1;
-
-            // Map PatientStatus from summary to the local _PatientStatus if needed,
-            // or just use PatientSummary fields directly.
-            // Since _PriorityPatientCard is local, we pass values directly.
-            return Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
-              child: GestureDetector(
-                onTap: () => context.push(
-                  AppRoutes.nursePatientDetailPath(p.code),
-                  extra: p,
-                ),
-                child: _PriorityPatientCard(
-                  code: p.code,
-                  name: p.name,
-                  status: p
-                      .status, // We need to update _PriorityPatientCard to use PatientStatus
-                  pod: p.pod,
-                  room: p.room,
-                  symptom:
-                      'Cần chú ý', // Symptom is not provided by the summary API currently
-                  dimmed: false,
-                ),
-              ),
-            );
-          }).toList(),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Lỗi tải dữ liệu: $error')),
+          )
+          .toList(),
     );
   }
 }
 
 class _PriorityPatientCard extends StatelessWidget {
   const _PriorityPatientCard({
-    required this.code,
-    required this.name,
-    required this.status,
-    required this.pod,
-    required this.room,
-    required this.symptom,
-    required this.dimmed,
+    required this.patient,
+    required this.onTap,
+    this.dimmed = false,
   });
 
-  final String code;
-  final String name;
-  final PatientStatus status;
-  final String pod;
-  final String room;
-  final String symptom;
+  final PatientSummary patient;
+  final VoidCallback onTap;
   final bool dimmed;
+
+  PatientStatus get status => patient.status;
+  String get code => patient.code;
+  String get name => patient.name;
+  String get pod => 'POD ${patient.pod}';
+  String get room => roomLabel(patient.room);
+  String get symptom {
+    switch (patient.status) {
+      case PatientStatus.red:
+        return 'Cần theo dõi sát';
+      case PatientStatus.yellow:
+        return 'Cần theo dõi';
+      case PatientStatus.green:
+        return 'Đang hồi phục tốt';
+    }
+  }
 
   Color get _statusColor => status.badgeText;
   Color get _statusBg => status.badgeBg;
@@ -537,106 +536,119 @@ class _PriorityPatientCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: dimmed ? 0.75 : 1.0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E5E0)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0A000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E5E0)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0A000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
-          ],
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            // Avatar
-            Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: Color(0xFFECEDFA),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: AppColors.primary,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                // Avatar
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECEDFA),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          _StatusBadge(
-                            label: _statusLabel,
-                            color: _statusColor,
-                            bg: _statusBg,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                _StatusBadge(
+                                  label: _statusLabel,
+                                  color: _statusColor,
+                                  bg: _statusBg,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '$code - $name',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF191B24),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Text(
-                            '$code - $name',
+                            pod,
                             style: const TextStyle(
                               fontFamily: 'Inter',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF191B24),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                              color: Color(0xFF424656),
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 4),
                       Text(
-                        pod,
+                        room,
                         style: const TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                          fontSize: 12,
                           color: Color(0xFF424656),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        symptom,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          fontStyle: FontStyle.italic,
+                          color: _statusColor,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    room,
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12,
-                      color: Color(0xFF424656),
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    symptom,
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      fontStyle: FontStyle.italic,
-                      color: _statusColor,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFFC2C6D8),
+                  size: 22,
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFFC2C6D8),
-              size: 22,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -791,18 +803,58 @@ class _AlertSummaryCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RoomDistributionCard extends StatelessWidget {
-  const _RoomDistributionCard();
+  const _RoomDistributionCard({required this.patients});
 
-  static const _rooms = [
-    _RoomData('Phòng 301', 4, Color(0xFF0050CB)),
-    _RoomData('Phòng 302', 5, Color(0xFF006A61)),
-    _RoomData('Phòng 303', 6, Color(0xFFFFC107)),
-    _RoomData('Phòng 304', 4, Color(0xFFBA1A1A)),
-    _RoomData('Phòng 305', 5, Color(0xFFA33200)),
-  ];
-
+  final List<PatientSummary> patients;
   @override
   Widget build(BuildContext context) {
+    // Palette dùng lại nếu số phòng nhiều hơn 5
+    const colors = [
+      Color(0xFF0050CB),
+      Color(0xFF006A61),
+      Color(0xFFFFC107),
+      Color(0xFFBA1A1A),
+      Color(0xFFA33200),
+      Color(0xFF6A1B9A),
+      Color(0xFF00838F),
+      Color(0xFF2E7D32),
+    ];
+
+    /// room -> count
+    final Map<String, int> roomCount = {};
+
+    for (final patient in patients) {
+      var room = patient.room.trim();
+
+      // -------- Normalize room ----------
+      //
+      // P101-B1  -> 101
+      // P305-B02 -> 305
+      // 101      -> 101
+      // P101     -> 101
+      //
+      final match = RegExp(r'P?(\d+)').firstMatch(room);
+
+      if (match != null) {
+        room = match.group(1)!;
+      }
+
+      roomCount.update(room, (value) => value + 1, ifAbsent: () => 1);
+    }
+
+    final roomData = roomCount.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    final rooms = roomData.asMap().entries.map((entry) {
+      return _RoomData(
+        'Phòng ${entry.value.key}',
+        entry.value.value,
+        colors[entry.key % colors.length],
+      );
+    }).toList();
+
+    final total = patients.length;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -819,17 +871,15 @@ class _RoomDistributionCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Donut chart
-          const SizedBox(
+          SizedBox(
             width: 120,
             height: 120,
-            child: _DonutChart(rooms: _rooms, total: 24),
+            child: _DonutChart(rooms: rooms, total: total),
           ),
           const SizedBox(width: 24),
-          // Legend
           Expanded(
             child: Column(
-              children: _rooms
+              children: rooms
                   .map(
                     (r) => Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -955,6 +1005,16 @@ class _DonutChartState extends State<_DonutChart>
   }
 }
 
+String roomLabel(String raw) {
+  final match = RegExp(r'P?(\d+)').firstMatch(raw);
+
+  if (match == null) {
+    return raw;
+  }
+
+  return 'Phòng ${match.group(1)}';
+}
+
 class _DonutPainter extends CustomPainter {
   _DonutPainter({
     required this.rooms,
@@ -968,6 +1028,7 @@ class _DonutPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (total == 0) return;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2 - 6;
     const strokeWidth = 14.0;

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/models/assessment_detail.dart';
+import '../providers/assessment_provider.dart';
+import 'package:intl/intl.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
-class NursePatientDetailPage extends StatefulWidget {
+class NursePatientDetailPage extends ConsumerStatefulWidget {
   const NursePatientDetailPage({
     required this.patientId,
     super.key,
@@ -15,21 +19,16 @@ class NursePatientDetailPage extends StatefulWidget {
   final PatientSummary? patient;
 
   @override
-  State<NursePatientDetailPage> createState() => _NursePatientDetailPageState();
+  ConsumerState<NursePatientDetailPage> createState() =>
+      _NursePatientDetailPageState();
 }
 
-class _NursePatientDetailPageState extends State<NursePatientDetailPage>
+class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   late final PatientSummary _patient;
 
-  static const _tabs = [
-    'Tổng quan',
-    'Assessment',
-    'Timeline',
-    'Alert',
-    'Ghi chú',
-  ];
+  static const _tabs = ['Tổng quan', 'Assessment', 'Ghi chú'];
 
   @override
   void initState() {
@@ -42,6 +41,11 @@ class _NursePatientDetailPageState extends State<NursePatientDetailPage>
         );
     _tabController = TabController(length: _tabs.length, vsync: this);
     _tabController.addListener(() => setState(() {}));
+    Future.microtask(() {
+      ref
+          .read(assessmentNotifierProvider.notifier)
+          .loadLatestAssessment(_patient.code);
+    });
   }
 
   @override
@@ -52,6 +56,7 @@ class _NursePatientDetailPageState extends State<NursePatientDetailPage>
 
   @override
   Widget build(BuildContext context) {
+    final assessmentState = ref.watch(assessmentNotifierProvider);
     return Scaffold(
       backgroundColor: const Color(0xFFFAF8FF),
       body: NestedScrollView(
@@ -135,11 +140,15 @@ class _NursePatientDetailPageState extends State<NursePatientDetailPage>
         body: TabBarView(
           controller: _tabController,
           children: [
-            _OverviewTab(patient: _patient),
-            const _PlaceholderTab(label: 'Assessment'),
-            const _PlaceholderTab(label: 'Timeline'),
-            const _PlaceholderTab(label: 'Alert'),
-            const _PlaceholderTab(label: 'Ghi chú'),
+            _OverviewTab(
+              patient: _patient,
+              assessmentState: assessmentState,
+              onAssessmentTap: () {
+                _tabController.animateTo(1);
+              },
+            ),
+            _AssessmentTab(assessmentState: assessmentState),
+            _NotesTab(notes: _mockNotes),
           ],
         ),
       ),
@@ -337,8 +346,15 @@ class _PatientHero extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _OverviewTab extends StatelessWidget {
-  const _OverviewTab({required this.patient});
+  const _OverviewTab({
+    required this.patient,
+    required this.assessmentState,
+    required this.onAssessmentTap,
+  });
+
   final PatientSummary patient;
+  final AssessmentState assessmentState;
+  final VoidCallback onAssessmentTap;
 
   @override
   Widget build(BuildContext context) {
@@ -347,12 +363,328 @@ class _OverviewTab extends StatelessWidget {
       children: [
         _InfoGrid(patient: patient),
         const SizedBox(height: 16),
+
         if (patient.needsIntervention) ...[
           _AlertBanner(patient: patient),
           const SizedBox(height: 16),
         ],
-        _SummaryGrid(patient: patient),
+        Text(
+          'Tổng quan đánh giá',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+            color: Color(0xFF424656),
+          ),
+        ),
+        _SummaryGrid(
+          patient: patient,
+          assessmentState: assessmentState,
+          onAssessmentTap: onAssessmentTap,
+        ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Assessment tab
+// ─────────────────────────────────────────────────────────────────────────────
+class _AssessmentTab extends StatelessWidget {
+  const _AssessmentTab({required this.assessmentState});
+
+  final AssessmentState assessmentState;
+
+  @override
+  Widget build(BuildContext context) {
+    if (assessmentState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (assessmentState.errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.description_outlined,
+                size: 72,
+                color: Color(0xFF9CA3AF),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                assessmentState.errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15, color: Color(0xFF424656)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final detail = assessmentState.detail;
+
+    if (detail == null) {
+      return const Center(child: Text('Chưa có dữ liệu'));
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      children: [
+        _AssessmentHeader(detail: detail),
+        const SizedBox(height: 20),
+
+        ...detail.details.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _AssessmentItemCard(item: item),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AssessmentHeader extends StatelessWidget {
+  const _AssessmentHeader({required this.detail});
+
+  final AssessmentDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = DateFormat(
+      'dd/MM/yyyy • HH:mm',
+    ).format(detail.evaluationDateTime.toLocal());
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'ĐÁNH GIÁ GẦN NHẤT',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+            color: Color(0xFF424656),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          date,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14,
+            color: Color(0xFF191B24),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AssessmentItemCard extends StatelessWidget {
+  const _AssessmentItemCard({required this.item});
+
+  final AssessmentDetailItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC2C6D8)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.questionText,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF191B24),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.optionText,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    color: Color(0xFF424656),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF2FF),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '+${item.scoreEarned}',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notes tab (mock data, replace with real api called when available)
+// ─────────────────────────────────────────────────────────────────────────────
+class _PatientNote {
+  const _PatientNote({
+    required this.author,
+    required this.createdAt,
+    required this.content,
+  });
+
+  final String author;
+  final DateTime createdAt;
+  final String content;
+}
+
+final _mockNotes = <_PatientNote>[
+  _PatientNote(
+    author: 'ĐD. Nguyễn Thị Hoa',
+    createdAt: DateTime(2026, 7, 14, 9, 30),
+    content:
+        'Bệnh nhân buồn nôn nhiều sau bữa sáng. Đã thông báo bác sĩ trực để theo dõi thêm.',
+  ),
+  _PatientNote(
+    author: 'BS. Trần Văn Nam',
+    createdAt: DateTime(2026, 7, 13, 18, 15),
+    content:
+        'Tiếp tục theo dõi triệu chứng tiêu hóa. Chưa chỉ định can thiệp thêm.',
+  ),
+  _PatientNote(
+    author: 'ĐD. Nguyễn Thị Hoa',
+    createdAt: DateTime(2026, 7, 13, 8, 20),
+    content:
+        'Người bệnh hợp tác tốt, đã hoàn thành khảo sát triệu chứng trong ngày.',
+  ),
+];
+
+class _NotesTab extends StatelessWidget {
+  const _NotesTab({required this.notes});
+
+  final List<_PatientNote> notes;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      itemCount: notes.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final note = notes[index];
+
+        return _NoteCard(note: note);
+      },
+    );
+  }
+}
+
+class _NoteCard extends StatelessWidget {
+  const _NoteCard({required this.note});
+
+  final _PatientNote note;
+
+  @override
+  Widget build(BuildContext context) {
+    final time = DateFormat('dd/MM/yyyy • HH:mm').format(note.createdAt);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC2C6D8)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.note_alt_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  note.author,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: Color(0xFF191B24),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            time,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          const Divider(height: 24),
+          Text(
+            note.content,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              height: 1.5,
+              color: Color(0xFF424656),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -384,45 +716,48 @@ class _InfoGrid extends StatelessWidget {
             children: [
               if (patient.age != null)
                 _InfoRow(label: 'Tuổi', value: '${patient.age}'),
+
               if (patient.gender != null)
                 _InfoRow(label: 'Giới tính', value: patient.gender!),
-              if (patient.surgeryDate != null)
-                _InfoRow(label: 'Ngày phẫu thuật', value: patient.surgeryDate!),
-              if (patient.pathway != null)
-                _InfoRow(label: 'Pathway', value: patient.pathway!),
+
               if (patient.bmi != null)
+                _InfoRow(label: 'BMI', value: patient.bmi!.toStringAsFixed(1)),
+
+              if (patient.surgeryDate != null)
                 _InfoRow(
-                  label: 'BMI',
-                  value: patient.bmi!.toStringAsFixed(1),
+                  label: 'Ngày phẫu thuật',
+                  value: patient.surgeryDate!,
                   isLast: true,
                 ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+
+        const SizedBox(height: 16),
+
         _InfoCard(
-          title: 'Nhân sự phụ trách',
+          title: 'Thông tin phẫu thuật',
           child: Column(
             children: [
-              if (patient.nurseInCharge != null)
-                _PersonnelItem(
-                  initials: _initials(patient.nurseInCharge),
-                  name: patient.nurseInCharge!,
-                  role: 'Điều dưỡng chính',
-                  bgColor: const Color(0xFFDAE1FF),
-                  textColor: AppColors.primary,
+              if (patient.diagnosis != null)
+                _InfoRow(label: 'Chẩn đoán', value: patient.diagnosis!),
+
+              if (patient.surgeryType != null)
+                _InfoRow(label: 'Loại phẫu thuật', value: patient.surgeryType!),
+
+              if (patient.operationMethod != null)
+                _InfoRow(
+                  label: 'Phương pháp mổ',
+                  value: patient.operationMethod!,
                 ),
-              if (patient.nurseInCharge != null &&
-                  patient.doctorInCharge != null)
-                const SizedBox(height: 8),
-              if (patient.doctorInCharge != null)
-                _PersonnelItem(
-                  initials: _initials(patient.doctorInCharge),
-                  name: patient.doctorInCharge!,
-                  role: 'Bác sĩ phụ trách',
-                  bgColor: const Color(0xFFFFDBD0),
-                  textColor: const Color(0xFFA33200),
-                ),
+
+              _InfoRow(
+                label: 'Có miệng nối tiêu hóa',
+                value: patient.hasGiAnastomosis == null
+                    ? 'Chưa cập nhật'
+                    : (patient.hasGiAnastomosis! ? 'Có' : 'Không'),
+                isLast: true,
+              ),
             ],
           ),
         ),
@@ -671,15 +1006,20 @@ class _AlertBanner extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SummaryGrid extends StatelessWidget {
-  const _SummaryGrid({required this.patient});
+  const _SummaryGrid({
+    required this.patient,
+    required this.assessmentState,
+    required this.onAssessmentTap,
+  });
+
   final PatientSummary patient;
+  final AssessmentState assessmentState;
+  final VoidCallback onAssessmentTap;
 
   @override
   Widget build(BuildContext context) {
-    final assessmentStr = patient.assessmentTotal > 0
-        ? '${patient.assessmentDone}/${patient.assessmentTotal}'
-        : '-';
-
+    final score = assessmentState.assessment?.totalScore;
+    final assessmentStr = score == null ? '-' : '$score điểm';
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -695,6 +1035,7 @@ class _SummaryGrid extends StatelessWidget {
           value: assessmentStr,
           valueColor: const Color(0xFF191B24),
           bgColor: Colors.white,
+          onTap: onAssessmentTap,
         ),
         _SummaryCard(
           icon: Icons.notifications_active_outlined,
@@ -739,7 +1080,10 @@ class _SummaryCard extends StatelessWidget {
     required this.value,
     required this.valueColor,
     required this.bgColor,
+    this.onTap,
   });
+
+  final VoidCallback? onTap;
   final IconData icon;
   final Color iconColor;
   final String label;
@@ -749,46 +1093,53 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: bgColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFC2C6D8)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFC2C6D8)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x06000000),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: iconColor, size: 26),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              color: Color(0xFF424656),
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: iconColor, size: 26),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  color: Color(0xFF424656),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: valueColor,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: valueColor,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -816,32 +1167,12 @@ class _BottomActionBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.call_outlined, size: 20),
-              label: const Text('Gọi điện'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                textStyle: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.chat_outlined, size: 20),
-              label: const Text('Chat với BN'),
+              label: const Text('Thông báo bác sĩ'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,

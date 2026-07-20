@@ -414,7 +414,6 @@ class _DietGuidanceContent extends StatelessWidget {
     if (items.isEmpty) {
       return const SizedBox.shrink();
     }
-
     return _buildGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

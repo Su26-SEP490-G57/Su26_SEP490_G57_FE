@@ -1,27 +1,44 @@
+import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'dart:math';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/nurse/domain/models/operation_type.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/presentation/providers/operation_type_provider.dart';
+import 'package:poms/features/nurse/presentation/widgets/patient_pagination.dart';
 
-class NursePatientsPage extends StatefulWidget {
+class NursePatientsPage extends ConsumerStatefulWidget {
   const NursePatientsPage({super.key});
 
   @override
-  State<NursePatientsPage> createState() => _NursePatientsPageState();
+  ConsumerState<NursePatientsPage> createState() => _NursePatientsPageState();
 }
 
-class _NursePatientsPageState extends State<NursePatientsPage> {
+class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
   final _searchController = TextEditingController();
+  int _currentPage = 1;
+  static const int _pageSize = 5;
+
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      ref.read(patientNotifierProvider.notifier).loadPatients();
+    });
+  }
+
   String _searchQuery = '';
 
   // Filter state — null = "Tất cả"
   String? _selectedPod;
-  String? _selectedPathway;
-  String? _selectedAiLevel;
-
-  static const _patients = kMockPatients;
+  OperationType? _selectedOperationType;
+  String? _selectedLevel;
 
   @override
   void dispose() {
@@ -29,9 +46,10 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
     super.dispose();
   }
 
-  List<PatientSummary> get _filtered {
-    return _patients.where((p) {
+  List<PatientSummary> _filtered(List<PatientSummary> patients) {
+    return patients.where((p) {
       final q = _searchQuery.toLowerCase();
+
       final matchSearch =
           q.isEmpty ||
           p.name.toLowerCase().contains(q) ||
@@ -39,14 +57,49 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
           p.room.toLowerCase().contains(q);
       final matchPod = _selectedPod == null || p.pod == _selectedPod;
       final matchStatus =
-          _selectedAiLevel == null || p.status.name == _selectedAiLevel;
-      return matchSearch && matchPod && matchStatus;
+          _selectedLevel == null || p.status.name == _selectedLevel;
+      final matchOperationType =
+          _selectedOperationType == null ||
+          p.operationTypeId == _selectedOperationType!.id;
+      return matchSearch && matchPod && matchOperationType && matchStatus;
     }).toList();
+  }
+
+  List<PatientSummary> _paginate(List<PatientSummary> patients) {
+    final start = (_currentPage - 1) * _pageSize;
+
+    if (start >= patients.length) {
+      return [];
+    }
+
+    final end = (start + _pageSize).clamp(0, patients.length);
+
+    return patients.sublist(start, end);
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
+    final patientState = ref.watch(patientNotifierProvider);
+
+    final operationTypeState = ref.watch(operationTypeNotifierProvider);
+    if (patientState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (patientState.status == PatientStatusState.error) {
+      return Center(child: Text(patientState.errorMessage ?? 'Có lỗi xảy ra'));
+    }
+    final filteredPatients = _filtered(patientState.patients);
+    final pagedPatients = _paginate(filteredPatients);
+    final totalPages = max(1, (filteredPatients.length / _pageSize).ceil());
+    if (_currentPage > totalPages) {
+      _currentPage = totalPages;
+    }
+
+    final startIndex = filteredPatients.isEmpty
+        ? 0
+        : (_currentPage - 1) * _pageSize + 1;
+
+    final endIndex = min(_currentPage * _pageSize, filteredPatients.length);
 
     return Column(
       children: [
@@ -64,17 +117,25 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
               // Search bar
               _SearchBar(
                 controller: _searchController,
-                onChanged: (v) => setState(() => _searchQuery = v),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                    _currentPage = 1;
+                  });
+                },
               ),
               const SizedBox(height: 12),
 
               // Filter chips row
               _FilterChipsRow(
                 selectedPod: _selectedPod,
-                selectedPathway: _selectedPathway,
-                selectedAiLevel: _selectedAiLevel,
+                selectedPathway: _selectedOperationType?.name,
+                selectedAiLevel: _selectedLevel,
                 onPodTap: () => _showPodPicker(context),
-                onPathwayTap: () => _showPathwayPicker(context),
+                onPathwayTap: () => _showOperationTypePicker(
+                  context,
+                  operationTypeState.operationTypes,
+                ),
                 onAiLevelTap: () => _showAiLevelPicker(context),
               ),
               const SizedBox(height: 10),
@@ -86,7 +147,7 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Tổng: ${filtered.length} người bệnh',
+                      'Tổng: ${filteredPatients.length} người bệnh',
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
@@ -124,7 +185,7 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
               const SizedBox(height: 12),
 
               // Patient cards
-              ...filtered.map(
+              ...pagedPatients.map(
                 (p) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _PatientCard(
@@ -135,6 +196,30 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
                     ),
                   ),
                 ),
+              ),
+
+              const SizedBox(height: 16),
+
+              PatientPagination(
+                currentPage: _currentPage,
+                totalPages: totalPages,
+                startIndex: startIndex,
+                endIndex: endIndex,
+                total: filteredPatients.length,
+                onPrevious: () {
+                  if (_currentPage <= 1) return;
+
+                  setState(() {
+                    _currentPage--;
+                  });
+                },
+                onNext: () {
+                  if (_currentPage >= totalPages) return;
+
+                  setState(() {
+                    _currentPage++;
+                  });
+                },
               ),
             ],
           ),
@@ -149,18 +234,19 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => _FilterSheet(
         selectedPod: _selectedPod,
-        selectedAiLevel: _selectedAiLevel,
+        selectedAiLevel: _selectedLevel,
         onApply: (pod, aiLevel) {
           setState(() {
             _selectedPod = pod;
-            _selectedAiLevel = aiLevel;
+            _selectedLevel = aiLevel;
+            _currentPage = 1;
           });
           Navigator.of(context).pop();
         },
         onReset: () {
           setState(() {
             _selectedPod = null;
-            _selectedAiLevel = null;
+            _selectedLevel = null;
           });
           Navigator.of(context).pop();
         },
@@ -174,17 +260,40 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
       title: 'Chọn POD',
       options: const ['POD 1', 'POD 2', 'POD 3', 'POD 4', 'POD 5'],
       selected: _selectedPod,
-      onSelect: (v) => setState(() => _selectedPod = v),
+      onSelect: (v) => setState(() {
+        _selectedPod = v;
+        _currentPage = 1;
+      }),
     );
   }
 
-  void _showPathwayPicker(BuildContext context) {
+  void _showOperationTypePicker(
+    BuildContext context,
+    List<OperationType> operationTypes,
+  ) {
     _showSimplePicker(
       context,
-      title: 'Chọn Pathway',
-      options: const ['ERAS', 'Standard', 'Complex'],
-      selected: _selectedPathway,
-      onSelect: (v) => setState(() => _selectedPathway = v),
+      title: 'Chọn loại phẫu thuật',
+      options: operationTypes.map((e) => e.name).toList(),
+      selected: _selectedOperationType?.name,
+      onSelect: (selectedName) {
+        if (selectedName == null) {
+          setState(() {
+            _selectedOperationType = null;
+            _currentPage = 1;
+          });
+          return;
+        }
+
+        final selected = operationTypes.firstWhere(
+          (e) => e.name == selectedName,
+        );
+
+        setState(() {
+          _selectedOperationType = selected;
+          _currentPage = 1;
+        });
+      },
     );
   }
 
@@ -192,10 +301,15 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
     _showSimplePicker(
       context,
       title: 'Chọn mức độ',
-      options: const ['red', 'yellow', 'green'],
+      options: const ['Red', 'Yellow', 'Green'],
       optionLabels: const ['RED', 'YELLOW', 'GREEN'],
-      selected: _selectedAiLevel,
-      onSelect: (v) => setState(() => _selectedAiLevel = v),
+      selected: _selectedLevel,
+      onSelect: (value) {
+        setState(() {
+          _selectedLevel = value;
+          _currentPage = 1;
+        });
+      },
     );
   }
 
@@ -414,7 +528,7 @@ class _FilterChipsRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _FilterChip(
-            label: selectedPathway ?? 'Tất cả pathway',
+            label: selectedPathway ?? 'Tất cả loại phẫu thuật',
             isActive: selectedPathway != null,
             onTap: onPathwayTap,
           ),
