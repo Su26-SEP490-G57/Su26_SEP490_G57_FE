@@ -697,7 +697,6 @@ class _InfoGrid extends StatelessWidget {
   const _InfoGrid({required this.patient});
   final PatientSummary patient;
 
-
   @override
   Widget build(BuildContext context) {
     return Column(

@@ -505,10 +505,7 @@ class _PriorityPatientList extends StatelessWidget {
 }
 
 class _PriorityPatientCard extends StatelessWidget {
-  const _PriorityPatientCard({
-    required this.patient,
-    required this.onTap,
-  });
+  const _PriorityPatientCard({required this.patient, required this.onTap});
 
   final PatientSummary patient;
   final VoidCallback onTap;
