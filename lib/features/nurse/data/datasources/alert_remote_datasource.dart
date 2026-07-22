@@ -12,10 +12,7 @@ class AlertRemoteDataSource {
     int limit = 20,
     String? status,
   }) async {
-    final queryParameters = <String, dynamic>{
-      'page': page,
-      'limit': limit,
-    };
+    final queryParameters = <String, dynamic>{'page': page, 'limit': limit};
     if (status != null) {
       queryParameters['status'] = status;
     }

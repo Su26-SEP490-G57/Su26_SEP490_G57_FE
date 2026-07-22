@@ -2,9 +2,9 @@ import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/nurse/domain/repositories/patient_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/datasources/patient_remote_datasource.dart';
-import '../../data/repositories/patient_repository_impl.dart';
-import '../../domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/data/datasources/patient_remote_datasource.dart';
+import 'package:poms/features/nurse/data/repositories/patient_repository_impl.dart';
+import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
 final patientRemoteDatasourceProvider = Provider<PatientRemoteDataSource>((
   ref,
@@ -37,6 +37,7 @@ class PatientState {
     return end > total ? total : end;
   }
 
+  // ignore: sort_constructors_first
   const PatientState({
     this.status = PatientStatusState.initial,
     this.patients = const [],
@@ -110,7 +111,6 @@ class PatientNotifier extends StateNotifier<PatientState> {
         limit: patientPage.limit,
       );
     } catch (e) {
-
       state = state.copyWith(
         status: PatientStatusState.error,
         errorMessage: e.toString(),

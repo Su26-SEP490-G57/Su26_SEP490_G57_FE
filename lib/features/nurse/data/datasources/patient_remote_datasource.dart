@@ -23,11 +23,10 @@ class PatientRemoteDataSource {
         AppConstants.endpointPatients,
         queryParameters: {
           if (search != null && search.isNotEmpty) 'search': search,
-          if (level != null) 'level': level,
-          if (operationTypeId != null)
-            'operationTypeId': operationTypeId,
-          if (sortBy != null) 'sortBy': sortBy,
-          if (sortOrder != null) 'sortOrder': sortOrder,
+          'level': ?level,
+          'operationTypeId': ?operationTypeId,
+          'sortBy': ?sortBy,
+          'sortOrder': ?sortOrder,
           'page': page,
           'limit': limit,
         },

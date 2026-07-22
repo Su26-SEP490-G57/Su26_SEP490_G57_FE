@@ -1,4 +1,4 @@
-import 'patient_summary.dart';
+import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
 class PatientPage {
   const PatientPage({

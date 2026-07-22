@@ -329,7 +329,7 @@ class _WardOverviewGrid extends StatelessWidget {
             leftBorderColor: Colors.transparent,
           ),
         ),
-        SizedBox(width: 6),
+        const SizedBox(width: 6),
         Expanded(
           child: _WardStatCard(
             label: 'GREEN',
@@ -339,7 +339,7 @@ class _WardOverviewGrid extends StatelessWidget {
             leftBorderColor: const Color(0xFF4CAF50),
           ),
         ),
-        SizedBox(width: 6),
+        const SizedBox(width: 6),
         Expanded(
           child: _WardStatCard(
             label: 'YELLOW',
@@ -349,7 +349,7 @@ class _WardOverviewGrid extends StatelessWidget {
             leftBorderColor: const Color(0xFFFFC107),
           ),
         ),
-        SizedBox(width: 6),
+        const SizedBox(width: 6),
         Expanded(
           child: _WardStatCard(
             label: 'RED',
@@ -508,12 +508,10 @@ class _PriorityPatientCard extends StatelessWidget {
   const _PriorityPatientCard({
     required this.patient,
     required this.onTap,
-    this.dimmed = false,
   });
 
   final PatientSummary patient;
   final VoidCallback onTap;
-  final bool dimmed;
 
   PatientStatus get status => patient.status;
   String get code => patient.code;
@@ -524,6 +522,7 @@ class _PriorityPatientCard extends StatelessWidget {
     }
     return 'POD ${patient.pod}';
   }
+
   String get room => roomLabel(patient.room);
   String get symptom {
     switch (patient.status) {
@@ -543,7 +542,7 @@ class _PriorityPatientCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Opacity(
-      opacity: dimmed ? 0.75 : 1.0,
+      opacity: 1.0,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -569,8 +568,8 @@ class _PriorityPatientCard extends StatelessWidget {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFECEDFA),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFECEDFA),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -697,7 +696,7 @@ class _StatusBadge extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Alert summary — 2 cards
 // ─────────────────────────────────────────────────────────────────────────────
-
+/*
 class _AlertSummaryRow extends StatelessWidget {
   const _AlertSummaryRow();
 
@@ -805,7 +804,7 @@ class _AlertSummaryCard extends StatelessWidget {
     );
   }
 }
-
+*/
 // ─────────────────────────────────────────────────────────────────────────────
 // Room distribution — donut chart + legend
 // ─────────────────────────────────────────────────────────────────────────────

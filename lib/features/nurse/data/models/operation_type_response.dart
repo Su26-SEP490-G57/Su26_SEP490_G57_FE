@@ -1,8 +1,5 @@
 class OperationTypeResponse {
-  const OperationTypeResponse({
-    required this.id,
-    required this.name,
-  });
+  const OperationTypeResponse({required this.id, required this.name});
 
   factory OperationTypeResponse.fromJson(Map<String, dynamic> json) {
     return OperationTypeResponse(

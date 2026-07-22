@@ -16,11 +16,7 @@ class OperationTypeRemoteDatasourceImpl
     final response = await _dio.get('/patients/operation-types');
 
     return (response.data as List)
-        .map(
-          (e) => OperationTypeResponse.fromJson(
-            e as Map<String, dynamic>,
-          ),
-        )
+        .map((e) => OperationTypeResponse.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 }
