@@ -1,5 +1,5 @@
 /// App-wide string constants
-/// TODO: Replace with flutter_localizations when i18n is needed
+/// todo: Replace with flutter_localizations when i18n is needed
 abstract final class AppStrings {
   // App
   static const String appName = 'POMS';

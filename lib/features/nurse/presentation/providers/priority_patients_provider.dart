@@ -23,18 +23,23 @@ final patientRepositoryProvider = Provider<PatientRepository>((ref) {
 final patientsQueryProvider = FutureProvider.autoDispose
     .family<List<PatientSummary>, PatientsQuery>((ref, query) async {
       final repository = ref.watch(patientRepositoryProvider);
-      return await repository.getPatients(
+      // repository.getPatients returns a PatientPage; extract the list of PatientSummary
+      final page = await repository.getPatients(
         search: query.search,
         level: query.level,
         limit: query.limit,
       );
+
+      return page.patients;
     });
 
 class PatientsQuery {
-  const PatientsQuery({this.search, this.level, this.limit = 50});
   final String? search;
   final String? level;
   final int limit;
+
+  // ignore: sort_constructors_first
+  const PatientsQuery({this.search, this.level, this.limit = 50});
 
   @override
   bool operator ==(Object other) =>

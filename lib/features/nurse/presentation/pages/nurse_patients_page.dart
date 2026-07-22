@@ -1,27 +1,42 @@
+import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'dart:math';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+//import 'package:poms/features/nurse/domain/models/operation_type.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+//import 'package:poms/features/nurse/presentation/providers/operation_type_provider.dart';
+import 'package:poms/features/nurse/presentation/widgets/patient_pagination.dart';
 
-class NursePatientsPage extends StatefulWidget {
+class NursePatientsPage extends ConsumerStatefulWidget {
   const NursePatientsPage({super.key});
 
   @override
-  State<NursePatientsPage> createState() => _NursePatientsPageState();
+  ConsumerState<NursePatientsPage> createState() => _NursePatientsPageState();
 }
 
-class _NursePatientsPageState extends State<NursePatientsPage> {
+class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
   final _searchController = TextEditingController();
+  int _currentPage = 1;
+  static const int _pageSize = 5;
+
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      ref.read(patientNotifierProvider.notifier).loadPatients();
+    });
+  }
+
   String _searchQuery = '';
 
   // Filter state — null = "Tất cả"
-  String? _selectedPod;
-  String? _selectedPathway;
-  String? _selectedAiLevel;
-
-  static const _patients = kMockPatients;
+  final Set<PatientStatus> _selectedStatuses = {PatientStatus.red};
 
   @override
   void dispose() {
@@ -29,32 +44,75 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
     super.dispose();
   }
 
-  List<PatientSummary> get _filtered {
-    return _patients.where((p) {
+  List<PatientSummary> _filtered(List<PatientSummary> patients) {
+    return patients.where((p) {
       final q = _searchQuery.toLowerCase();
+
       final matchSearch =
           q.isEmpty ||
           p.name.toLowerCase().contains(q) ||
           p.code.toLowerCase().contains(q) ||
           p.room.toLowerCase().contains(q);
-      final matchPod = _selectedPod == null || p.pod == _selectedPod;
-      final matchStatus =
-          _selectedAiLevel == null || p.status.name == _selectedAiLevel;
-      return matchSearch && matchPod && matchStatus;
+      final matchStatus = _selectedStatuses.contains(p.status);
+
+      return matchSearch && matchStatus;
     }).toList();
+  }
+
+  void _toggleStatus(PatientStatus status) {
+    setState(() {
+      if (_selectedStatuses.contains(status)) {
+        if (_selectedStatuses.length > 1) {
+          _selectedStatuses.remove(status);
+        }
+      } else {
+        _selectedStatuses.add(status);
+      }
+
+      _currentPage = 1;
+    });
+  }
+
+  List<PatientSummary> _paginate(List<PatientSummary> patients) {
+    final start = (_currentPage - 1) * _pageSize;
+
+    if (start >= patients.length) {
+      return [];
+    }
+
+    final end = (start + _pageSize).clamp(0, patients.length);
+
+    return patients.sublist(start, end);
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
+    final patientState = ref.watch(patientNotifierProvider);
+
+    //final operationTypeState = ref.watch(operationTypeNotifierProvider);
+    if (patientState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (patientState.status == PatientStatusState.error) {
+      return Center(child: Text(patientState.errorMessage ?? 'Có lỗi xảy ra'));
+    }
+    final filteredPatients = _filtered(patientState.patients);
+    final pagedPatients = _paginate(filteredPatients);
+    final totalPages = max(1, (filteredPatients.length / _pageSize).ceil());
+    if (_currentPage > totalPages) {
+      _currentPage = totalPages;
+    }
+
+    final startIndex = filteredPatients.isEmpty
+        ? 0
+        : (_currentPage - 1) * _pageSize + 1;
+
+    final endIndex = min(_currentPage * _pageSize, filteredPatients.length);
 
     return Column(
       children: [
         // ── Top App Bar ──────────────────────────────────────────────
-        _TopAppBar(
-          onSearchTap: () => FocusScope.of(context).requestFocus(),
-          onFilterTap: () => _showFilterSheet(context),
-        ),
+        const _TopAppBar(),
 
         // ── Body ─────────────────────────────────────────────────────
         Expanded(
@@ -64,18 +122,19 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
               // Search bar
               _SearchBar(
                 controller: _searchController,
-                onChanged: (v) => setState(() => _searchQuery = v),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                    _currentPage = 1;
+                  });
+                },
               ),
               const SizedBox(height: 12),
 
               // Filter chips row
               _FilterChipsRow(
-                selectedPod: _selectedPod,
-                selectedPathway: _selectedPathway,
-                selectedAiLevel: _selectedAiLevel,
-                onPodTap: () => _showPodPicker(context),
-                onPathwayTap: () => _showPathwayPicker(context),
-                onAiLevelTap: () => _showAiLevelPicker(context),
+                selectedStatuses: _selectedStatuses,
+                onStatusTap: _toggleStatus,
               ),
               const SizedBox(height: 10),
 
@@ -86,7 +145,7 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Tổng: ${filtered.length} người bệnh',
+                      'Tổng: ${filteredPatients.length} người bệnh',
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
@@ -124,7 +183,7 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
               const SizedBox(height: 12),
 
               // Patient cards
-              ...filtered.map(
+              ...pagedPatients.map(
                 (p) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _PatientCard(
@@ -136,134 +195,34 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
                   ),
                 ),
               ),
+
+              const SizedBox(height: 16),
+
+              PatientPagination(
+                currentPage: _currentPage,
+                totalPages: totalPages,
+                startIndex: startIndex,
+                endIndex: endIndex,
+                total: filteredPatients.length,
+                onPrevious: () {
+                  if (_currentPage <= 1) return;
+
+                  setState(() {
+                    _currentPage--;
+                  });
+                },
+                onNext: () {
+                  if (_currentPage >= totalPages) return;
+
+                  setState(() {
+                    _currentPage++;
+                  });
+                },
+              ),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  void _showFilterSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _FilterSheet(
-        selectedPod: _selectedPod,
-        selectedAiLevel: _selectedAiLevel,
-        onApply: (pod, aiLevel) {
-          setState(() {
-            _selectedPod = pod;
-            _selectedAiLevel = aiLevel;
-          });
-          Navigator.of(context).pop();
-        },
-        onReset: () {
-          setState(() {
-            _selectedPod = null;
-            _selectedAiLevel = null;
-          });
-          Navigator.of(context).pop();
-        },
-      ),
-    );
-  }
-
-  void _showPodPicker(BuildContext context) {
-    _showSimplePicker(
-      context,
-      title: 'Chọn POD',
-      options: const ['POD 1', 'POD 2', 'POD 3', 'POD 4', 'POD 5'],
-      selected: _selectedPod,
-      onSelect: (v) => setState(() => _selectedPod = v),
-    );
-  }
-
-  void _showPathwayPicker(BuildContext context) {
-    _showSimplePicker(
-      context,
-      title: 'Chọn Pathway',
-      options: const ['ERAS', 'Standard', 'Complex'],
-      selected: _selectedPathway,
-      onSelect: (v) => setState(() => _selectedPathway = v),
-    );
-  }
-
-  void _showAiLevelPicker(BuildContext context) {
-    _showSimplePicker(
-      context,
-      title: 'Chọn mức độ',
-      options: const ['red', 'yellow', 'green'],
-      optionLabels: const ['RED', 'YELLOW', 'GREEN'],
-      selected: _selectedAiLevel,
-      onSelect: (v) => setState(() => _selectedAiLevel = v),
-    );
-  }
-
-  void _showSimplePicker(
-    BuildContext context, {
-    required String title,
-    required List<String> options,
-    required ValueChanged<String?> onSelect,
-    List<String>? optionLabels,
-    String? selected,
-  }) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFFAF8FF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFC2C6D8),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF191B24),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // "Tất cả" option
-            _PickerItem(
-              label: 'Tất cả',
-              isSelected: selected == null,
-              onTap: () {
-                onSelect(null);
-                Navigator.of(context).pop();
-              },
-            ),
-            ...options.asMap().entries.map((e) {
-              final label = optionLabels?[e.key] ?? e.value;
-              return _PickerItem(
-                label: label,
-                isSelected: selected == e.value,
-                onTap: () {
-                  onSelect(e.value);
-                  Navigator.of(context).pop();
-                },
-              );
-            }),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -273,10 +232,10 @@ class _NursePatientsPageState extends State<NursePatientsPage> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TopAppBar extends StatelessWidget {
-  const _TopAppBar({required this.onSearchTap, required this.onFilterTap});
+  const _TopAppBar();
 
-  final VoidCallback onSearchTap;
-  final VoidCallback onFilterTap;
+  //final VoidCallback onSearchTap;
+  //final VoidCallback onFilterTap;
 
   @override
   Widget build(BuildContext context) {
@@ -304,17 +263,6 @@ class _TopAppBar extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.search_rounded, color: Colors.white),
-                onPressed: onSearchTap,
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.filter_list_rounded,
-                  color: Colors.white,
-                ),
-                onPressed: onFilterTap,
-              ),
             ],
           ),
         ),
@@ -336,7 +284,7 @@ class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
+      height: 40,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -367,13 +315,13 @@ class _SearchBar extends StatelessWidget {
           prefixIcon: Icon(
             Icons.search_rounded,
             color: Color(0xFF727687),
-            size: 22,
+            size: 20,
           ),
           filled: false,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         ),
       ),
     );
@@ -386,52 +334,93 @@ class _SearchBar extends StatelessWidget {
 
 class _FilterChipsRow extends StatelessWidget {
   const _FilterChipsRow({
-    required this.selectedPod,
-    required this.selectedPathway,
-    required this.selectedAiLevel,
-    required this.onPodTap,
-    required this.onPathwayTap,
-    required this.onAiLevelTap,
+    required this.selectedStatuses,
+    required this.onStatusTap,
   });
 
-  final String? selectedPod;
-  final String? selectedPathway;
-  final String? selectedAiLevel;
-  final VoidCallback onPodTap;
-  final VoidCallback onPathwayTap;
-  final VoidCallback onAiLevelTap;
+  final Set<PatientStatus> selectedStatuses;
+  final ValueChanged<PatientStatus> onStatusTap;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _FilterChip(
-            label: selectedPod ?? 'Tất cả POD',
-            isActive: selectedPod != null,
-            onTap: onPodTap,
+    return Row(
+      children: [
+        Expanded(
+          child: _StatusFilterChip(
+            label: 'RED',
+            status: PatientStatus.red,
+            selected: selectedStatuses.contains(PatientStatus.red),
+            onTap: () => onStatusTap(PatientStatus.red),
           ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: selectedPathway ?? 'Tất cả pathway',
-            isActive: selectedPathway != null,
-            onTap: onPathwayTap,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatusFilterChip(
+            label: 'YELLOW',
+            status: PatientStatus.yellow,
+            selected: selectedStatuses.contains(PatientStatus.yellow),
+            onTap: () => onStatusTap(PatientStatus.yellow),
           ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: selectedAiLevel != null
-                ? selectedAiLevel!.toUpperCase()
-                : 'Tất cả mức độ',
-            isActive: selectedAiLevel != null,
-            onTap: onAiLevelTap,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatusFilterChip(
+            label: 'GREEN',
+            status: PatientStatus.green,
+            selected: selectedStatuses.contains(PatientStatus.green),
+            onTap: () => onStatusTap(PatientStatus.green),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusFilterChip extends StatelessWidget {
+  const _StatusFilterChip({
+    required this.label,
+    required this.status,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final PatientStatus status;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (status) {
+      PatientStatus.red => const Color(0xFFBA1A1A),
+      PatientStatus.yellow => const Color(0xFFA33200),
+      PatientStatus.green => const Color(0xFF006A61),
+    };
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: .12) : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? color : const Color(0xFFC2C6D8)),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? color : const Color(0xFF727687),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
+// ignore: unused_element
 class _FilterChip extends StatelessWidget {
   const _FilterChip({
     required this.label,
@@ -652,6 +641,7 @@ class _StatusPill extends StatelessWidget {
 // Filter bottom sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _FilterSheet extends StatelessWidget {
   const _FilterSheet({
     required this.selectedPod,
@@ -739,6 +729,7 @@ class _FilterSheet extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PickerItem extends StatelessWidget {
   const _PickerItem({
     required this.label,

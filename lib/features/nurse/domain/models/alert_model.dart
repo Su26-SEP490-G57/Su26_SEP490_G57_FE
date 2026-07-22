@@ -17,20 +17,20 @@ class AlertModel extends Equatable {
 
   factory AlertModel.fromJson(Map<String, dynamic> json) {
     return AlertModel(
-      alertId: json['alert_id'] as int,
-      caseId: json['case_id'] as String,
-      assessmentId: json['assessment_id'] as int,
-      surveyScore: json['survey_score'] as int?,
-      alertType: json['alert_type'] as String,
+      alertId: json['alertId'] as int,
+      caseId: json['caseId'] as String,
+      assessmentId: json['assessmentId'] as int,
+      surveyScore: json['surveyScore'] as int?,
+      alertType: json['alertType'] as String,
       status: json['status'] as String,
-      isAutoProgression: json['is_auto_progression'] as bool?,
-      triggeredAt: json['triggered_at'] != null
-          ? DateTime.tryParse(json['triggered_at'] as String)
+      isAutoProgression: json['isAutoProgression'] as bool?,
+      triggeredAt: json['triggeredAt'] != null
+          ? DateTime.tryParse(json['triggeredAt'] as String)
           : null,
-      nurseAction: json['nurse_action'] as String?,
-      nursingNote: json['nursing_note'] as String?,
-      closedAt: json['closed_at'] != null
-          ? DateTime.tryParse(json['closed_at'] as String)
+      nurseAction: json['nurseAction'] as String?,
+      nursingNote: json['nursingNote'] as String?,
+      closedAt: json['closedAt'] != null
+          ? DateTime.tryParse(json['closedAt'] as String)
           : null,
     );
   }
@@ -48,17 +48,17 @@ class AlertModel extends Equatable {
   final DateTime? closedAt;
 
   Map<String, dynamic> toJson() => {
-    'alert_id': alertId,
-    'case_id': caseId,
-    'assessment_id': assessmentId,
-    'survey_score': surveyScore,
-    'alert_type': alertType,
+    'alertId': alertId,
+    'caseId': caseId,
+    'assessmentId': assessmentId,
+    'surveyScore': surveyScore,
+    'alertType': alertType,
     'status': status,
-    'is_auto_progression': isAutoProgression,
-    'triggered_at': triggeredAt?.toIso8601String(),
-    'nurse_action': nurseAction,
-    'nursing_note': nursingNote,
-    'closed_at': closedAt?.toIso8601String(),
+    'isAutoProgression': isAutoProgression,
+    'triggeredAt': triggeredAt?.toIso8601String(),
+    'nurseAction': nurseAction,
+    'nursingNote': nursingNote,
+    'closedAt': closedAt?.toIso8601String(),
   };
 
   @override

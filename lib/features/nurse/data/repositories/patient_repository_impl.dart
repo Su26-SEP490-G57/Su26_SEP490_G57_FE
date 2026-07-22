@@ -1,13 +1,15 @@
-import 'package:poms/features/nurse/domain/models/patient_summary.dart';
-import 'package:poms/features/nurse/domain/repositories/patient_repository.dart';
 import 'package:poms/features/nurse/data/datasources/patient_remote_datasource.dart';
+import 'package:poms/features/nurse/domain/models/patient_page.dart';
+import 'package:poms/features/nurse/domain/repositories/patient_repository.dart';
+import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
 class PatientRepositoryImpl implements PatientRepository {
-  PatientRepositoryImpl(this._remoteDataSource);
-  final PatientRemoteDataSource _remoteDataSource;
+  PatientRepositoryImpl(this._remote);
+
+  final PatientRemoteDataSource _remote;
 
   @override
-  Future<List<PatientSummary>> getPatients({
+  Future<PatientPage> getPatients({
     String? search,
     String? level,
     int? operationTypeId,
@@ -16,7 +18,7 @@ class PatientRepositoryImpl implements PatientRepository {
     int page = 1,
     int limit = 10,
   }) async {
-    final response = await _remoteDataSource.getPatients(
+    final response = await _remote.getPatients(
       search: search,
       level: level,
       operationTypeId: operationTypeId,
@@ -26,28 +28,51 @@ class PatientRepositoryImpl implements PatientRepository {
       limit: limit,
     );
 
-    final dataList = response['data'] as List<dynamic>? ?? [];
+    return PatientPage(
+      patients: response.data.map((patient) {
+        return PatientSummary(
+          code: patient.caseId,
+          name: patient.account.fullName,
+          room: patient.roomBed ?? 'Chưa cập nhật',
+          pod: 'POD ${patient.currentPod}',
+          status: _mapStatus(patient.level),
 
-    return dataList.map((item) {
-      final map = item as Map<String, dynamic>;
-      final account = map['account'] as Map<String, dynamic>?;
-      final levelObj = map['level'] as Map<String, dynamic>?;
+          age: patient.age,
+          gender: patient.gender,
+          bmi: patient.bmi,
 
-      // Map level string to enum
-      PatientStatus status = PatientStatus.green;
-      if (levelObj != null) {
-        final levelName = (levelObj['name'] as String?)?.toUpperCase();
-        if (levelName == 'RED') status = PatientStatus.red;
-        if (levelName == 'YELLOW') status = PatientStatus.yellow;
-      }
+          surgeryDate: patient.surgeryDate,
+          surgeryType: patient.operationType?.name,
 
-      return PatientSummary(
-        code: map['case_id'] as String? ?? 'UNKNOWN',
-        name: account?['fullName'] as String? ?? 'Chưa cập nhật',
-        room: map['room_bed'] as String? ?? 'Chưa xếp phòng',
-        pod: 'POD ${map['current_pod'] ?? '?'}',
-        status: status,
-      );
-    }).toList();
+          diagnosis: patient.diagnosis,
+          operationTypeId: patient.operationType?.id,
+          operationTypeName: patient.operationType?.name,
+          operationMethod: patient.method,
+          hasGiAnastomosis: patient.hasGiAnastomosis,
+        );
+      }).toList(),
+      total: response.total,
+      page: response.page,
+      limit: response.limit,
+    );
+  }
+
+  PatientStatus _mapStatus(dynamic level) {
+    if (level == null) {
+      return PatientStatus.green;
+    }
+
+    final name = level['name']?.toString().toLowerCase();
+
+    switch (name) {
+      case 'red':
+        return PatientStatus.red;
+
+      case 'yellow':
+        return PatientStatus.yellow;
+
+      default:
+        return PatientStatus.green;
+    }
   }
 }

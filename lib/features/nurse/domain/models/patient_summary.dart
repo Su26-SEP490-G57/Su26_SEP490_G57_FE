@@ -51,6 +51,11 @@ class PatientSummary {
     this.pathway,
     this.bmi,
     this.surgeryType,
+    this.diagnosis,
+    this.operationTypeId,
+    this.operationTypeName,
+    this.operationMethod,
+    this.hasGiAnastomosis,
     this.nurseInCharge,
     this.doctorInCharge,
     this.alertCount = 0,
@@ -74,6 +79,11 @@ class PatientSummary {
   final String? pathway;
   final double? bmi;
   final String? surgeryType;
+  final String? diagnosis;
+  final int? operationTypeId;
+  final String? operationTypeName;
+  final String? operationMethod;
+  final bool? hasGiAnastomosis;
   final String? nurseInCharge;
   final String? doctorInCharge;
   final int alertCount;
