@@ -1,4 +1,4 @@
-import '../../domain/models/assessment_detail.dart';
+import 'package:poms/features/nurse/domain/models/assessment_detail.dart';
 
 class AssessmentDetailItemResponse {
   const AssessmentDetailItemResponse({
@@ -15,6 +15,7 @@ class AssessmentDetailItemResponse {
   final String optionText;
   final int scoreEarned;
 
+  // ignore: sort_constructors_first
   factory AssessmentDetailItemResponse.fromJson(Map<String, dynamic> json) {
     return AssessmentDetailItemResponse(
       questionId: json['questionId'] as int,
@@ -56,6 +57,7 @@ class AssessmentDetailResponse {
 
   final List<AssessmentDetailItemResponse> details;
 
+  // ignore: sort_constructors_first
   factory AssessmentDetailResponse.fromJson(Map<String, dynamic> json) {
     return AssessmentDetailResponse(
       assessmentId: json['assessmentId'] as int,

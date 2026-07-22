@@ -73,7 +73,7 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () {
-                // TODO: forgot username flow
+                // todo: forgot username flow
               },
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -133,7 +133,7 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () {
-                // TODO: forgot password flow
+                // todo: forgot password flow
               },
               style: TextButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

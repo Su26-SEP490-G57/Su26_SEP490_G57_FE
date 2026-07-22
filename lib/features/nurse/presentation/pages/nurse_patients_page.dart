@@ -420,6 +420,7 @@ class _StatusFilterChip extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _FilterChip extends StatelessWidget {
   const _FilterChip({
     required this.label,
@@ -640,6 +641,7 @@ class _StatusPill extends StatelessWidget {
 // Filter bottom sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _FilterSheet extends StatelessWidget {
   const _FilterSheet({
     required this.selectedPod,
@@ -727,6 +729,7 @@ class _FilterSheet extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PickerItem extends StatelessWidget {
   const _PickerItem({
     required this.label,

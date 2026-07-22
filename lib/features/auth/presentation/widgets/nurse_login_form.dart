@@ -117,7 +117,7 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
               const Spacer(),
               TextButton(
                 onPressed: () {
-                  // TODO: forgot password flow
+                  // todo: forgot password flow
                 },
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(

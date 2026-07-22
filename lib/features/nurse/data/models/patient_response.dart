@@ -8,11 +8,6 @@ class PatientListResponse extends Equatable {
     required this.limit,
   });
 
-  final List<PatientResponse> data;
-  final int total;
-  final int page;
-  final int limit;
-
   factory PatientListResponse.fromJson(Map<String, dynamic> json) {
     return PatientListResponse(
       data: (json['data'] as List<dynamic>? ?? [])
@@ -23,6 +18,11 @@ class PatientListResponse extends Equatable {
       limit: json['limit'] as int? ?? 10,
     );
   }
+
+  final List<PatientResponse> data;
+  final int total;
+  final int page;
+  final int limit;
 
   Map<String, dynamic> toJson() {
     return {
@@ -54,22 +54,6 @@ class PatientResponse extends Equatable {
     required this.hasGiAnastomosis,
   });
 
-  final String caseId;
-  final int age;
-  final String gender;
-  final String? diagnosis;
-  final String? method;
-  final bool? hasGiAnastomosis;
-  final String? roomBed;
-  final int currentPod;
-  final double? bmi;
-  final String? surgeryDate;
-
-  final AccountResponse account;
-  final OperationTypeResponse? operationType;
-
-  final dynamic level;
-
   factory PatientResponse.fromJson(Map<String, dynamic> json) {
     return PatientResponse(
       caseId: json['caseId'] as String,
@@ -93,6 +77,22 @@ class PatientResponse extends Equatable {
       level: json['level'],
     );
   }
+
+  final String caseId;
+  final int age;
+  final String gender;
+  final String? diagnosis;
+  final String? method;
+  final bool? hasGiAnastomosis;
+  final String? roomBed;
+  final int currentPod;
+  final double? bmi;
+  final String? surgeryDate;
+
+  final AccountResponse account;
+  final OperationTypeResponse? operationType;
+
+  final dynamic level;
 
   Map<String, dynamic> toJson() {
     return {
@@ -137,10 +137,6 @@ class AccountResponse extends Equatable {
     required this.username,
   });
 
-  final int id;
-  final String fullName;
-  final String username;
-
   factory AccountResponse.fromJson(Map<String, dynamic> json) {
     return AccountResponse(
       id: json['id'] as int,
@@ -148,6 +144,10 @@ class AccountResponse extends Equatable {
       username: json['username'] as String? ?? '',
     );
   }
+
+  final int id;
+  final String fullName;
+  final String username;
 
   Map<String, dynamic> toJson() {
     return {'id': id, 'fullName': fullName, 'username': username};
@@ -160,15 +160,15 @@ class AccountResponse extends Equatable {
 class OperationTypeResponse extends Equatable {
   const OperationTypeResponse({required this.id, required this.name});
 
-  final int id;
-  final String name;
-
   factory OperationTypeResponse.fromJson(Map<String, dynamic> json) {
     return OperationTypeResponse(
       id: json['id'] as int,
       name: json['name'] as String? ?? '',
     );
   }
+
+  final int id;
+  final String name;
 
   Map<String, dynamic> toJson() {
     return {'id': id, 'name': name};

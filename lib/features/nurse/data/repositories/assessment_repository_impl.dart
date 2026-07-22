@@ -1,7 +1,7 @@
-import '../../domain/models/assessment_summary.dart';
-import '../../domain/repositories/assessment_repository.dart';
-import '../datasources/assessment_remote_datasource.dart';
-import '../../domain/models/assessment_detail.dart';
+import 'package:poms/features/nurse/domain/models/assessment_summary.dart';
+import 'package:poms/features/nurse/domain/repositories/assessment_repository.dart';
+import 'package:poms/features/nurse/data/datasources/assessment_remote_datasource.dart';
+import 'package:poms/features/nurse/domain/models/assessment_detail.dart';
 
 class AssessmentRepositoryImpl implements AssessmentRepository {
   AssessmentRepositoryImpl(this._dataSource);

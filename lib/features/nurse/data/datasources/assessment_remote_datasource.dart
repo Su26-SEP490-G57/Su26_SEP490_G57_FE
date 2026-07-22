@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import '../models/assessment_response.dart';
-import '../models/assessment_detail_response.dart';
+import 'package:poms/features/nurse/data/models/assessment_response.dart';
+import 'package:poms/features/nurse/data/models/assessment_detail_response.dart';
 
 class AssessmentRemoteDataSource {
   AssessmentRemoteDataSource(this._dio);

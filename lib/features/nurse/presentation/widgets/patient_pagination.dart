@@ -2,14 +2,7 @@ import 'package:flutter/material.dart';
 
 class PatientPagination extends StatelessWidget {
   const PatientPagination({
-    super.key,
-    required this.currentPage,
-    required this.totalPages,
-    required this.startIndex,
-    required this.endIndex,
-    required this.total,
-    required this.onPrevious,
-    required this.onNext,
+    required this.currentPage, required this.totalPages, required this.startIndex, required this.endIndex, required this.total, required this.onPrevious, required this.onNext, super.key,
   });
 
   final int currentPage;

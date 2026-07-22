@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/models/assessment_detail.dart';
-import '../providers/assessment_provider.dart';
+import 'package:poms/features/nurse/domain/models/assessment_detail.dart';
+import 'package:poms/features/nurse/presentation/providers/assessment_provider.dart';
 import 'package:intl/intl.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
@@ -368,9 +368,9 @@ class _OverviewTab extends StatelessWidget {
           _AlertBanner(patient: patient),
           const SizedBox(height: 16),
         ],
-        Text(
+        const Text(
           'Tổng quan đánh giá',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -607,7 +607,7 @@ class _NotesTab extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       itemCount: notes.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      separatorBuilder: (_, _) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final note = notes[index];
 
@@ -697,14 +697,6 @@ class _InfoGrid extends StatelessWidget {
   const _InfoGrid({required this.patient});
   final PatientSummary patient;
 
-  String _initials(String? fullName) {
-    if (fullName == null || fullName.isEmpty) return '??';
-    final parts = fullName.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[parts.length - 2][0]}${parts.last[0]}'.toUpperCase();
-    }
-    return fullName[0].toUpperCase();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -858,6 +850,7 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PersonnelItem extends StatelessWidget {
   const _PersonnelItem({
     required this.initials,
@@ -1199,6 +1192,7 @@ class _BottomActionBar extends StatelessWidget {
 // Placeholder tab
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _PlaceholderTab extends StatelessWidget {
   const _PlaceholderTab({required this.label});
   final String label;
