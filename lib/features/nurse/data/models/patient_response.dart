@@ -72,16 +72,16 @@ class PatientResponse extends Equatable {
 
   factory PatientResponse.fromJson(Map<String, dynamic> json) {
     return PatientResponse(
-      caseId: json['case_id'] as String,
+      caseId: json['caseId'] as String,
       age: json['age'] as int? ?? 0,
       gender: json['gender'] as String? ?? '',
       diagnosis: json['diagnosis'] as String?,
       method: json['method'] as String?,
-      hasGiAnastomosis: json['has_gi_anastomosis'] as bool?,
-      roomBed: json['room_bed'] as String?,
-      currentPod: json['current_pod'] as int? ?? 0,
+      hasGiAnastomosis: json['hasGiAnastomosis'] as bool?,
+      roomBed: json['roomBed'] as String?,
+      currentPod: json['currentPod'] as int? ?? 0,
       bmi: (json['bmi'] as num?)?.toDouble(),
-      surgeryDate: json['surgery_date'] as String?,
+      surgeryDate: json['surgeryDate'] as String?,
       account: AccountResponse.fromJson(
         json['account'] as Map<String, dynamic>,
       ),
@@ -96,16 +96,16 @@ class PatientResponse extends Equatable {
 
   Map<String, dynamic> toJson() {
     return {
-      'case_id': caseId,
+      'caseId': caseId,
       'age': age,
       'gender': gender,
       'diagnosis': diagnosis,
       'method': method,
-      'has_gi_anastomosis': hasGiAnastomosis,
-      'room_bed': roomBed,
-      'current_pod': currentPod,
+      'hasGiAnastomosis': hasGiAnastomosis,
+      'roomBed': roomBed,
+      'currentPod': currentPod,
       'bmi': bmi,
-      'surgery_date': surgeryDate,
+      'surgeryDate': surgeryDate,
       'account': account.toJson(),
       'operationType': operationType?.toJson(),
       'level': level,

@@ -17,11 +17,11 @@ class AssessmentDetailItemResponse {
 
   factory AssessmentDetailItemResponse.fromJson(Map<String, dynamic> json) {
     return AssessmentDetailItemResponse(
-      questionId: json['question_id'] as int,
-      questionText: json['question_text'] as String,
-      selectedOptionId: json['selected_option_id'] as int,
-      optionText: json['option_text'] as String,
-      scoreEarned: json['score_earned'] as int,
+      questionId: json['questionId'] as int,
+      questionText: json['questionText'] as String,
+      selectedOptionId: json['selectedOptionId'] as int,
+      optionText: json['optionText'] as String,
+      scoreEarned: json['scoreEarned'] as int,
     );
   }
 
@@ -58,12 +58,12 @@ class AssessmentDetailResponse {
 
   factory AssessmentDetailResponse.fromJson(Map<String, dynamic> json) {
     return AssessmentDetailResponse(
-      assessmentId: json['assessment_id'] as int,
-      caseId: json['case_id'] as String,
-      evaluationDateTime: DateTime.parse(json['evaluation_datetime'] as String),
-      podContext: json['pod_context'] as int,
-      totalScore: json['total_score'] as int,
-      triageColor: json['triage_color'] as String,
+      assessmentId: json['assessmentId'] as int,
+      caseId: json['caseId'] as String,
+      evaluationDateTime: DateTime.parse(json['evaluationDatetime'] as String),
+      podContext: json['podContext'] as int,
+      totalScore: json['totalScore'] as int,
+      triageColor: json['triageColor'] as String,
       details: (json['details'] as List<dynamic>)
           .map(
             (e) => AssessmentDetailItemResponse.fromJson(

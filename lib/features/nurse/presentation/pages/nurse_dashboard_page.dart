@@ -480,7 +480,10 @@ class _PriorityPatientList extends StatelessWidget {
       return a.pod.compareTo(b.pod);
     });
 
-    final displayPatients = priorityPatients.take(3).toList();
+    final displayPatients = priorityPatients
+        .where((p) => p.status == PatientStatus.red)
+        .take(3)
+        .toList();
 
     return Column(
       children: displayPatients
@@ -515,7 +518,12 @@ class _PriorityPatientCard extends StatelessWidget {
   PatientStatus get status => patient.status;
   String get code => patient.code;
   String get name => patient.name;
-  String get pod => 'POD ${patient.pod}';
+  String get pod {
+    if (patient.pod.startsWith('POD')) {
+      return patient.pod;
+    }
+    return 'POD ${patient.pod}';
+  }
   String get room => roomLabel(patient.room);
   String get symptom {
     switch (patient.status) {

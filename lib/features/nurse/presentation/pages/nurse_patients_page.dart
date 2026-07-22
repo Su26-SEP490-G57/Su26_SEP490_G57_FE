@@ -7,9 +7,9 @@ import 'dart:math';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
-import 'package:poms/features/nurse/domain/models/operation_type.dart';
+//import 'package:poms/features/nurse/domain/models/operation_type.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
-import 'package:poms/features/nurse/presentation/providers/operation_type_provider.dart';
+//import 'package:poms/features/nurse/presentation/providers/operation_type_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/patient_pagination.dart';
 
 class NursePatientsPage extends ConsumerStatefulWidget {
@@ -36,9 +36,7 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
   String _searchQuery = '';
 
   // Filter state — null = "Tất cả"
-  String? _selectedPod;
-  OperationType? _selectedOperationType;
-  String? _selectedLevel;
+  final Set<PatientStatus> _selectedStatuses = {PatientStatus.red};
 
   @override
   void dispose() {
@@ -55,14 +53,24 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
           p.name.toLowerCase().contains(q) ||
           p.code.toLowerCase().contains(q) ||
           p.room.toLowerCase().contains(q);
-      final matchPod = _selectedPod == null || p.pod == _selectedPod;
-      final matchStatus =
-          _selectedLevel == null || p.status.name == _selectedLevel;
-      final matchOperationType =
-          _selectedOperationType == null ||
-          p.operationTypeId == _selectedOperationType!.id;
-      return matchSearch && matchPod && matchOperationType && matchStatus;
+      final matchStatus = _selectedStatuses.contains(p.status);
+
+      return matchSearch && matchStatus;
     }).toList();
+  }
+
+  void _toggleStatus(PatientStatus status) {
+    setState(() {
+      if (_selectedStatuses.contains(status)) {
+        if (_selectedStatuses.length > 1) {
+          _selectedStatuses.remove(status);
+        }
+      } else {
+        _selectedStatuses.add(status);
+      }
+
+      _currentPage = 1;
+    });
   }
 
   List<PatientSummary> _paginate(List<PatientSummary> patients) {
@@ -81,7 +89,7 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
   Widget build(BuildContext context) {
     final patientState = ref.watch(patientNotifierProvider);
 
-    final operationTypeState = ref.watch(operationTypeNotifierProvider);
+    //final operationTypeState = ref.watch(operationTypeNotifierProvider);
     if (patientState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -104,10 +112,7 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     return Column(
       children: [
         // ── Top App Bar ──────────────────────────────────────────────
-        _TopAppBar(
-          onSearchTap: () => FocusScope.of(context).requestFocus(),
-          onFilterTap: () => _showFilterSheet(context),
-        ),
+        const _TopAppBar(),
 
         // ── Body ─────────────────────────────────────────────────────
         Expanded(
@@ -128,15 +133,8 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
 
               // Filter chips row
               _FilterChipsRow(
-                selectedPod: _selectedPod,
-                selectedPathway: _selectedOperationType?.name,
-                selectedAiLevel: _selectedLevel,
-                onPodTap: () => _showPodPicker(context),
-                onPathwayTap: () => _showOperationTypePicker(
-                  context,
-                  operationTypeState.operationTypes,
-                ),
-                onAiLevelTap: () => _showAiLevelPicker(context),
+                selectedStatuses: _selectedStatuses,
+                onStatusTap: _toggleStatus,
               ),
               const SizedBox(height: 10),
 
@@ -227,159 +225,6 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
       ],
     );
   }
-
-  void _showFilterSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _FilterSheet(
-        selectedPod: _selectedPod,
-        selectedAiLevel: _selectedLevel,
-        onApply: (pod, aiLevel) {
-          setState(() {
-            _selectedPod = pod;
-            _selectedLevel = aiLevel;
-            _currentPage = 1;
-          });
-          Navigator.of(context).pop();
-        },
-        onReset: () {
-          setState(() {
-            _selectedPod = null;
-            _selectedLevel = null;
-          });
-          Navigator.of(context).pop();
-        },
-      ),
-    );
-  }
-
-  void _showPodPicker(BuildContext context) {
-    _showSimplePicker(
-      context,
-      title: 'Chọn POD',
-      options: const ['POD 1', 'POD 2', 'POD 3', 'POD 4', 'POD 5'],
-      selected: _selectedPod,
-      onSelect: (v) => setState(() {
-        _selectedPod = v;
-        _currentPage = 1;
-      }),
-    );
-  }
-
-  void _showOperationTypePicker(
-    BuildContext context,
-    List<OperationType> operationTypes,
-  ) {
-    _showSimplePicker(
-      context,
-      title: 'Chọn loại phẫu thuật',
-      options: operationTypes.map((e) => e.name).toList(),
-      selected: _selectedOperationType?.name,
-      onSelect: (selectedName) {
-        if (selectedName == null) {
-          setState(() {
-            _selectedOperationType = null;
-            _currentPage = 1;
-          });
-          return;
-        }
-
-        final selected = operationTypes.firstWhere(
-          (e) => e.name == selectedName,
-        );
-
-        setState(() {
-          _selectedOperationType = selected;
-          _currentPage = 1;
-        });
-      },
-    );
-  }
-
-  void _showAiLevelPicker(BuildContext context) {
-    _showSimplePicker(
-      context,
-      title: 'Chọn mức độ',
-      options: const ['Red', 'Yellow', 'Green'],
-      optionLabels: const ['RED', 'YELLOW', 'GREEN'],
-      selected: _selectedLevel,
-      onSelect: (value) {
-        setState(() {
-          _selectedLevel = value;
-          _currentPage = 1;
-        });
-      },
-    );
-  }
-
-  void _showSimplePicker(
-    BuildContext context, {
-    required String title,
-    required List<String> options,
-    required ValueChanged<String?> onSelect,
-    List<String>? optionLabels,
-    String? selected,
-  }) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFFAF8FF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFC2C6D8),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF191B24),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // "Tất cả" option
-            _PickerItem(
-              label: 'Tất cả',
-              isSelected: selected == null,
-              onTap: () {
-                onSelect(null);
-                Navigator.of(context).pop();
-              },
-            ),
-            ...options.asMap().entries.map((e) {
-              final label = optionLabels?[e.key] ?? e.value;
-              return _PickerItem(
-                label: label,
-                isSelected: selected == e.value,
-                onTap: () {
-                  onSelect(e.value);
-                  Navigator.of(context).pop();
-                },
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -387,10 +232,10 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TopAppBar extends StatelessWidget {
-  const _TopAppBar({required this.onSearchTap, required this.onFilterTap});
+  const _TopAppBar();
 
-  final VoidCallback onSearchTap;
-  final VoidCallback onFilterTap;
+  //final VoidCallback onSearchTap;
+  //final VoidCallback onFilterTap;
 
   @override
   Widget build(BuildContext context) {
@@ -418,17 +263,6 @@ class _TopAppBar extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.search_rounded, color: Colors.white),
-                onPressed: onSearchTap,
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.filter_list_rounded,
-                  color: Colors.white,
-                ),
-                onPressed: onFilterTap,
-              ),
             ],
           ),
         ),
@@ -450,7 +284,7 @@ class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
+      height: 40,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -481,13 +315,13 @@ class _SearchBar extends StatelessWidget {
           prefixIcon: Icon(
             Icons.search_rounded,
             color: Color(0xFF727687),
-            size: 22,
+            size: 20,
           ),
           filled: false,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         ),
       ),
     );
@@ -500,47 +334,87 @@ class _SearchBar extends StatelessWidget {
 
 class _FilterChipsRow extends StatelessWidget {
   const _FilterChipsRow({
-    required this.selectedPod,
-    required this.selectedPathway,
-    required this.selectedAiLevel,
-    required this.onPodTap,
-    required this.onPathwayTap,
-    required this.onAiLevelTap,
+    required this.selectedStatuses,
+    required this.onStatusTap,
   });
 
-  final String? selectedPod;
-  final String? selectedPathway;
-  final String? selectedAiLevel;
-  final VoidCallback onPodTap;
-  final VoidCallback onPathwayTap;
-  final VoidCallback onAiLevelTap;
+  final Set<PatientStatus> selectedStatuses;
+  final ValueChanged<PatientStatus> onStatusTap;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _FilterChip(
-            label: selectedPod ?? 'Tất cả POD',
-            isActive: selectedPod != null,
-            onTap: onPodTap,
+    return Row(
+      children: [
+        Expanded(
+          child: _StatusFilterChip(
+            label: 'RED',
+            status: PatientStatus.red,
+            selected: selectedStatuses.contains(PatientStatus.red),
+            onTap: () => onStatusTap(PatientStatus.red),
           ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: selectedPathway ?? 'Tất cả loại phẫu thuật',
-            isActive: selectedPathway != null,
-            onTap: onPathwayTap,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatusFilterChip(
+            label: 'YELLOW',
+            status: PatientStatus.yellow,
+            selected: selectedStatuses.contains(PatientStatus.yellow),
+            onTap: () => onStatusTap(PatientStatus.yellow),
           ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: selectedAiLevel != null
-                ? selectedAiLevel!.toUpperCase()
-                : 'Tất cả mức độ',
-            isActive: selectedAiLevel != null,
-            onTap: onAiLevelTap,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatusFilterChip(
+            label: 'GREEN',
+            status: PatientStatus.green,
+            selected: selectedStatuses.contains(PatientStatus.green),
+            onTap: () => onStatusTap(PatientStatus.green),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusFilterChip extends StatelessWidget {
+  const _StatusFilterChip({
+    required this.label,
+    required this.status,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final PatientStatus status;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (status) {
+      PatientStatus.red => const Color(0xFFBA1A1A),
+      PatientStatus.yellow => const Color(0xFFA33200),
+      PatientStatus.green => const Color(0xFF006A61),
+    };
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: .12) : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: selected ? color : const Color(0xFFC2C6D8)),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? color : const Color(0xFF727687),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }

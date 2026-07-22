@@ -110,6 +110,7 @@ class PatientNotifier extends StateNotifier<PatientState> {
         limit: patientPage.limit,
       );
     } catch (e) {
+
       state = state.copyWith(
         status: PatientStatusState.error,
         errorMessage: e.toString(),
