@@ -4,11 +4,15 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Default [FirebaseOptions] for use with your Firebase apps.
+/// Default [FirebaseOptions] for the `prod` flavor.
+///
+/// Currently points at the same Firebase project as dev/staging. Once a
+/// dedicated prod Firebase project exists, regenerate this file with
+/// `flutterfire configure --out=lib/configs/firebase_options_prod.dart`.
 ///
 /// Example:
 /// ```dart
-/// import 'firebase_options.dart';
+/// import 'firebase_options_prod.dart';
 /// // ...
 /// await Firebase.initializeApp(
 ///   options: DefaultFirebaseOptions.currentPlatform,

@@ -82,6 +82,7 @@ jobs:
             --flavor ${{ inputs.environment }} \
             --build-name="${{ steps.versioning.outputs.version_name }}" \
             --build-number="${{ steps.versioning.outputs.version_code }}" \
+            --dart-define=FLAVOR=${{ inputs.environment }} \
             --dart-define=API_BASE_URL=${{ vars.API_BASE_URL }} \
             --dart-define=API_RECEIVE_TIMEOUT=${{ vars.API_RECEIVE_TIMEOUT }} \
             --dart-define=API_CONNECT_TIMEOUT=${{ vars.API_CONNECT_TIMEOUT }} \
