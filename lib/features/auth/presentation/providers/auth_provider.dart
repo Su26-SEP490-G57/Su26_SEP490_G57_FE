@@ -122,6 +122,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String username,
     required String password,
     bool rememberMe = false,
+    String? deviceFcmToken,
   }) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
@@ -129,6 +130,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         username: username,
         password: password,
         rememberMe: rememberMe,
+        deviceFcmToken: deviceFcmToken,
       );
       state = AuthState(
         status: AuthStatus.authenticated,

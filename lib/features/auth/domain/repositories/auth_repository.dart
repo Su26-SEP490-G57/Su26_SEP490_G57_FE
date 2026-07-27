@@ -18,6 +18,7 @@ abstract interface class AuthRepository {
     required String username,
     required String password,
     bool rememberMe = false,
+    String? deviceFcmToken,
   });
 
   /// Đăng xuất — xóa tất cả tokens và profile khỏi mọi storage.

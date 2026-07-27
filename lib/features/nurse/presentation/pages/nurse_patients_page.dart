@@ -347,7 +347,7 @@ class _FilterChipsRow extends StatelessWidget {
       children: [
         Expanded(
           child: _StatusFilterChip(
-            label: 'RED',
+            label: 'Đỏ',
             status: PatientStatus.red,
             selected: selectedStatuses.contains(PatientStatus.red),
             onTap: () => onStatusTap(PatientStatus.red),
@@ -356,7 +356,7 @@ class _FilterChipsRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: _StatusFilterChip(
-            label: 'YELLOW',
+            label: 'Vàng',
             status: PatientStatus.yellow,
             selected: selectedStatuses.contains(PatientStatus.yellow),
             onTap: () => onStatusTap(PatientStatus.yellow),
@@ -365,7 +365,7 @@ class _FilterChipsRow extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: _StatusFilterChip(
-            label: 'GREEN',
+            label: 'Xanh',
             status: PatientStatus.green,
             selected: selectedStatuses.contains(PatientStatus.green),
             onTap: () => onStatusTap(PatientStatus.green),

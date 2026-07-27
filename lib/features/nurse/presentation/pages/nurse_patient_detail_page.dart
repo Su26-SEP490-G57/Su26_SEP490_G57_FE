@@ -33,18 +33,17 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: _tabs.length, vsync: this);
     _patient =
         widget.patient ??
         kMockPatients.firstWhere(
           (p) => p.code == widget.patientId,
           orElse: () => kMockPatients.first,
         );
-    _tabController = TabController(length: _tabs.length, vsync: this);
-    _tabController.addListener(() => setState(() {}));
     Future.microtask(() {
       ref
           .read(assessmentNotifierProvider.notifier)
-          .loadLatestAssessment(_patient.code);
+          .loadLatestAssessment(widget.patientId);
     });
   }
 
@@ -352,20 +351,24 @@ class _OverviewTab extends StatelessWidget {
     required this.onAssessmentTap,
   });
 
-  final PatientSummary patient;
+  final PatientSummary? patient;
   final AssessmentState assessmentState;
   final VoidCallback onAssessmentTap;
 
   @override
   Widget build(BuildContext context) {
+    if (patient == null) {
+      return const Center(child: Text('Không có thông tin bệnh nhân'));
+    }
+    final p = patient!;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
-        _InfoGrid(patient: patient),
+        _InfoGrid(patient: p),
         const SizedBox(height: 16),
 
-        if (patient.needsIntervention) ...[
-          _AlertBanner(patient: patient),
+        if (p.needsIntervention) ...[
+          _AlertBanner(patient: p),
           const SizedBox(height: 16),
         ],
         const Text(
@@ -379,7 +382,7 @@ class _OverviewTab extends StatelessWidget {
           ),
         ),
         _SummaryGrid(
-          patient: patient,
+          patient: p,
           assessmentState: assessmentState,
           onAssessmentTap: onAssessmentTap,
         ),

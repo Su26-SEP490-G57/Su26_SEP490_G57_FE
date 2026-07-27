@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "602989772547",
+    "project_id": "sep490-g57-poms",
+    "storage_bucket": "sep490-g57-poms.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:602989772547:android:b2dd37593062a8fe957336",
+        "android_client_info": {
+          "package_name": "android.app.poms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDIGOdAGkoIxW5S3t45b3Phc1_oPVFeC0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:602989772547:android:156783da7923332c957336",
+        "android_client_info": {
+          "package_name": "android.app.poms.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDIGOdAGkoIxW5S3t45b3Phc1_oPVFeC0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/shared/widgets/custom_checkbox.dart';
@@ -33,12 +34,15 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
     context.hideKeyboard();
     if (!_formKey.currentState!.validate()) return;
 
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+
     await ref
         .read(authNotifierProvider.notifier)
         .signIn(
           username: _usernameController.text.trim(),
           password: _passwordController.text,
           rememberMe: _rememberMe,
+          deviceFcmToken: fcmToken,
         );
   }
 

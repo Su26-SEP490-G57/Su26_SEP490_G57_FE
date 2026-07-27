@@ -5,6 +5,7 @@ import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/shared/widgets/custom_checkbox.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/auth/presentation/widgets/login_shared_widgets.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class PatientLoginForm extends ConsumerStatefulWidget {
   const PatientLoginForm({required this.onSwitchToNurse, super.key});
@@ -33,12 +34,15 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
     context.hideKeyboard();
     if (!_formKey.currentState!.validate()) return;
 
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+
     await ref
         .read(authNotifierProvider.notifier)
         .signIn(
           username: _idController.text.trim(),
           password: _passwordController.text,
           rememberMe: _rememberMe,
+          deviceFcmToken: fcmToken,
         );
   }
 
