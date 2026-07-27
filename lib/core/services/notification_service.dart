@@ -32,9 +32,11 @@ class AppNotificationPayload {
       title: normalized['title'] ?? 'Thông báo',
       body: normalized['body'] ?? '',
       caseId: normalized['caseId'] ?? normalized['case_id'],
-      assessmentId: int.tryParse(normalized['assessmentId'] ?? '') ??
+      assessmentId:
+          int.tryParse(normalized['assessmentId'] ?? '') ??
           int.tryParse(normalized['assessment_id'] ?? ''),
-      totalScore: int.tryParse(normalized['totalScore'] ?? '') ??
+      totalScore:
+          int.tryParse(normalized['totalScore'] ?? '') ??
           int.tryParse(normalized['total_score'] ?? ''),
       triageColor: normalized['triageColor'] ?? normalized['triage_color'],
       route: normalized['route'],
@@ -56,14 +58,14 @@ class AppNotificationPayload {
   final String? route;
 
   Map<String, dynamic> toMap() => {
-        'title': title,
-        'body': body,
-        if (caseId != null) 'caseId': caseId,
-        if (assessmentId != null) 'assessmentId': assessmentId,
-        if (totalScore != null) 'totalScore': totalScore,
-        if (triageColor != null) 'triageColor': triageColor,
-        if (route != null) 'route': route,
-      };
+    'title': title,
+    'body': body,
+    if (caseId != null) 'caseId': caseId,
+    if (assessmentId != null) 'assessmentId': assessmentId,
+    if (totalScore != null) 'totalScore': totalScore,
+    if (triageColor != null) 'triageColor': triageColor,
+    if (route != null) 'route': route,
+  };
 
   String toJsonString() => jsonEncode(toMap());
 }
@@ -79,8 +81,7 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
 
-  static const AndroidNotificationChannel _channel =
-      AndroidNotificationChannel(
+  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'patient_alert_channel',
     'Patient Alerts',
     description: 'Notifications for patient alerts',
@@ -88,12 +89,11 @@ class NotificationService {
   );
 
   Future<void> initialize() async {
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const settings = InitializationSettings(
-      android: androidSettings,
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
     );
+
+    const settings = InitializationSettings(android: androidSettings);
 
     await _notifications.initialize(
       settings,
@@ -104,32 +104,35 @@ class NotificationService {
           payload,
         );
       },
-      onDidReceiveBackgroundNotificationResponse:
-          notificationTapBackground,
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
     await _notifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(_channel);
   }
 
-    Future<void> requestPermissions() async {
+  Future<void> requestPermissions() async {
     await _notifications
-      .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
-      ?.requestNotificationsPermission();
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
 
     await _notifications
-      .resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>()
-      ?.requestPermissions(alert: true, badge: true, sound: true);
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
 
     await _notifications
-      .resolvePlatformSpecificImplementation<
-        MacOSFlutterLocalNotificationsPlugin>()
-      ?.requestPermissions(alert: true, badge: true, sound: true);
-    }
+        .resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin
+        >()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+  }
 
   Future<void> showNotification({
     required String title,
