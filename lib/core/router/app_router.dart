@@ -24,18 +24,21 @@ import 'package:poms/features/patient/presentation/pages/patient_dashboard_page.
 import 'package:poms/features/patient/presentation/pages/patient_diet_guidance_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_notifications_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_profile_page.dart';
+import 'package:poms/core/services/notification_service.dart';
 import 'package:poms/core/constants/app_routes.dart';
 
 // GoRouter được tạo 1 lần duy nhất, dùng refreshListenable để trigger redirect
 // khi auth state thay đổi — tránh recreate router mỗi lần emit.
 final routerProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _AuthRefreshNotifier();
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
 
   ref.listen<AsyncValue<UserModel?>>(authStateProvider, (_, _) {
     refreshNotifier.notify();
   });
 
   final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
     refreshListenable: refreshNotifier,
@@ -51,6 +54,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoading) return isSplash ? null : AppRoutes.splash;
 
       if (!isAuthenticated) return isLogin ? null : AppRoutes.login;
+
+      final pending = NotificationService.instance.pendingNotification.value;
+
+      if (pending != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final navigator = rootNavigatorKey.currentContext;
+          if (navigator == null) return;
+          NotificationService.instance.consumePendingNotification();
+          if (pending.route == 'assessment') {
+            navigator.go(AppRoutes.patientAssessment);
+            return;
+          }
+
+          if (pending.route == 'patient_detail' && pending.caseId != null) {
+            navigator.go('${AppRoutes.nursePatients}/${pending.caseId}');
+          }
+        });
+      }
 
       final role = user.primaryRole;
 

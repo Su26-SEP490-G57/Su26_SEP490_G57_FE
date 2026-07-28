@@ -594,7 +594,7 @@ class _PriorityPatientCard extends StatelessWidget {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    '$code - $name',
+                                    name,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -609,21 +609,11 @@ class _PriorityPatientCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            pod,
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                              color: Color(0xFF424656),
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        room,
+                        '$room • $pod',
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 12,

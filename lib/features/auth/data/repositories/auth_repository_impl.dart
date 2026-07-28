@@ -58,11 +58,13 @@ class AuthRepositoryImpl implements AuthRepository {
     required String username,
     required String password,
     bool rememberMe = false,
+    String? deviceFcmToken,
   }) async {
     try {
       final result = await _dataSource.login(
         username: username,
         password: password,
+        deviceFcmToken: deviceFcmToken,
       );
 
       _accessToken = result.accessToken;

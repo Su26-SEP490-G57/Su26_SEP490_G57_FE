@@ -12,12 +12,17 @@ class AuthRemoteDataSource {
   Future<LoginResult> login({
     required String username,
     required String password,
+    String? deviceFcmToken,
   }) async {
     try {
       final requestData = <String, dynamic>{
         'username': username,
         'password': password,
       };
+
+      if (deviceFcmToken != null && deviceFcmToken.isNotEmpty) {
+        requestData['device'] = {'fcmToken': deviceFcmToken};
+      }
 
       final response = await _dio.post<Map<String, dynamic>>(
         AppConstants.endpointLogin,

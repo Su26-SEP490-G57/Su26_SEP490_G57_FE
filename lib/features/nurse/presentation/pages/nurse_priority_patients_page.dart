@@ -258,10 +258,15 @@ class _NursePriorityPatientsPageState
                               padding: const EdgeInsets.only(bottom: 10),
                               child: _PatientCard(
                                 data: p,
-                                onTap: () => context.push(
-                                  AppRoutes.nursePatientDetailPath(p.code),
-                                  extra: p,
-                                ),
+                                onTap: () {
+                                  debugPrint('push code = ${p.code}');
+                                  debugPrint('push name = ${p.name}');
+
+                                  context.push(
+                                    AppRoutes.nursePatientDetailPath(p.code),
+                                    extra: p,
+                                  );
+                                },
                               ),
                             ),
                           ),
