@@ -9,7 +9,9 @@ import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/patient/domain/models/survey_models.dart';
+import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
 import 'package:poms/features/patient/presentation/providers/survey_provider.dart';
+import 'package:poms/features/patient/presentation/widgets/locked_pod_banner.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page
@@ -32,6 +34,7 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
   Widget build(BuildContext context) {
     final questionsAsync = ref.watch(surveyQuestionsProvider);
     final assessmentState = ref.watch(assessmentNotifierProvider);
+    final currentPodAsync = ref.watch(currentPodProvider);
 
     return questionsAsync.when(
       loading: () => _LoadingScreen(onBack: () => context.pop()),
@@ -73,6 +76,13 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      currentPodAsync.when(
+                        data: (pod) => pod != null && pod.isLocked
+                            ? LockedPodBanner(currentPod: pod)
+                            : const SizedBox.shrink(),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, _) => const SizedBox.shrink(),
+                      ),
                       _ProgressBar(
                         progress: progress,
                         current: _currentIndex + 1,

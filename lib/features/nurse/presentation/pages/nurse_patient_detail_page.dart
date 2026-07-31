@@ -28,7 +28,7 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
   late final TabController _tabController;
   late final PatientSummary _patient;
 
-  static const _tabs = ['Tổng quan', 'Assessment', 'Ghi chú'];
+  static const _tabs = ['Tổng quan', 'Đánh giá triệu chứng', 'Ghi chú'];
 
   @override
   void initState() {

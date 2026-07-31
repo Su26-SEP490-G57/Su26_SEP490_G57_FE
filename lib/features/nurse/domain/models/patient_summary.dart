@@ -5,9 +5,9 @@ enum PatientStatus { red, yellow, green }
 
 extension PatientStatusX on PatientStatus {
   String get label => switch (this) {
-    PatientStatus.red => 'RED',
-    PatientStatus.yellow => 'YELLOW',
-    PatientStatus.green => 'GREEN',
+    PatientStatus.red => 'ĐỎ',
+    PatientStatus.yellow => 'VÀNG',
+    PatientStatus.green => 'XANH',
   };
 
   Color get badgeBg => switch (this) {

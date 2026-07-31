@@ -191,7 +191,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     errorBuilder: (context, state) =>
-        Scaffold(body: Center(child: Text('Page not found: ${state.uri}'))),
+        Scaffold(body: Center(child: Text('Trang không tồn tại: ${state.uri}'))),
   );
 
   ref.onDispose(router.dispose);

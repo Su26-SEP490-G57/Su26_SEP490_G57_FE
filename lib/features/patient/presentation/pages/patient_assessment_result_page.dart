@@ -51,7 +51,7 @@ class _LevelConfig {
   static _LevelConfig from(_ResultLevel level) {
     return switch (level) {
       _ResultLevel.green => const _LevelConfig(
-        label: 'GREEN',
+        label: 'XANH - AN TOÀN',
         scoreRange: '(0–2 điểm)',
         primaryColor: Color(0xFF006E2F),
         bgColor: Color(0xFFF0FFF4),
@@ -64,7 +64,7 @@ class _LevelConfig {
             'Mẹo nhỏ: Hãy nhai thật kỹ và ăn từng miếng nhỏ để hỗ trợ hệ tiêu hóa của bạn tốt nhất nhé.',
       ),
       _ResultLevel.yellow => const _LevelConfig(
-        label: 'YELLOW',
+        label: 'VÀNG - CẦN THEO DÕI',
         scoreRange: '(3–5 điểm)',
         primaryColor: Color(0xFF735C00),
         bgColor: Color(0xFFFFFBEB),
@@ -78,7 +78,7 @@ class _LevelConfig {
             'Lưu ý: Nếu triệu chứng không cải thiện sau vài giờ, hãy báo ngay cho điều dưỡng phụ trách.',
       ),
       _ResultLevel.red => const _LevelConfig(
-        label: 'RED',
+        label: 'ĐỎ - CẦN CAN THIỆP',
         scoreRange: '(6+ điểm)',
         primaryColor: Color(0xFFBA1A1A),
         bgColor: Color(0xFFFFF5F5),
@@ -345,7 +345,7 @@ class _ActionButtons extends StatelessWidget {
           width: double.infinity,
           height: 56,
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () => context.go(AppRoutes.patientDietGuidance),
             icon: const Icon(Icons.restaurant_rounded),
             label: const Text('Xem hướng dẫn ăn'),
             style: ElevatedButton.styleFrom(
