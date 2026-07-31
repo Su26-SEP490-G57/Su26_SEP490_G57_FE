@@ -30,7 +30,7 @@ class _PatientNotificationsPageState
         scrolledUnderElevation: 0,
         centerTitle: true,
         title: const Text(
-          'Lịch sử & Thông báo',
+          'Thông báo hệ thống',
           style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 18,
@@ -38,6 +38,14 @@ class _PatientNotificationsPageState
             color: AppColors.onSurface,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history_rounded, color: AppColors.primary),
+            tooltip: 'Lịch sử đánh giá',
+            onPressed: () => context.go(AppRoutes.patientAssessmentHistory),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: currentPodAsync.when(
         data: (pod) {

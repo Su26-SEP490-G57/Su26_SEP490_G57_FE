@@ -62,8 +62,9 @@ class _PatientBottomNav extends StatelessWidget {
                 icon: Icons.history_outlined,
                 iconFilled: Icons.history_rounded,
                 label: 'Lịch sử',
-                isActive: location == AppRoutes.patientNotifications,
-                onTap: () => context.go(AppRoutes.patientNotifications),
+                isActive: location == AppRoutes.patientAssessmentHistory ||
+                    location == AppRoutes.patientNotifications,
+                onTap: () => context.go(AppRoutes.patientAssessmentHistory),
               ),
               _NavItem(
                 icon: Icons.person_outlined,

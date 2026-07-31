@@ -24,6 +24,7 @@ abstract final class AppRoutes {
   static const String patientRecovery = '/patient/recovery';
   static const String patientAssessment = '/patient/assessment';
   static const String patientAssessmentResult = '/patient/assessment/result';
+  static const String patientAssessmentHistory = '/patient/assessment-history';
   static const String patientDietGuidance = '/patient/diet-guidance';
 
   // Helpers for parameterized routes
