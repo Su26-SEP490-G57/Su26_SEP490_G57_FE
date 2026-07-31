@@ -8,18 +8,17 @@ import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/features/patient/domain/models/survey_models.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Score thresholds
-// Tổng điểm max = 11 (5 câu: 2+3+2+2+2)
-// GREEN  : 0–2  — dung nạp tốt
-// YELLOW : 3–5  — cần theo dõi thêm
-// RED    : 6+   — cần can thiệp sớm
+// Score thresholds (SRS & Backend alignment)
+// GREEN  : 0–1  — an toàn / dung nạp tốt
+// YELLOW : 2–3  — cần theo dõi
+// RED    : 4+   — cần can thiệp sớm
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum _ResultLevel { green, yellow, red }
 
 _ResultLevel _levelFromScore(int score) {
-  if (score <= 2) return _ResultLevel.green;
-  if (score <= 5) return _ResultLevel.yellow;
+  if (score <= 1) return _ResultLevel.green;
+  if (score <= 3) return _ResultLevel.yellow;
   return _ResultLevel.red;
 }
 
@@ -52,7 +51,7 @@ class _LevelConfig {
     return switch (level) {
       _ResultLevel.green => const _LevelConfig(
         label: 'XANH - AN TOÀN',
-        scoreRange: '(0–2 điểm)',
+        scoreRange: '(0–1 điểm)',
         primaryColor: Color(0xFF006E2F),
         bgColor: Color(0xFFF0FFF4),
         cardBgColor: Color(0xFFD1FAE5),
@@ -65,7 +64,7 @@ class _LevelConfig {
       ),
       _ResultLevel.yellow => const _LevelConfig(
         label: 'VÀNG - CẦN THEO DÕI',
-        scoreRange: '(3–5 điểm)',
+        scoreRange: '(2–3 điểm)',
         primaryColor: Color(0xFF735C00),
         bgColor: Color(0xFFFFFBEB),
         cardBgColor: Color(0xFFFEF9C3),
@@ -79,7 +78,7 @@ class _LevelConfig {
       ),
       _ResultLevel.red => const _LevelConfig(
         label: 'ĐỎ - CẦN CAN THIỆP',
-        scoreRange: '(6+ điểm)',
+        scoreRange: '(4+ điểm)',
         primaryColor: Color(0xFFBA1A1A),
         bgColor: Color(0xFFFFF5F5),
         cardBgColor: Color(0xFFFFDAD6),
@@ -119,7 +118,11 @@ class _PatientAssessmentResultPageState
   @override
   void initState() {
     super.initState();
-    _level = _levelFromScore(widget.result.totalScore);
+    _level = switch (widget.result.triageColor) {
+      TriageColor.yellow => _ResultLevel.yellow,
+      TriageColor.red => _ResultLevel.red,
+      TriageColor.green => _levelFromScore(widget.result.totalScore),
+    };
     _config = _LevelConfig.from(_level);
 
     _confettiCtrl = AnimationController(
@@ -149,11 +152,13 @@ class _PatientAssessmentResultPageState
         children: [
           // ── Confetti (GREEN only) ──────────────────────────────────
           if (_level == _ResultLevel.green)
-            AnimatedBuilder(
-              animation: _confettiCtrl,
-              builder: (_, _) => CustomPaint(
-                painter: _ConfettiPainter(_confettiCtrl.value),
-                size: Size.infinite,
+            IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _confettiCtrl,
+                builder: (_, _) => CustomPaint(
+                  painter: _ConfettiPainter(_confettiCtrl.value),
+                  size: Size.infinite,
+                ),
               ),
             ),
 
@@ -345,7 +350,9 @@ class _ActionButtons extends StatelessWidget {
           width: double.infinity,
           height: 56,
           child: ElevatedButton.icon(
-            onPressed: () => context.go(AppRoutes.patientDietGuidance),
+            onPressed: () {
+              context.go(AppRoutes.patientDietGuidance);
+            },
             icon: const Icon(Icons.restaurant_rounded),
             label: const Text('Xem hướng dẫn ăn'),
             style: ElevatedButton.styleFrom(

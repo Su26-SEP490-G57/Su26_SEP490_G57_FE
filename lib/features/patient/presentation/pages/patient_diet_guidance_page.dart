@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/features/patient/domain/models/pod_protocol_model.dart';
 import 'package:poms/features/patient/presentation/providers/diet_guidance_provider.dart';
 import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
@@ -74,6 +75,17 @@ class PatientDietGuidancePage extends ConsumerWidget {
       pinned: true,
       backgroundColor: AppColors.primary,
       iconTheme: const IconThemeData(color: Colors.white),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go(AppRoutes.patientDashboard);
+          }
+        },
+        tooltip: 'Quay lại',
+      ),
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: true,
         title: const Text(
@@ -226,6 +238,28 @@ class _DietGuidanceContent extends StatelessWidget {
             items: protocol.recommendedDrinks,
             icon: Icons.local_drink_rounded,
             iconColor: Colors.blue,
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: () => context.go(AppRoutes.patientDashboard),
+              icon: const Icon(Icons.home_rounded),
+              label: const Text('Về trang chủ'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 40),
         ],
