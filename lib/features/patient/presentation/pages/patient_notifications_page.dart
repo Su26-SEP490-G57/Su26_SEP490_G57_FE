@@ -56,7 +56,10 @@ class _PatientNotificationsPageState
             children: [
               // Filter tabs
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     _buildFilterChip('all', 'Tất cả'),
@@ -74,13 +77,16 @@ class _PatientNotificationsPageState
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                   children: [
                     // Locked POD Alert Card (Highest Priority System Alert)
-                    if (isLocked && (_selectedFilter == 'all' || _selectedFilter == 'system')) ...[
+                    if (isLocked &&
+                        (_selectedFilter == 'all' ||
+                            _selectedFilter == 'system')) ...[
                       _buildLockedPodAlertCard(context, holdReason),
                       const SizedBox(height: 16),
                     ],
 
                     // Standard Notifications List
-                    if (_selectedFilter == 'all' || _selectedFilter == 'medical') ...[
+                    if (_selectedFilter == 'all' ||
+                        _selectedFilter == 'medical') ...[
                       _buildNotificationItem(
                         icon: Icons.assignment_rounded,
                         iconBgColor: const Color(0xFFE6F9F1),
@@ -102,12 +108,14 @@ class _PatientNotificationsPageState
                             'Chế độ ăn uống và vận động khuyến nghị theo giao thức ERAS cho ngày hiện tại đã sẵn sàng.',
                         time: 'Hôm nay',
                         isUnread: false,
-                        onTap: () => context.push(AppRoutes.patientDietGuidance),
+                        onTap: () =>
+                            context.push(AppRoutes.patientDietGuidance),
                       ),
                       const SizedBox(height: 12),
                     ],
 
-                    if (_selectedFilter == 'all' || _selectedFilter == 'system') ...[
+                    if (_selectedFilter == 'all' ||
+                        _selectedFilter == 'system') ...[
                       _buildNotificationItem(
                         icon: Icons.health_and_safety_rounded,
                         iconBgColor: AppColors.primaryContainer,
@@ -126,9 +134,7 @@ class _PatientNotificationsPageState
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Text('Không thể tải thông báo: $err'),
-        ),
+        error: (err, _) => Center(child: Text('Không thể tải thông báo: $err')),
       ),
     );
   }
@@ -240,7 +246,10 @@ class _PatientNotificationsPageState
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
-                  icon: const Icon(Icons.assignment_turned_in_rounded, size: 18),
+                  icon: const Icon(
+                    Icons.assignment_turned_in_rounded,
+                    size: 18,
+                  ),
                   label: const Text(
                     'Làm khảo sát',
                     style: TextStyle(
@@ -300,7 +309,9 @@ class _PatientNotificationsPageState
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isUnread ? AppColors.primary.withValues(alpha: 0.3) : const Color(0xFFEDEDF9),
+            color: isUnread
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : const Color(0xFFEDEDF9),
           ),
           boxShadow: const [
             BoxShadow(
@@ -335,7 +346,9 @@ class _PatientNotificationsPageState
                           style: TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 15,
-                            fontWeight: isUnread ? FontWeight.w700 : FontWeight.w600,
+                            fontWeight: isUnread
+                                ? FontWeight.w700
+                                : FontWeight.w600,
                             color: AppColors.onSurface,
                           ),
                         ),

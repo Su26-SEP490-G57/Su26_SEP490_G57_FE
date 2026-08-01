@@ -20,8 +20,10 @@ final historyCalendarDaysProvider = Provider<List<DateTime>>((ref) {
 });
 
 /// Query history assessment log for the selected date
-final patientAssessmentHistoryProvider =
-    Provider.family<AssessmentHistoryLog, DateTime>((ref, date) {
+final patientAssessmentHistoryProvider = Provider.family<AssessmentHistoryLog, DateTime>((
+  ref,
+  date,
+) {
   final currentPodState = ref.watch(currentPodProvider).valueOrNull;
   final currentPodNum = currentPodState?.currentPod ?? 2;
   final today = DateTime.now();

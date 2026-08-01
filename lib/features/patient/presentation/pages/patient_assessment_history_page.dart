@@ -15,7 +15,9 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedDate = ref.watch(selectedHistoryDateProvider);
     final calendarDays = ref.watch(historyCalendarDaysProvider);
-    final historyLog = ref.watch(patientAssessmentHistoryProvider(selectedDate));
+    final historyLog = ref.watch(
+      patientAssessmentHistoryProvider(selectedDate),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -104,7 +106,8 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: historyLog.symptoms.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 12),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final item = historyLog.symptoms[index];
                           return _SymptomDetailCard(item: item);
@@ -210,7 +213,8 @@ class _MonthYearAndCalendarHeader extends StatelessWidget {
             separatorBuilder: (context, index) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
               final date = calendarDays[index];
-              final isSelected = date.year == selectedDate.year &&
+              final isSelected =
+                  date.year == selectedDate.year &&
                   date.month == selectedDate.month &&
                   date.day == selectedDate.day;
 
@@ -333,7 +337,7 @@ class _DailyOverviewSummaryCard extends StatelessWidget {
       'Thứ Năm',
       'Thứ Sáu',
       'Thứ Bảy',
-      'Chủ Nhật'
+      'Chủ Nhật',
     ];
     final dayName = weekdays[date.weekday - 1];
     final dayStr = date.day.toString().padLeft(2, '0');
@@ -398,8 +402,10 @@ class _DailyOverviewSummaryCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
@@ -422,8 +428,10 @@ class _DailyOverviewSummaryCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: badgeBg,
                   borderRadius: BorderRadius.circular(20),
@@ -482,8 +490,9 @@ class _DailyOverviewSummaryCard extends StatelessWidget {
                   value: value,
                   minHeight: 8,
                   backgroundColor: const Color(0xFFEDEDF9),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppColors.primary,
+                  ),
                 );
               },
             ),
@@ -541,11 +550,7 @@ class _SymptomDetailCard extends StatelessWidget {
               color: item.status.iconBgColor,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(
-              item.icon,
-              color: item.status.badgeTextColor,
-              size: 22,
-            ),
+            child: Icon(item.icon, color: item.status.badgeTextColor, size: 22),
           ),
           const SizedBox(width: 14),
 
@@ -675,10 +680,7 @@ class _MedicalFeedbackCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _UnassessedDateCard extends StatelessWidget {
-  const _UnassessedDateCard({
-    required this.date,
-    required this.podNumber,
-  });
+  const _UnassessedDateCard({required this.date, required this.podNumber});
 
   final DateTime date;
   final int podNumber;
@@ -774,11 +776,7 @@ class _EncouragementBanner extends StatelessWidget {
       ),
       child: const Row(
         children: [
-          Icon(
-            Icons.emoji_events_rounded,
-            color: Color(0xFFFDE047),
-            size: 32,
-          ),
+          Icon(Icons.emoji_events_rounded, color: Color(0xFFFDE047), size: 32),
           SizedBox(width: 14),
           Expanded(
             child: Column(

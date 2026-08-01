@@ -195,8 +195,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const PatientDietGuidancePage(),
       ),
     ],
-    errorBuilder: (context, state) =>
-        Scaffold(body: Center(child: Text('Trang không tồn tại: ${state.uri}'))),
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(child: Text('Trang không tồn tại: ${state.uri}')),
+    ),
   );
 
   ref.onDispose(router.dispose);

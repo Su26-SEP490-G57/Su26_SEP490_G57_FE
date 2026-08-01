@@ -23,7 +23,10 @@ class PatientProfilePage extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.onSurface),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppColors.onSurface,
+          ),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -45,21 +48,26 @@ class PatientProfilePage extends ConsumerWidget {
       ),
       body: patientProfileAsync.when(
         data: (patientData) {
-          final patientName = user?.fullName ??
+          final patientName =
+              user?.fullName ??
               patientData?['account']?['fullName'] ??
               user?.username ??
               'Bệnh nhân';
-          final caseId = user?.caseId ?? patientData?['caseId'] ?? 'Không xác định';
+          final caseId =
+              user?.caseId ?? patientData?['caseId'] ?? 'Không xác định';
 
           final ageRaw = patientData?['age'];
           final age = (ageRaw != null && ageRaw != '') ? '$ageRaw tuổi' : '--';
 
           final genderRaw = patientData?['gender']?.toString() ?? '--';
-          final gender = (genderRaw.toLowerCase() == 'male' || genderRaw.toLowerCase() == 'nam')
+          final gender =
+              (genderRaw.toLowerCase() == 'male' ||
+                  genderRaw.toLowerCase() == 'nam')
               ? 'Nam'
-              : (genderRaw.toLowerCase() == 'female' || genderRaw.toLowerCase() == 'nữ')
-                  ? 'Nữ'
-                  : genderRaw;
+              : (genderRaw.toLowerCase() == 'female' ||
+                    genderRaw.toLowerCase() == 'nữ')
+              ? 'Nữ'
+              : genderRaw;
 
           final surgeryDateRaw = patientData?['surgeryDate']?.toString();
           String surgeryDate = '--/--/----';
@@ -73,7 +81,8 @@ class PatientProfilePage extends ConsumerWidget {
           }
 
           final operationType =
-              patientData?['operationType']?['name']?.toString() ?? 'Đại trực tràng';
+              patientData?['operationType']?['name']?.toString() ??
+              'Đại trực tràng';
 
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -113,7 +122,10 @@ class PatientProfilePage extends ConsumerWidget {
                       ),
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEDEDF9),
                           borderRadius: BorderRadius.circular(999),
@@ -164,10 +176,16 @@ class PatientProfilePage extends ConsumerWidget {
                       _buildInfoRow(Icons.wc_rounded, 'Giới tính', gender),
                       const Divider(height: 24, color: Color(0xFFF1F1F6)),
                       _buildInfoRow(
-                          Icons.calendar_today_rounded, 'Ngày bắt đầu phẫu thuật', surgeryDate),
+                        Icons.calendar_today_rounded,
+                        'Ngày bắt đầu phẫu thuật',
+                        surgeryDate,
+                      ),
                       const Divider(height: 24, color: Color(0xFFF1F1F6)),
                       _buildInfoRow(
-                          Icons.medical_services_rounded, 'Loại phẫu thuật', operationType),
+                        Icons.medical_services_rounded,
+                        'Loại phẫu thuật',
+                        operationType,
+                      ),
                     ],
                   ),
                 ),
@@ -230,7 +248,10 @@ class PatientProfilePage extends ConsumerWidget {
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
-                      side: const BorderSide(color: AppColors.error, width: 1.5),
+                      side: const BorderSide(
+                        color: AppColors.error,
+                        width: 1.5,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -257,7 +278,11 @@ class PatientProfilePage extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+                const Icon(
+                  Icons.error_outline,
+                  color: AppColors.error,
+                  size: 48,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Không thể tải thông tin y tế:\n$error',
@@ -346,7 +371,10 @@ class PatientProfilePage extends ConsumerWidget {
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.onSurfaceVariant,
+            ),
           ],
         ),
       ),
@@ -549,7 +577,9 @@ class PatientProfilePage extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFEBEE),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -559,7 +589,11 @@ class PatientProfilePage extends ConsumerWidget {
                         color: AppColors.error,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.phone_rounded, color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.phone_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     const Expanded(
@@ -779,7 +813,9 @@ class PatientProfilePage extends ConsumerWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text(
             'Xác nhận đăng xuất',
             style: TextStyle(
@@ -880,4 +916,3 @@ class _ContactDetailRow extends StatelessWidget {
     );
   }
 }
-

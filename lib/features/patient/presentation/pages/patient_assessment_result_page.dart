@@ -22,7 +22,6 @@ _ResultLevel _levelFromScore(int score) {
   return _ResultLevel.red;
 }
 
-
 class _LevelConfig {
   const _LevelConfig({
     required this.label,

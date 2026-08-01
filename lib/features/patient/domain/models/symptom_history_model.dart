@@ -1,30 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:poms/features/patient/domain/models/survey_models.dart';
 
-enum SymptomSeverityStatus {
-  green,
-  yellow,
-  red,
-}
+enum SymptomSeverityStatus { green, yellow, red }
 
 extension SymptomSeverityStatusX on SymptomSeverityStatus {
   Color get badgeBgColor => switch (this) {
-        SymptomSeverityStatus.green => const Color(0xFFE6F9F1),
-        SymptomSeverityStatus.yellow => const Color(0xFFFFF7E6),
-        SymptomSeverityStatus.red => const Color(0xFFFEE2E2),
-      };
+    SymptomSeverityStatus.green => const Color(0xFFE6F9F1),
+    SymptomSeverityStatus.yellow => const Color(0xFFFFF7E6),
+    SymptomSeverityStatus.red => const Color(0xFFFEE2E2),
+  };
 
   Color get badgeTextColor => switch (this) {
-        SymptomSeverityStatus.green => const Color(0xFF10B981),
-        SymptomSeverityStatus.yellow => const Color(0xFFF59E0B),
-        SymptomSeverityStatus.red => const Color(0xFFEF4444),
-      };
+    SymptomSeverityStatus.green => const Color(0xFF10B981),
+    SymptomSeverityStatus.yellow => const Color(0xFFF59E0B),
+    SymptomSeverityStatus.red => const Color(0xFFEF4444),
+  };
 
   Color get iconBgColor => switch (this) {
-        SymptomSeverityStatus.green => const Color(0xFFE6F9F1),
-        SymptomSeverityStatus.yellow => const Color(0xFFFFF7E6),
-        SymptomSeverityStatus.red => const Color(0xFFFEE2E2),
-      };
+    SymptomSeverityStatus.green => const Color(0xFFE6F9F1),
+    SymptomSeverityStatus.yellow => const Color(0xFFFFF7E6),
+    SymptomSeverityStatus.red => const Color(0xFFFEE2E2),
+  };
 }
 
 class SymptomHistoryDetail {
