@@ -31,6 +31,10 @@ class PushNotificationService {
   static final PushNotificationService instance = PushNotificationService._();
 
   Future<void> initialize() async {
+    if (kIsWeb) {
+      debugPrint('Push notification service skipped on web platform.');
+      return;
+    }
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     final messaging = FirebaseMessaging.instance;

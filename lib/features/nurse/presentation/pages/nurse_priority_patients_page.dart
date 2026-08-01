@@ -67,8 +67,8 @@ class _NursePriorityPatientsPageState
   void _showPathwayPicker(BuildContext context) {
     _showSimplePicker(
       context,
-      title: 'Chọn Pathway',
-      options: const ['ERAS', 'Standard', 'Complex'],
+      title: 'Chọn phác đồ',
+      options: const ['ERAS', 'Tiêu chuẩn', 'Phức tạp'],
       selected: _selectedPathway,
       onSelect: (v) => setState(() => _selectedPathway = v),
     );
@@ -79,7 +79,7 @@ class _NursePriorityPatientsPageState
       context,
       title: 'Chọn mức độ',
       options: const ['red', 'yellow'],
-      optionLabels: const ['RED', 'YELLOW'],
+      optionLabels: const ['Đỏ (Nguy cơ)', 'Vàng (Cần theo dõi)'],
       selected: _selectedAiLevel,
       onSelect: (v) => setState(() => _selectedAiLevel = v),
     );

@@ -18,6 +18,7 @@ import 'package:poms/features/nurse/presentation/pages/nurse_reports_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_tasks_page.dart';
 import 'package:poms/features/patient/domain/models/survey_models.dart';
 import 'package:poms/features/patient/presentation/layouts/patient_shell.dart';
+import 'package:poms/features/patient/presentation/pages/patient_assessment_history_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_assessment_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_assessment_result_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_dashboard_page.dart';
@@ -161,6 +162,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const PatientNotificationsPage(),
           ),
           GoRoute(
+            path: AppRoutes.patientAssessmentHistory,
+            builder: (context, state) => const PatientAssessmentHistoryPage(),
+          ),
+          GoRoute(
             path: AppRoutes.patientProfile,
             builder: (context, state) => const PatientProfilePage(),
           ),
@@ -190,8 +195,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const PatientDietGuidancePage(),
       ),
     ],
-    errorBuilder: (context, state) =>
-        Scaffold(body: Center(child: Text('Page not found: ${state.uri}'))),
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(child: Text('Trang không tồn tại: ${state.uri}')),
+    ),
   );
 
   ref.onDispose(router.dispose);

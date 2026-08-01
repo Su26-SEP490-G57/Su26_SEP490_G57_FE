@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poms/configs/flavor/current_firebase_options.dart';
+import 'package:poms/configs/flavor/dev_flavor_config.dart';
 import 'package:poms/configs/flavor/flavor_config.dart';
 import 'package:poms/core/services/notification_service.dart';
 import 'package:poms/core/services/push_notification_service.dart';
@@ -21,11 +22,7 @@ void main({FlavorConfig? flavorConfig}) async {
   await NotificationService.instance.requestPermissions();
   await PushNotificationService.instance.initialize();
 
-  if (flavorConfig != null) {
-    appFlavorConfig = flavorConfig;
-  } else {
-    throw Exception('A FlavorConfig must be provided');
-  }
+  appFlavorConfig = flavorConfig ?? DevFlavorConfig();
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

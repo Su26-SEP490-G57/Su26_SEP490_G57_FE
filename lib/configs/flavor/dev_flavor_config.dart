@@ -20,7 +20,7 @@ class DevFlavorConfig implements FlavorConfig {
   @override
   String get apiBaseUrl {
     if (_rawApiBaseUrl.isEmpty) {
-      throw StateError('API_BASE_URL environment variable is not set.');
+      return 'http://localhost:3000';
     }
     return _rawApiBaseUrl;
   }

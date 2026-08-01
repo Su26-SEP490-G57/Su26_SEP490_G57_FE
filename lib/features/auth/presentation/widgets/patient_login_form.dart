@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -34,7 +35,14 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
     context.hideKeyboard();
     if (!_formKey.currentState!.validate()) return;
 
-    final fcmToken = await FirebaseMessaging.instance.getToken();
+    String? fcmToken;
+    if (!kIsWeb) {
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+      } catch (e) {
+        debugPrint('Failed to get FCM token: $e');
+      }
+    }
 
     await ref
         .read(authNotifierProvider.notifier)
