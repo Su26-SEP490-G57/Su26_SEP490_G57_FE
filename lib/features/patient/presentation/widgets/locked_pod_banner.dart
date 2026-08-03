@@ -84,7 +84,9 @@ class LockedPodBanner extends StatelessWidget {
   String _translateReason(String? reason) {
     if (reason == null || reason.trim().isEmpty) return '';
     var text = reason.trim();
-    if (text.contains('Auto-locked: Reached max POD with concerning health status')) {
+    if (text.contains(
+      'Auto-locked: Reached max POD with concerning health status',
+    )) {
       return 'Tự động tạm dừng: Đã đạt mốc ngày POD tối đa với mức độ sức khỏe cần theo dõi kỹ (Vàng/Đỏ).';
     }
     if (text.startsWith('Auto-locked:')) {

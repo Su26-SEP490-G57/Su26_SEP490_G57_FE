@@ -249,8 +249,8 @@ class _PodSelectorHeader extends StatelessWidget {
                   color: isSelected
                       ? AppColors.primary
                       : isCurrentPatientPod
-                          ? AppColors.primary.withValues(alpha: 0.5)
-                          : const Color(0xFFE2E8F0),
+                      ? AppColors.primary.withValues(alpha: 0.5)
+                      : const Color(0xFFE2E8F0),
                   width: isSelected || isCurrentPatientPod ? 1.8 : 1,
                 ),
                 shape: RoundedRectangleBorder(
@@ -268,11 +268,10 @@ class _PodSelectorHeader extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
-                        fontWeight:
-                            isSelected ? FontWeight.w800 : FontWeight.w600,
-                        color: isSelected
-                            ? Colors.white
-                            : AppColors.onSurface,
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                        color: isSelected ? Colors.white : AppColors.onSurface,
                       ),
                     ),
                     if (isCurrentPatientPod) ...[
@@ -495,10 +494,7 @@ class _ActionsCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _WarningsCard extends StatelessWidget {
-  const _WarningsCard({
-    required this.header,
-    required this.warnings,
-  });
+  const _WarningsCard({required this.header, required this.warnings});
 
   final String header;
   final List<String> warnings;

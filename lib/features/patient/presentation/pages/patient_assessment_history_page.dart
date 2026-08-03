@@ -602,8 +602,6 @@ class _SymptomDetailCard extends StatelessWidget {
   }
 }
 
-
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Unassessed Date Card
 // ─────────────────────────────────────────────────────────────────────────────
@@ -679,7 +677,10 @@ class _UnassessedDateCard extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
               ),
               icon: Icon(
                 isFuture
@@ -702,5 +703,3 @@ class _UnassessedDateCard extends StatelessWidget {
     );
   }
 }
-
-

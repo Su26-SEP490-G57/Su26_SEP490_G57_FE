@@ -118,10 +118,7 @@ const List<PodHealthEducation> podHealthEducationData = [
     podTitle: 'POD3',
     podSubtitle: '72–96 giờ sau phẫu thuật',
     phaseName: 'GIAI ĐOẠN I: HỒI PHỤC SỚM (POD0 → POD4)',
-    goals: [
-      'Tăng mức độ độc lập trong sinh hoạt.',
-      'Duy trì vận động.',
-    ],
+    goals: ['Tăng mức độ độc lập trong sinh hoạt.', 'Duy trì vận động.'],
     actions: [
       'Đi bộ thường xuyên.',
       'Tự thực hiện các sinh hoạt cá nhân nếu có thể.',
@@ -147,10 +144,7 @@ const List<PodHealthEducation> podHealthEducationData = [
     podTitle: 'POD4',
     podSubtitle: '96–120 giờ sau phẫu thuật',
     phaseName: 'GIAI ĐOẠN I: HỒI PHỤC SỚM (POD0 → POD4)',
-    goals: [
-      'Tăng khả năng tự chăm sóc.',
-      'Hiểu rõ hướng dẫn sau xuất viện.',
-    ],
+    goals: ['Tăng khả năng tự chăm sóc.', 'Hiểu rõ hướng dẫn sau xuất viện.'],
     actions: [
       'Tiếp tục vận động hằng ngày.',
       'Dùng thuốc đúng đơn.',
@@ -175,10 +169,7 @@ const List<PodHealthEducation> podHealthEducationData = [
     podTitle: 'POD5',
     podSubtitle: 'Ngày 5 sau phẫu thuật',
     phaseName: 'GIAI ĐOẠN II: TIẾP TỤC HỒI PHỤC (POD5 → POD7)',
-    goals: [
-      'Duy trì hồi phục.',
-      'Tăng khả năng tự chăm sóc.',
-    ],
+    goals: ['Duy trì hồi phục.', 'Tăng khả năng tự chăm sóc.'],
     actions: [
       'Đi bộ nhiều lần trong ngày.',
       'Duy trì tập thở.',
@@ -204,10 +195,7 @@ const List<PodHealthEducation> podHealthEducationData = [
     podTitle: 'POD6',
     podSubtitle: 'Ngày 6 sau phẫu thuật',
     phaseName: 'GIAI ĐOẠN II: TIẾP TỤC HỒI PHỤC (POD5 → POD7)',
-    goals: [
-      'Tăng sức bền.',
-      'Chuẩn bị trở lại sinh hoạt thường ngày.',
-    ],
+    goals: ['Tăng sức bền.', 'Chuẩn bị trở lại sinh hoạt thường ngày.'],
     actions: [
       'Duy trì vận động.',
       'Theo dõi vết mổ.',
@@ -231,10 +219,7 @@ const List<PodHealthEducation> podHealthEducationData = [
     podTitle: 'POD7',
     podSubtitle: 'Ngày 7 sau phẫu thuật',
     phaseName: 'GIAI ĐOẠN II: TIẾP TỤC HỒI PHỤC (POD5 → POD7)',
-    goals: [
-      'Duy trì quá trình hồi phục.',
-      'Chủ động theo dõi sức khỏe.',
-    ],
+    goals: ['Duy trì quá trình hồi phục.', 'Chủ động theo dõi sức khỏe.'],
     actions: [
       'Tiếp tục vận động phù hợp.',
       'Ăn đúng chế độ được hướng dẫn.',
