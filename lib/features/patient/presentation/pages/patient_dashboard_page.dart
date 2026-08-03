@@ -320,22 +320,14 @@ class _ActionGrid extends StatelessWidget {
               labelColor: const Color(0xFF065F46),
               onTap: () => context.push(AppRoutes.patientAssessment),
             ),
-            const _ActionCard(
-              backgroundColor: Color(0xFFF3E8FF),
-              borderColor: Color(0xFFE9D5FF),
-              iconColor: Color(0xFF8B5CF6),
+            _ActionCard(
+              backgroundColor: const Color(0xFFF3E8FF),
+              borderColor: const Color(0xFFE9D5FF),
+              iconColor: const Color(0xFF8B5CF6),
               icon: Icons.menu_book_rounded,
               label: 'Giáo dục sức khỏe',
-              labelColor: Color(0xFF5B21B6),
-            ),
-            const _ActionCard(
-              backgroundColor: Color(0xFFFEE2E2),
-              borderColor: Color(0xFFFECACA),
-              iconColor: Color(0xFFEF4444),
-              icon: Icons.notifications_active_rounded,
-              label: 'Lưu ý tới điều dưỡng',
-              labelColor: Color(0xFF991B1B),
-              pulseIcon: true,
+              labelColor: const Color(0xFF5B21B6),
+              onTap: () => context.push(AppRoutes.patientEducation),
             ),
           ],
         ),
@@ -352,6 +344,7 @@ class _ActionCard extends StatefulWidget {
     required this.icon,
     required this.label,
     required this.labelColor,
+    // ignore: unused_element_parameter
     this.pulseIcon = false,
     this.onTap,
   });
@@ -369,33 +362,8 @@ class _ActionCard extends StatefulWidget {
   State<_ActionCard> createState() => _ActionCardState();
 }
 
-class _ActionCardState extends State<_ActionCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulseCtrl;
-  late final Animation<double> _pulseAnim;
+class _ActionCardState extends State<_ActionCard> {
   bool _pressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _pulseAnim = Tween<double>(
-      begin: 1.0,
-      end: 0.5,
-    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
-    if (widget.pulseIcon) {
-      _pulseCtrl.repeat(reverse: true);
-    }
-  }
-
-  @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -439,16 +407,7 @@ class _ActionCardState extends State<_ActionCard>
                     ),
                   ],
                 ),
-                child: widget.pulseIcon
-                    ? FadeTransition(
-                        opacity: _pulseAnim,
-                        child: Icon(
-                          widget.icon,
-                          color: widget.iconColor,
-                          size: 28,
-                        ),
-                      )
-                    : Icon(widget.icon, color: widget.iconColor, size: 28),
+                child: Icon(widget.icon, color: widget.iconColor, size: 28),
               ),
               const Spacer(),
               // Label

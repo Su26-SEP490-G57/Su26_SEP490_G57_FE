@@ -160,9 +160,17 @@ class _PatientNotificationsPageState
   }
 
   Widget _buildLockedPodAlertCard(BuildContext context, String? holdReason) {
-    final reasonText = holdReason != null && holdReason.isNotEmpty
-        ? holdReason
+    String reasonText = holdReason != null && holdReason.trim().isNotEmpty
+        ? holdReason.trim()
         : 'Đang trong quá trình theo dõi lâm sàng đặc biệt từ đội ngũ y tế.';
+    if (reasonText.contains(
+      'Auto-locked: Reached max POD with concerning health status',
+    )) {
+      reasonText =
+          'Tự động tạm dừng: Đã đạt mốc ngày POD tối đa với mức độ sức khỏe cần theo dõi kỹ (Vàng/Đỏ).';
+    } else if (reasonText.startsWith('Auto-locked:')) {
+      reasonText = reasonText.replaceAll('Auto-locked:', 'Tự động tạm dừng:');
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),

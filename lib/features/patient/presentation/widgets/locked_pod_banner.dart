@@ -11,7 +11,8 @@ class LockedPodBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!currentPod.isLocked) return const SizedBox.shrink();
 
-    final reason = currentPod.holdReason;
+    final rawReason = currentPod.holdReason;
+    final reason = _translateReason(rawReason);
 
     return Container(
       width: double.infinity,
@@ -62,7 +63,7 @@ class LockedPodBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  reason != null && reason.isNotEmpty
+                  reason.isNotEmpty
                       ? 'Lý do: $reason\n\nBạn vẫn có thể tiếp tục xem hướng dẫn hiện tại và thực hiện khảo sát.'
                       : 'Hồ sơ của bạn đang được tạm dừng tiến trình POD. Bạn vẫn có thể tiếp tục xem hướng dẫn và làm khảo sát.',
                   style: const TextStyle(
@@ -78,5 +79,19 @@ class LockedPodBanner extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _translateReason(String? reason) {
+    if (reason == null || reason.trim().isEmpty) return '';
+    var text = reason.trim();
+    if (text.contains(
+      'Auto-locked: Reached max POD with concerning health status',
+    )) {
+      return 'Tự động tạm dừng: Đã đạt mốc ngày POD tối đa với mức độ sức khỏe cần theo dõi kỹ (Vàng/Đỏ).';
+    }
+    if (text.startsWith('Auto-locked:')) {
+      text = text.replaceAll('Auto-locked:', 'Tự động tạm dừng:');
+    }
+    return text;
   }
 }

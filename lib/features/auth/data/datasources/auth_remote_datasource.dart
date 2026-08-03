@@ -115,11 +115,11 @@ class AuthRemoteDataSource {
         if (statusCode >= 500) {
           throw ServerException(
             statusCode: statusCode,
-            message: message ?? 'Server error',
+            message: message ?? 'Lỗi hệ thống phía máy chủ ($statusCode)',
           );
         }
 
-        throw NetworkException(message ?? 'Unknown error ($statusCode)');
+        throw NetworkException(message ?? 'Lỗi không xác định ($statusCode)');
     }
   }
 }

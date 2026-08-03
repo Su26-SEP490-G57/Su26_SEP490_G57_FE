@@ -8,9 +8,13 @@ import 'package:poms/features/patient/domain/repositories/survey_repository.dart
 
 // ── DI ────────────────────────────────────────────────────────────────────────
 
-final surveyRepositoryProvider = Provider<SurveyRepository>((ref) {
+final surveyRemoteDataSourceProvider = Provider<SurveyRemoteDataSource>((ref) {
   final dio = ref.watch(appDioProvider);
-  final dataSource = SurveyRemoteDataSource(dio);
+  return SurveyRemoteDataSource(dio);
+});
+
+final surveyRepositoryProvider = Provider<SurveyRepository>((ref) {
+  final dataSource = ref.watch(surveyRemoteDataSourceProvider);
   return SurveyRepositoryImpl(dataSource);
 });
 

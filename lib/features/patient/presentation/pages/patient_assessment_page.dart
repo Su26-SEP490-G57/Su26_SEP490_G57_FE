@@ -10,6 +10,7 @@ import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/patient/domain/models/survey_models.dart';
 import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
+import 'package:poms/features/patient/presentation/providers/patient_assessment_history_provider.dart';
 import 'package:poms/features/patient/presentation/providers/survey_provider.dart';
 import 'package:poms/features/patient/presentation/widgets/locked_pod_banner.dart';
 
@@ -191,6 +192,7 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
     if (!mounted) return;
 
     if (state.status == AssessmentStatus.success && state.result != null) {
+      ref.invalidate(patientPodTimelineApiProvider);
       unawaited(
         context.push(AppRoutes.patientAssessmentResult, extra: state.result),
       );
