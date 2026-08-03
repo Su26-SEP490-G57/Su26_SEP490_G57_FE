@@ -80,7 +80,12 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
             // Scrollable detail content
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  0,
+                  20,
+                  MediaQuery.of(context).padding.bottom + 28,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -113,24 +118,12 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
                           return _SymptomDetailCard(item: item);
                         },
                       ),
-
-                      // Doctor / Medical Feedback Card
-                      if (historyLog.medicalFeedback != null) ...[
-                        const SizedBox(height: 16),
-                        _MedicalFeedbackCard(
-                          feedback: historyLog.medicalFeedback!,
-                        ),
-                      ],
                     ] else ...[
                       _UnassessedDateCard(
                         date: selectedDate,
                         podNumber: historyLog.podNumber,
                       ),
                     ],
-
-                    const SizedBox(height: 20),
-                    // Encouragement Banner
-                    const _EncouragementBanner(),
                   ],
                 ),
               ),
@@ -609,71 +602,7 @@ class _SymptomDetailCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Doctor / Medical Feedback Card
-// ─────────────────────────────────────────────────────────────────────────────
 
-class _MedicalFeedbackCard extends StatelessWidget {
-  const _MedicalFeedbackCard({required this.feedback});
-
-  final String feedback;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F7FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFBAE6FD)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.medical_services_rounded,
-              color: Colors.white,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Ghi chú & Phản hồi y tế',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  feedback,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    height: 1.4,
-                    color: Color(0xFF0369A1),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Unassessed Date Card
@@ -687,6 +616,14 @@ class _UnassessedDateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selectedDay = DateTime(date.year, date.month, date.day);
+    final isFuture = selectedDay.isAfter(today);
+
+    // Hard boundary limit: ERAS pathway is strictly POD 0 to 5 max
+    final safePodNumber = podNumber.clamp(0, 5);
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -696,14 +633,18 @@ class _UnassessedDateCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.assignment_late_outlined,
+          Icon(
+            isFuture
+                ? Icons.event_available_outlined
+                : Icons.assignment_late_outlined,
             size: 48,
-            color: AppColors.onSurfaceVariant,
+            color: isFuture
+                ? AppColors.primary.withValues(alpha: 0.6)
+                : AppColors.onSurfaceVariant,
           ),
           const SizedBox(height: 12),
           Text(
-            'Chưa có nhật ký đánh giá (POD $podNumber)',
+            'Chưa có nhật ký đánh giá (POD $safePodNumber)',
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
@@ -712,33 +653,47 @@ class _UnassessedDateCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Bạn chưa hoàn thành bài khảo sát theo dõi triệu chứng hàng ngày cho ngày này.',
+          Text(
+            isFuture
+                ? 'Bạn chưa thể thực hiện bài khảo sát cho ngày này. Vui lòng quay lại vào đúng ngày.'
+                : 'Bạn chưa hoàn thành bài khảo sát theo dõi triệu chứng hàng ngày cho ngày này.',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 13,
               color: AppColors.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => context.push(AppRoutes.patientAssessment),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: isFuture
+                  ? null
+                  : () => context.push(AppRoutes.patientAssessment),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFFE2E8F0),
+                disabledForegroundColor: const Color(0xFF94A3B8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            icon: const Icon(Icons.assignment_turned_in_rounded, size: 18),
-            label: const Text(
-              'Thực hiện đánh giá ngay',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+              icon: Icon(
+                isFuture
+                    ? Icons.lock_clock_outlined
+                    : Icons.assignment_turned_in_rounded,
+                size: 18,
+              ),
+              label: Text(
+                isFuture ? 'Chưa đến ngày đánh giá' : 'Thực hiện đánh giá ngay',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -748,64 +703,4 @@ class _UnassessedDateCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Encouragement Banner
-// ─────────────────────────────────────────────────────────────────────────────
 
-class _EncouragementBanner extends StatelessWidget {
-  const _EncouragementBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1F0284C7),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.emoji_events_rounded, color: Color(0xFFFDE047), size: 32),
-          SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Bạn đang hồi phục rất tốt!',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Duy trì bài khảo sát mỗi ngày giúp đội ngũ y tế theo dõi sát sao tiến trình ERAS của bạn.',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    color: Colors.white70,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

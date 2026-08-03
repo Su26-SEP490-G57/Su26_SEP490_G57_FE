@@ -56,6 +56,21 @@ class SurveyRemoteDataSource {
     }
   }
 
+  Future<Map<String, dynamic>> getPatientPodHistory(String caseId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$_baseEndpoint/patient/$caseId/history',
+      );
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        throw const ServerException(statusCode: 500);
+      }
+      return data;
+    } on DioException catch (e) {
+      _handleError(e);
+    }
+  }
+
   Never _handleError(DioException e) {
     final statusCode = e.response?.statusCode ?? 0;
     final data = e.response?.data;
@@ -75,10 +90,10 @@ class SurveyRemoteDataSource {
       case >= 500:
         throw ServerException(
           statusCode: statusCode,
-          message: message ?? 'Server error',
+          message: message ?? 'Lỗi hệ thống phía máy chủ ($statusCode)',
         );
       default:
-        throw NetworkException(message ?? 'Error $statusCode');
+        throw NetworkException(message ?? 'Đã xảy ra lỗi ($statusCode)');
     }
   }
 }

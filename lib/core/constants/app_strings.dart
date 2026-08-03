@@ -3,7 +3,7 @@
 abstract final class AppStrings {
   // App
   static const String appName = 'POMS';
-  static const String appFullName = 'Post-Operative Monitoring System';
+  static const String appFullName = 'Hệ thống Theo dõi Phục hồi Sau phẫu thuật';
 
   // Auth
   static const String login = 'Đăng nhập';
