@@ -5,6 +5,7 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:poms/features/auth/domain/repositories/auth_repository.dart';
 import 'package:poms/core/network/access_token_interceptor.dart';
 import 'package:poms/core/network/refresh_token_interceptor.dart';
+import 'package:poms/core/services/version_check_service.dart';
 
 // ---------------------------------------------------------------------------
 // Auth Dio — không có interceptor, chỉ dùng cho /auth/login & /auth/refresh
@@ -57,7 +58,7 @@ Dio createAppDio({required AuthRepository authRepository}) {
 // ---------------------------------------------------------------------------
 
 Dio _buildBaseDio() {
-  return Dio(
+  final dio = Dio(
     BaseOptions(
       baseUrl: appFlavorConfig.apiBaseUrl,
       connectTimeout: Duration(milliseconds: appFlavorConfig.apiConnectTimeout),
@@ -65,7 +66,27 @@ Dio _buildBaseDio() {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'X-App-Version-Code': appPackageInfo.buildNumber,
       },
     ),
   );
+
+  // Reacts to a live 426 from the BE's min-app-version guard, on top of the
+  // proactive version.json check — no AuthRepository dependency, so shared by
+  // both createAuthDio() and createAppDio() (unlike AccessTokenInterceptor /
+  // RefreshTokenInterceptor, which are app-dio-only to avoid a circular import).
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onError: (error, handler) {
+        if (error.response?.statusCode == 426) {
+          final body = error.response?.data;
+          final message = body is Map ? body['message'] as String? : null;
+          VersionCheckService.instance.reportForcedUpdate(message: message);
+        }
+        handler.next(error);
+      },
+    ),
+  );
+
+  return dio;
 }

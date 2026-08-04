@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:poms/configs/flavor/current_firebase_options.dart';
 import 'package:poms/configs/flavor/dev_flavor_config.dart';
 import 'package:poms/configs/flavor/flavor_config.dart';
@@ -13,6 +14,7 @@ import 'package:poms/app.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 
 late final FlavorConfig appFlavorConfig;
+late final PackageInfo appPackageInfo;
 
 void main({FlavorConfig? flavorConfig}) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +25,7 @@ void main({FlavorConfig? flavorConfig}) async {
   await PushNotificationService.instance.initialize();
 
   appFlavorConfig = flavorConfig ?? DevFlavorConfig();
+  appPackageInfo = await PackageInfo.fromPlatform();
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
