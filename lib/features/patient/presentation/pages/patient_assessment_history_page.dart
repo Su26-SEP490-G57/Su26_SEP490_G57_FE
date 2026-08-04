@@ -533,26 +533,29 @@ class _SymptomDetailCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icon Container
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: item.status.iconBgColor,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(item.icon, color: item.status.badgeTextColor, size: 22),
-          ),
-          const SizedBox(width: 14),
+          Row(
+            children: [
+              // Icon Container
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: item.status.iconBgColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  item.icon,
+                  color: item.status.badgeTextColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
 
-          // Primary Name & Short Description
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+              // Symptom Name
+              Expanded(
+                child: Text(
                   item.symptomName,
                   style: const TextStyle(
                     fontFamily: 'Inter',
@@ -561,24 +564,14 @@ class _SymptomDetailCard extends StatelessWidget {
                     color: AppColors.onSurface,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  item.shortDescription,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    height: 1.35,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
+          const SizedBox(height: 10),
 
-          // Color-Coded Result Badge
+          // Color-Coded Result Badge (Flexibly wraps, never overflows)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: item.status.badgeBgColor,
               borderRadius: BorderRadius.circular(10),
@@ -590,12 +583,25 @@ class _SymptomDetailCard extends StatelessWidget {
               item.resultBadge,
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: item.status.badgeTextColor,
               ),
             ),
           ),
+          if (item.shortDescription.isNotEmpty &&
+              item.shortDescription != 'Lựa chọn: ${item.resultBadge}') ...[
+            const SizedBox(height: 6),
+            Text(
+              item.shortDescription,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                height: 1.35,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -617,10 +623,38 @@ class _UnassessedDateCard extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final selectedDay = DateTime(date.year, date.month, date.day);
+
     final isFuture = selectedDay.isAfter(today);
+    final isPast = selectedDay.isBefore(today);
+    final isToday = selectedDay.isAtSameMomentAs(today);
 
     // Hard boundary limit: ERAS pathway is strictly POD 0 to 5 max
     final safePodNumber = podNumber.clamp(0, 5);
+
+    final String titleMessage;
+    final String bodyMessage;
+    final String buttonLabel;
+    final IconData buttonIcon;
+
+    if (isFuture) {
+      titleMessage = 'Chưa đến ngày đánh giá (POD $safePodNumber)';
+      bodyMessage =
+          'Bạn chưa thể thực hiện bài khảo sát cho ngày này. Vui lòng quay lại vào đúng ngày.';
+      buttonLabel = 'Chưa đến ngày đánh giá';
+      buttonIcon = Icons.lock_clock_outlined;
+    } else if (isPast) {
+      titleMessage = 'Đã quá hạn đánh giá (POD $safePodNumber)';
+      bodyMessage =
+          'Bài khảo sát theo dõi triệu chứng cho ngày này đã quá hạn. Bạn chỉ có thể thực hiện bài đánh giá cho ngày hiện tại.';
+      buttonLabel = 'Đã quá hạn đánh giá';
+      buttonIcon = Icons.history_toggle_off_rounded;
+    } else {
+      titleMessage = 'Chưa có nhật ký đánh giá (POD $safePodNumber)';
+      bodyMessage =
+          'Bạn chưa hoàn thành bài khảo sát theo dõi triệu chứng hàng ngày cho hôm nay.';
+      buttonLabel = 'Thực hiện đánh giá ngay';
+      buttonIcon = Icons.assignment_turned_in_rounded;
+    }
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -634,15 +668,18 @@ class _UnassessedDateCard extends StatelessWidget {
           Icon(
             isFuture
                 ? Icons.event_available_outlined
-                : Icons.assignment_late_outlined,
+                : isPast
+                    ? Icons.history_toggle_off_rounded
+                    : Icons.assignment_late_outlined,
             size: 48,
-            color: isFuture
-                ? AppColors.primary.withValues(alpha: 0.6)
-                : AppColors.onSurfaceVariant,
+            color: (isFuture || isPast)
+                ? AppColors.onSurfaceVariant.withValues(alpha: 0.6)
+                : AppColors.primary,
           ),
           const SizedBox(height: 12),
           Text(
-            'Chưa có nhật ký đánh giá (POD $safePodNumber)',
+            titleMessage,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 16,
@@ -652,9 +689,7 @@ class _UnassessedDateCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            isFuture
-                ? 'Bạn chưa thể thực hiện bài khảo sát cho ngày này. Vui lòng quay lại vào đúng ngày.'
-                : 'Bạn chưa hoàn thành bài khảo sát theo dõi triệu chứng hàng ngày cho ngày này.',
+            bodyMessage,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontFamily: 'Inter',
@@ -666,9 +701,9 @@ class _UnassessedDateCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: isFuture
-                  ? null
-                  : () => context.push(AppRoutes.patientAssessment),
+              onPressed: isToday
+                  ? () => context.push(AppRoutes.patientAssessment)
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -682,14 +717,9 @@ class _UnassessedDateCard extends StatelessWidget {
                   vertical: 12,
                 ),
               ),
-              icon: Icon(
-                isFuture
-                    ? Icons.lock_clock_outlined
-                    : Icons.assignment_turned_in_rounded,
-                size: 18,
-              ),
+              icon: Icon(buttonIcon, size: 18),
               label: Text(
-                isFuture ? 'Chưa đến ngày đánh giá' : 'Thực hiện đánh giá ngay',
+                buttonLabel,
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 14,

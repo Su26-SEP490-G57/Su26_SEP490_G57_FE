@@ -200,71 +200,83 @@ class _PatientInfoCard extends ConsumerWidget {
                 children: [
                   // Card Header: Title & POD Status Pill
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
-                        children: [
-                          Icon(
-                            Icons.verified_user_rounded,
-                            color: AppColors.primary,
-                            size: 20,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Thông tin phục hồi',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Status Pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isLocked
-                              ? const Color(0xFFFFF7ED)
-                              : const Color(0xFFECFDF5),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isLocked
-                                ? const Color(0xFFFFEDD5)
-                                : const Color(0xFFA7F3D0),
-                          ),
-                        ),
+                      const Expanded(
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isLocked
-                                    ? const Color(0xFFEA580C)
-                                    : const Color(0xFF10B981),
-                              ),
+                            Icon(
+                              Icons.verified_user_rounded,
+                              color: AppColors.primary,
+                              size: 20,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              isLocked ? '$podText (Tạm dừng)' : podText,
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: isLocked
-                                    ? const Color(0xFFC2410C)
-                                    : const Color(0xFF047857),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Thông tin phục hồi',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.onSurface,
+                                ),
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Status Pill
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isLocked
+                                ? const Color(0xFFFFF7ED)
+                                : const Color(0xFFECFDF5),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isLocked
+                                  ? const Color(0xFFFFEDD5)
+                                  : const Color(0xFFA7F3D0),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isLocked
+                                      ? const Color(0xFFEA580C)
+                                      : const Color(0xFF10B981),
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  isLocked ? '$podText (Tạm dừng)' : podText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: isLocked
+                                        ? const Color(0xFFC2410C)
+                                        : const Color(0xFF047857),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
