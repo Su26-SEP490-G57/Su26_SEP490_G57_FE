@@ -47,7 +47,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Patch version-{env}.json
+      - name: Patch version.json
         id: patch_version_json
         run: |
           ENV="${{ inputs.environment }}"
@@ -59,9 +59,9 @@ jobs:
 
           UPDATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-          echo "📥 [Version] Fetching currently-published version-$ENV.json..."
+          echo "📥 [Version] Fetching currently-published version.json for '$ENV'..."
           CURRENT_JSON=$(curl -f -s "https://api-$ENV.$DOMAIN_NAME/version.json") || {
-            echo "❌ No existing version-$ENV.json found for '$ENV' — run Build Workflow for this environment at least once before patching flags." >&2
+            echo "❌ No existing version.json found for '$ENV' — run Build Workflow for this environment at least once before patching flags." >&2
             exit 1
           }
 
@@ -75,12 +75,12 @@ jobs:
              | .android.minSupportedVersionCode = (if $minSupportedVersionCodeInput == "" then $minSupportedVersionCodeFallback else ($minSupportedVersionCodeInput | tonumber) end)
              | .android.releaseNotes = (if $releaseNotesInput == "" then .android.releaseNotes else $releaseNotesInput end)
              | .android.updatedAt = $updatedAt' \
-            <<< "$CURRENT_JSON" > "version-$ENV.json"
+            <<< "$CURRENT_JSON" > "version.json"
 
-          echo "----- version-$ENV.json -----"
-          cat "version-$ENV.json"
+          echo "----- version.json ($ENV) -----"
+          cat "version.json"
 
-          echo "version_json_path=version-$ENV.json" >> $GITHUB_OUTPUT
+          echo "version_json_path=version.json" >> $GITHUB_OUTPUT
 
       - name: Write SSH Deploy Key
         run: |
@@ -96,4 +96,4 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key_path: /tmp/poms_ssh_deploy_key
           source: "${{ steps.patch_version_json.outputs.version_json_path }}"
-          target: "/var/www/poms-mobile/"
+          target: "/var/www/poms-mobile/versions/${{ inputs.environment }}/"
