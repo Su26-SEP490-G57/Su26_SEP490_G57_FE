@@ -79,7 +79,15 @@ jobs:
             VERSION_NAME="0.1.0"
           fi
 
-          VERSION_CODE="${{ github.run_number }}"
+          # github.run_number is scoped per workflow *file*, so it drifts between the
+          # two ways this workflow can run (workflow_dispatch vs. workflow_call from
+          # feature/main-workflow) and produces mismatched/non-monotonic codes for the
+          # same environment. Use seconds since a fixed epoch instead, which stays
+          # monotonic and consistent across both trigger paths with no shared state.
+          # Base epoch 1704067200 = 2024-01-01T00:00:00Z, keeping the value well under
+          # Android's 2,100,000,000 versionCode ceiling for ~66 years.
+          BASE_EPOCH=1704067200
+          VERSION_CODE=$(( $(date -u +%s) - BASE_EPOCH ))
 
           echo "🚀 [Versioning] Target Env: ${{ inputs.environment }} | Name: v$VERSION_NAME | Code: +$VERSION_CODE"
 
