@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:poms/main.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
@@ -66,7 +67,11 @@ Dio _buildBaseDio() {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'X-App-Version-Code': appPackageInfo.buildNumber,
+        // Only a real `flutter build` (release mode, what CI produces) reports
+        // its version — `flutter run` local dev is always debug mode and never
+        // sends this, so the BE guard (which fails open on a missing header)
+        // never enforces anything against a dev machine.
+        if (kReleaseMode) 'X-App-Version-Code': appPackageInfo.buildNumber,
       },
     ),
   );
