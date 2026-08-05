@@ -41,4 +41,14 @@ abstract final class AppStrings {
       'Lỗi kết nối mạng. Kiểm tra internet và thử lại.';
   static const String sessionExpired =
       'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+
+  // Update
+  static const String updateAvailableTitle = 'Đã có phiên bản mới';
+  static const String updateRequiredTitle = 'Cần cập nhật ứng dụng';
+  static String updateAvailableMessage(String versionName) =>
+      'Phiên bản $versionName đã có sẵn.';
+  static const String updateRequiredMessage =
+      'Phiên bản hiện tại không còn được hỗ trợ. Vui lòng cập nhật để tiếp tục sử dụng.';
+  static const String updateNow = 'Cập nhật ngay';
+  static const String updateLater = 'Để sau';
 }

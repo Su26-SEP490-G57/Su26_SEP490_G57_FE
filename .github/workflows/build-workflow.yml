@@ -15,12 +15,22 @@ on:
           - dev
           - staging
           - prod
+      release_notes:
+        description: "Optional release notes to publish in version.json for this build"
+        required: false
+        default: ""
+        type: string
 
   workflow_call:
     inputs:
       environment:
         description: "Select the environment to build the APK for"
         required: true
+        type: string
+      release_notes:
+        description: "Optional release notes to publish in version.json for this build"
+        required: false
+        default: ""
         type: string
 
 jobs:
@@ -69,7 +79,15 @@ jobs:
             VERSION_NAME="0.1.0"
           fi
 
-          VERSION_CODE="${{ github.run_number }}"
+          # github.run_number is scoped per workflow *file*, so it drifts between the
+          # two ways this workflow can run (workflow_dispatch vs. workflow_call from
+          # feature/main-workflow) and produces mismatched/non-monotonic codes for the
+          # same environment. Use seconds since a fixed epoch instead, which stays
+          # monotonic and consistent across both trigger paths with no shared state.
+          # Base epoch 1704067200 = 2024-01-01T00:00:00Z, keeping the value well under
+          # Android's 2,100,000,000 versionCode ceiling for ~66 years.
+          BASE_EPOCH=1704067200
+          VERSION_CODE=$(( $(date -u +%s) - BASE_EPOCH ))
 
           echo "🚀 [Versioning] Target Env: ${{ inputs.environment }} | Name: v$VERSION_NAME | Code: +$VERSION_CODE"
 
@@ -208,3 +226,69 @@ jobs:
           gh release upload "$LATEST_TAG" "$LATEST_FILE_PATH#$LATEST_FILE_NAME"
 
           echo "🎉 [Latest] Successfully ginned and forced $LATEST_TAG to the top of the Releases page!"
+
+      # 📄 STEP 3: Generate this environment's version.json (fetch-merge-reupload so an
+      # Android-only build never clobbers a future `ios` block in the same file).
+      # Served at /var/www/poms-mobile/versions/<env>/version.json — the environment
+      # is expressed via the directory now, not a version-<env>.json filename.
+      - name: Generate version.json
+        id: generate_version_json
+        run: |
+          ENV="${{ inputs.environment }}"
+          V_NAME="${{ steps.versioning.outputs.version_name }}"
+          V_CODE="${{ steps.versioning.outputs.version_code }}"
+          DOMAIN_NAME="${{ vars.DOMAIN_NAME }}"
+          RELEASE_NOTES="${{ inputs.release_notes }}"
+
+          MIN_SUPPORTED_VERSION_CODE="${{ vars.MIN_SUPPORTED_VERSION_CODE }}"
+          MIN_SUPPORTED_VERSION_CODE="${MIN_SUPPORTED_VERSION_CODE:-1}"
+
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/$ENV-latest/poms-$ENV-latest.apk"
+          UPDATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          echo "📥 [Version] Fetching currently-published version.json for '$ENV' (if any)..."
+          CURRENT_JSON=$(curl -f -s "https://api-$ENV.$DOMAIN_NAME/version.json" || echo '{}')
+          if [ -z "$CURRENT_JSON" ]; then
+            CURRENT_JSON='{}'
+          fi
+
+          jq -n \
+            --arg versionName "$V_NAME" \
+            --argjson versionCode "$V_CODE" \
+            --arg downloadUrl "$DOWNLOAD_URL" \
+            --argjson minSupportedVersionCode "$MIN_SUPPORTED_VERSION_CODE" \
+            --arg releaseNotes "$RELEASE_NOTES" \
+            --arg updatedAt "$UPDATED_AT" \
+            '{
+              versionName: $versionName,
+              versionCode: $versionCode,
+              minSupportedVersionCode: $minSupportedVersionCode,
+              forceUpdate: false,
+              downloadUrl: $downloadUrl,
+              releaseNotes: (if $releaseNotes == "" then null else $releaseNotes end),
+              updatedAt: $updatedAt
+            } | with_entries(select(.value != null))' > android.json
+
+          echo "$CURRENT_JSON" | jq --argjson android "$(cat android.json)" \
+            '.schemaVersion = 1 | .android = $android' > "version.json"
+
+          echo "----- version.json ($ENV) -----"
+          cat "version.json"
+
+          echo "version_json_path=version.json" >> $GITHUB_OUTPUT
+
+      - name: Write SSH Deploy Key
+        run: |
+          umask 077
+          cat > /tmp/poms_ssh_deploy_key <<'EOF'
+          ${{ secrets.SSH_KEY }}
+          EOF
+
+      - name: Upload version.json via SSH
+        uses: ./.github/actions/retry-scp
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key_path: /tmp/poms_ssh_deploy_key
+          source: "${{ steps.generate_version_json.outputs.version_json_path }}"
+          target: "/var/www/poms-mobile/versions/${{ inputs.environment }}/"
