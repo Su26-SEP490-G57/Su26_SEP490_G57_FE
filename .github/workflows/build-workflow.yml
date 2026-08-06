@@ -95,6 +95,13 @@ jobs:
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
       - name: Build APK
+        env:
+          # CI-only: disable the Gradle daemon. It exists to keep a warm JVM
+          # across *repeated* local builds — pointless on a throwaway CI VM
+          # that never runs a second build. Scoped to this step via GRADLE_OPTS
+          # instead of android/gradle.properties, so local dev (which benefits
+          # from the daemon) is unaffected.
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false"
         run: |
           # --obfuscate/--split-debug-info cost real R8 whole-program-analysis
           # time on top of the normal build — only pay for it (and get
