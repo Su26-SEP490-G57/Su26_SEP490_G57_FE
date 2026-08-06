@@ -71,7 +71,7 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
                 _SectionHeader(
                   label: 'PHÂN BỐ THEO PHÒNG',
                   viewAllLabel: 'Xem chi tiết',
-                  onViewAll: () {},
+                  onViewAll: () => context.push(AppRoutes.nurseReports),
                 ),
                 const SizedBox(height: 10),
                 _RoomDistributionCard(patients: patientState.patients),
