@@ -29,11 +29,17 @@ import 'package:poms/features/patient/presentation/pages/patient_profile_page.da
 import 'package:poms/core/services/notification_service.dart';
 import 'package:poms/core/constants/app_routes.dart';
 
+// Module-level (not local to routerProvider) so any code outside the routed
+// widget tree — e.g. _AppState, which sits above MaterialApp.router and has
+// no Navigator ancestor of its own — can reach a BuildContext that actually
+// resolves via Navigator.of(), by using rootNavigatorKey.currentContext
+// instead of its own context.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 // GoRouter được tạo 1 lần duy nhất, dùng refreshListenable để trigger redirect
 // khi auth state thay đổi — tránh recreate router mỗi lần emit.
 final routerProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _AuthRefreshNotifier();
-  final rootNavigatorKey = GlobalKey<NavigatorState>();
 
   ref.listen<AsyncValue<UserModel?>>(authStateProvider, (_, _) {
     refreshNotifier.notify();
