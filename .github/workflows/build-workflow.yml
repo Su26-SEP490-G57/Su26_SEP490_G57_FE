@@ -96,6 +96,15 @@ jobs:
 
       - name: Build APK
         run: |
+          # --obfuscate/--split-debug-info cost real R8 whole-program-analysis
+          # time on top of the normal build — only pay for it (and get
+          # symbolicatable crash traces) on prod. dev/staging build faster and
+          # don't produce a build/app/outputs/symbols dir at all.
+          OBFUSCATE_FLAGS=""
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            OBFUSCATE_FLAGS="--obfuscate --split-debug-info=build/app/outputs/symbols"
+          fi
+
           flutter build apk \
             --flavor ${{ inputs.environment }} \
             --build-name="${{ steps.versioning.outputs.version_name }}" \
@@ -104,8 +113,7 @@ jobs:
             --dart-define=API_BASE_URL=${{ vars.API_BASE_URL }} \
             --dart-define=API_RECEIVE_TIMEOUT=${{ vars.API_RECEIVE_TIMEOUT }} \
             --dart-define=API_CONNECT_TIMEOUT=${{ vars.API_CONNECT_TIMEOUT }} \
-            --obfuscate \
-            --split-debug-info=build/app/outputs/symbols \
+            $OBFUSCATE_FLAGS \
             -t lib/main_${{ inputs.environment }}.dart
 
       - name: Prepare APK Files (Versioned & Latest)
@@ -185,8 +193,10 @@ jobs:
       # versioned (historical) release, never "latest" — "latest" gets deleted and
       # recreated on every build (see STEP 2 below), which would destroy older
       # symbols needed to debug a crash reported against a version that's no
-      # longer latest.
+      # longer latest. prod-only: dev/staging skip --obfuscate/--split-debug-info
+      # (see Build APK step), so there's no symbols dir to package for them.
       - name: Package & Upload Debug Symbols
+        if: inputs.environment == 'prod'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
