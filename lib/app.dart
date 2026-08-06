@@ -110,7 +110,15 @@ class _AppState extends ConsumerState<App> {
           ],
         ),
       ),
-    ).then((_) => _updateDialogShowing = false);
+    ).then((_) {
+      _updateDialogShowing = false;
+      // Mandatory dialogs never reach here (PopScope(canPop: false), no
+      // dismissible action) other than via the actual navigate-to-download
+      // path, so leave navigation blocked in that case.
+      if (!result.isMandatory) {
+        VersionCheckService.instance.blockNavigation.value = false;
+      }
+    });
   }
 
   void _handlePendingNotification() {
