@@ -27,6 +27,16 @@ class VersionCheckService {
   final ValueNotifier<VersionCheckResult?> forcedUpdate = ValueNotifier(null);
   bool _handlingForcedUpdate = false;
 
+  /// True from app launch until the first version check resolves with nothing
+  /// to show, and for as long as an update dialog (mandatory or not) is up.
+  /// app_router.dart's redirect consults this and forces/keeps the splash
+  /// route while it's true — otherwise auth-based redirect (which resolves
+  /// fast, e.g. from cached "remember me" state) races the version check (a
+  /// real network call) and wins, navigating to login/dashboard underneath
+  /// the dialog before or while it's showing. Starts true (not false) so
+  /// there's no gap between app launch and the first check actually starting.
+  final ValueNotifier<bool> blockNavigation = ValueNotifier(true);
+
   /// Called from the onError interceptor when any request comes back 426.
   /// Treats the 426 itself as ground truth for "mandatory" — does not defer to
   /// whatever version.json's own forceUpdate/minSupportedVersionCode say, since
@@ -36,6 +46,7 @@ class VersionCheckService {
   Future<void> reportForcedUpdate({String? message}) async {
     if (_handlingForcedUpdate) return; // dedupe a burst of concurrent 426s
     _handlingForcedUpdate = true;
+    blockNavigation.value = true;
     try {
       final fetched = await check();
       forcedUpdate.value = VersionCheckResult(
@@ -44,12 +55,17 @@ class VersionCheckService {
         downloadUrl: fetched?.downloadUrl ?? '',
         releaseNotes: fetched?.releaseNotes ?? message,
       );
+      // Always mandatory regardless of what check() decided on its own — a
+      // live 426 already proves enforcement is active right now.
+      blockNavigation.value = true;
     } finally {
       _handlingForcedUpdate = false;
     }
   }
 
   Future<VersionCheckResult?> check() async {
+    blockNavigation.value = true;
+    var willShowDialog = false;
     try {
       final dio = Dio(
         BaseOptions(
@@ -77,6 +93,7 @@ class VersionCheckService {
           forceUpdate ||
           (minSupported != null && installedVersionCode < minSupported);
 
+      willShowDialog = true;
       return VersionCheckResult(
         versionName: platform['versionName'] as String,
         isMandatory: isMandatory,
@@ -85,6 +102,11 @@ class VersionCheckService {
       );
     } catch (_) {
       return null; // offline / 404 / malformed — never block app usage over this
+    } finally {
+      // Only clear the block if nothing is going to be shown for it — if a
+      // dialog is coming, the caller (app.dart) owns clearing this once that
+      // dialog is actually dismissed (or never, if mandatory).
+      if (!willShowDialog) blockNavigation.value = false;
     }
   }
 }

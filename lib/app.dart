@@ -62,9 +62,19 @@ class _AppState extends ConsumerState<App> {
     // and PopScope(canPop: false) means a mandatory dialog never naturally
     // closes until the app is updated — don't stack a second one on top of it.
     if (_updateDialogShowing) return;
+
+    // _AppState.context sits above MaterialApp.router (App.build() returns
+    // it), so it has no Navigator ancestor of its own — Navigator.of(context)
+    // would throw. rootNavigatorKey.currentContext is attached to the
+    // Navigator GoRouter builds inside MaterialApp.router, so it actually
+    // resolves. Can be null very early before the first frame; skip rather
+    // than crash if so.
+    final dialogContext = rootNavigatorKey.currentContext;
+    if (dialogContext == null) return;
+
     _updateDialogShowing = true;
     showDialog(
-      context: context,
+      context: dialogContext,
       barrierDismissible: !result.isMandatory,
       builder: (ctx) => PopScope(
         canPop: !result.isMandatory,
@@ -100,7 +110,15 @@ class _AppState extends ConsumerState<App> {
           ],
         ),
       ),
-    ).then((_) => _updateDialogShowing = false);
+    ).then((_) {
+      _updateDialogShowing = false;
+      // Mandatory dialogs never reach here (PopScope(canPop: false), no
+      // dismissible action) other than via the actual navigate-to-download
+      // path, so leave navigation blocked in that case.
+      if (!result.isMandatory) {
+        VersionCheckService.instance.blockNavigation.value = false;
+      }
+    });
   }
 
   void _handlePendingNotification() {

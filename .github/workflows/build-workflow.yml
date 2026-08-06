@@ -95,7 +95,23 @@ jobs:
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
       - name: Build APK
+        env:
+          # CI-only: disable the Gradle daemon. It exists to keep a warm JVM
+          # across *repeated* local builds — pointless on a throwaway CI VM
+          # that never runs a second build. Scoped to this step via GRADLE_OPTS
+          # instead of android/gradle.properties, so local dev (which benefits
+          # from the daemon) is unaffected.
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false"
         run: |
+          # --obfuscate/--split-debug-info cost real R8 whole-program-analysis
+          # time on top of the normal build — only pay for it (and get
+          # symbolicatable crash traces) on prod. dev/staging build faster and
+          # don't produce a build/app/outputs/symbols dir at all.
+          OBFUSCATE_FLAGS=""
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            OBFUSCATE_FLAGS="--obfuscate --split-debug-info=build/app/outputs/symbols"
+          fi
+
           flutter build apk \
             --flavor ${{ inputs.environment }} \
             --build-name="${{ steps.versioning.outputs.version_name }}" \
@@ -104,8 +120,7 @@ jobs:
             --dart-define=API_BASE_URL=${{ vars.API_BASE_URL }} \
             --dart-define=API_RECEIVE_TIMEOUT=${{ vars.API_RECEIVE_TIMEOUT }} \
             --dart-define=API_CONNECT_TIMEOUT=${{ vars.API_CONNECT_TIMEOUT }} \
-            --obfuscate \
-            --split-debug-info=build/app/outputs/symbols \
+            $OBFUSCATE_FLAGS \
             -t lib/main_${{ inputs.environment }}.dart
 
       - name: Prepare APK Files (Versioned & Latest)
@@ -134,6 +149,7 @@ jobs:
 
       # 📦 STEP 1: Create a unique, version-specific GitHub Release (For historic tracking)
       - name: Create Versioned GitHub Release
+        id: create_versioned_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -175,6 +191,36 @@ jobs:
           gh release upload "$TAG_NAME" "$FILE_PATH#$FILE_NAME"
 
           echo "✅ [History] Versioned release $TAG_NAME created successfully!"
+
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      # 🧩 Package & upload debug symbols — needed to symbolicate obfuscated crash
+      # traces from this exact build (--obfuscate strips readable stack traces,
+      # --split-debug-info writes the matching symbols here). Attached only to the
+      # versioned (historical) release, never "latest" — "latest" gets deleted and
+      # recreated on every build (see STEP 2 below), which would destroy older
+      # symbols needed to debug a crash reported against a version that's no
+      # longer latest. prod-only: dev/staging skip --obfuscate/--split-debug-info
+      # (see Build APK step), so there's no symbols dir to package for them.
+      - name: Package & Upload Debug Symbols
+        if: inputs.environment == 'prod'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ENV="${{ inputs.environment }}"
+          SHORT_SHA=$(echo '${{ github.sha }}' | cut -c1-7)
+          V_NAME="${{ steps.versioning.outputs.version_name }}"
+          V_CODE="${{ steps.versioning.outputs.version_code }}"
+          TAG_NAME="${{ steps.create_versioned_release.outputs.tag_name }}"
+
+          SYMBOLS_DIR="build/app/outputs/symbols"
+          ARCHIVE_NAME="poms-$ENV-v$V_NAME+$V_CODE-$SHORT_SHA-symbols.tar.gz"
+
+          tar -czf "$ARCHIVE_NAME" -C "$SYMBOLS_DIR" .
+
+          gh release upload "$TAG_NAME" "$ARCHIVE_NAME"
+
+          echo "✅ [Symbols] Uploaded $ARCHIVE_NAME to $TAG_NAME"
 
       # 🚀 STEP 2: Re-publish and "re-create" the 'latest' Release (To force it to the top of the feed)
       - name: Update and Force Top Latest Release
