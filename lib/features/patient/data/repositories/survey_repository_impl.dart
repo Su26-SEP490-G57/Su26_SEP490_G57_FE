@@ -12,8 +12,8 @@ class SurveyRepositoryImpl implements SurveyRepository {
   Future<List<SurveyQuestion>> getQuestions() async {
     try {
       return await _dataSource.getQuestions();
-    } catch (e) {
-      throw mapException(e);
+    } catch (e, st) {
+      throw mapException(e, st);
     }
   }
 
@@ -21,8 +21,8 @@ class SurveyRepositoryImpl implements SurveyRepository {
   Future<SurveySubmitResult> submitSurvey(SurveySubmitRequest request) async {
     try {
       return await _dataSource.submitSurvey(request);
-    } catch (e) {
-      throw mapException(e);
+    } catch (e, st) {
+      throw mapException(e, st);
     }
   }
 
@@ -30,8 +30,8 @@ class SurveyRepositoryImpl implements SurveyRepository {
   Future<SurveySubmitResult> getSurveyById(int surveyId) async {
     try {
       return await _dataSource.getSurveyById(surveyId);
-    } catch (e) {
-      throw mapException(e);
+    } catch (e, st) {
+      throw mapException(e, st);
     }
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:poms/core/utils/debug_log.dart';
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/shared/widgets/custom_checkbox.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
@@ -40,7 +41,7 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
       try {
         fcmToken = await FirebaseMessaging.instance.getToken();
       } catch (e) {
-        debugPrint('Failed to get FCM token: $e');
+        debugLog('Failed to get FCM token: $e');
       }
     }
 

@@ -36,18 +36,22 @@ Dio createAppDio({required AuthRepository authRepository}) {
     RefreshTokenInterceptor(dio: dio, authRepository: authRepository),
   );
 
-  // Logger — debug only
+  // Logger — debug builds only (assert), and dev flavor only (logs bearer
+  // tokens + full request/response bodies, which can carry patient data —
+  // too sensitive for staging's adb logcat even in a non-release build).
   assert(() {
-    dio.interceptors.add(
-      PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseBody: true,
-        responseHeader: false,
-        error: true,
-        compact: true,
-      ),
-    );
+    if (appFlavorConfig.enableDebugLogging) {
+      dio.interceptors.add(
+        PrettyDioLogger(
+          requestHeader: true,
+          requestBody: true,
+          responseBody: true,
+          responseHeader: false,
+          error: true,
+          compact: true,
+        ),
+      );
+    }
     return true;
   }());
 

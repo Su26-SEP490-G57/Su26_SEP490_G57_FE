@@ -30,4 +30,10 @@ class ProdFlavorConfig implements FlavorConfig {
 
   @override
   int get apiReceiveTimeout => _rawApiReceiveTimeout;
+
+  @override
+  bool get enableDebugLogging => false;
+
+  @override
+  bool get enableCrashReporting => true;
 }
