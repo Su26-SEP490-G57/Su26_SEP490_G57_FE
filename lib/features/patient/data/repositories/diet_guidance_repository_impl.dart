@@ -20,37 +20,21 @@ class DietGuidanceRepositoryImpl implements DietGuidanceRepository {
 
     final operationTypeId = operationType['id'] as int;
 
-    // 2. Get Current POD
-    final podInfo = await _remoteDataSource.getCurrentPod(caseId);
-    final currentPod = podInfo.currentPod;
+    final currentDietLevel = (patientDetail['currentDietLevel'] as int?) ?? 0;
 
-    if (currentPod == null) {
-      // Patient has not started ERAS or has no current POD
-      return null;
-    }
-
-    // 3. Get all Pod Protocols for this operation type
+    // 2. Get all Pod Protocols for this operation type
     final podProtocols = await _remoteDataSource.getPodProtocols(
       operationTypeId,
     );
 
-    // 4. Find the matching protocol. The label could be 'POD 1' or just match the index/order if label is arbitrary.
-    // However, POD labels usually follow 'POD X' or 'PODX'. We try to find a protocol whose label contains the current POD number.
+    // 3. Find the protocol matching the patient's current diet level
     try {
-      final matchingProtocol = podProtocols.firstWhere(
-        (p) => p.label.toUpperCase().replaceAll(' ', '') == 'POD$currentPod',
-      );
-      return matchingProtocol;
+      return podProtocols.firstWhere((p) => p.dietLevel == currentDietLevel);
     } catch (_) {
-      // If exact match fails, fallback to checking if it just contains the number as a word
-      try {
-        final matchingProtocol = podProtocols.firstWhere(
-          (p) => p.label.contains('$currentPod'),
-        );
-        return matchingProtocol;
-      } catch (_) {
-        return null; // No specific guidance for this POD day
+      if (podProtocols.isNotEmpty) {
+        return podProtocols.first;
       }
+      return null;
     }
   }
 }
