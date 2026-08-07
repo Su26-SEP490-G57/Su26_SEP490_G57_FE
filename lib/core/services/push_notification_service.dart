@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:poms/configs/flavor/current_firebase_options.dart';
 import 'package:poms/core/services/notification_service.dart';
+import 'package:poms/core/utils/debug_log.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -32,7 +33,7 @@ class PushNotificationService {
 
   Future<void> initialize() async {
     if (kIsWeb) {
-      debugPrint('Push notification service skipped on web platform.');
+      debugLog('Push notification service skipped on web platform.');
       return;
     }
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -44,15 +45,15 @@ class PushNotificationService {
       badge: true,
       sound: true,
     );
-    debugPrint('Permission: ${settings.authorizationStatus}');
-    final token = await messaging.getToken();
-    debugPrint('FCM Token:');
-    debugPrint(token);
+    debugLog('Permission: ${settings.authorizationStatus}');
+    // Never log the raw token, even gated — it's a device credential.
+    await messaging.getToken();
+    debugLog('FCM token acquired');
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      debugPrint('========== FCM RECEIVED ==========');
-      debugPrint('Title: ${message.notification?.title}');
-      debugPrint('Body: ${message.notification?.body}');
+      debugLog('========== FCM RECEIVED ==========');
+      debugLog('Title: ${message.notification?.title}');
+      debugLog('Body: ${message.notification?.body}');
 
       await NotificationService.instance.showNotification(
         title: message.notification?.title ?? 'Notification',

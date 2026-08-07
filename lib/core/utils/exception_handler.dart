@@ -1,10 +1,21 @@
 import 'package:dio/dio.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 import 'package:poms/core/errors/app_exception.dart';
 import 'package:poms/core/errors/failure.dart';
 
-/// Maps raw exceptions to typed [AppException]
-AppException mapException(Object error) {
+/// Maps raw exceptions to typed [AppException]. Also records the original
+/// error as a non-fatal Crashlytics event — this is the single normalization
+/// point every repository funnels through, so it's the one place we can
+/// capture handled errors that would otherwise leave no trace (no QA/testers
+/// on staging to file a repro).
+AppException mapException(Object error, [StackTrace? stackTrace]) {
+  FirebaseCrashlytics.instance.recordError(
+    error,
+    stackTrace ?? StackTrace.current,
+    fatal: false,
+  );
+
   if (error is DioException) {
     return _mapDioException(error);
   }

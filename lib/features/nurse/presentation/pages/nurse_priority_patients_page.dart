@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/core/utils/debug_log.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 import 'package:poms/features/nurse/presentation/providers/priority_patients_provider.dart';
 
@@ -259,8 +260,8 @@ class _NursePriorityPatientsPageState
                               child: _PatientCard(
                                 data: p,
                                 onTap: () {
-                                  debugPrint('push code = ${p.code}');
-                                  debugPrint('push name = ${p.name}');
+                                  debugLog('push code = ${p.code}');
+                                  debugLog('push name = ${p.name}');
 
                                   context.push(
                                     AppRoutes.nursePatientDetailPath(p.code),

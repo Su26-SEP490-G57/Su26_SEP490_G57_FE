@@ -79,8 +79,8 @@ class AuthRepositoryImpl implements AuthRepository {
       return result.user;
     } on AppException {
       rethrow;
-    } catch (e) {
-      throw mapException(e);
+    } catch (e, st) {
+      throw mapException(e, st);
     }
   }
 
@@ -116,8 +116,8 @@ class AuthRepositoryImpl implements AuthRepository {
       rethrow;
     } on AppException {
       rethrow;
-    } catch (e) {
-      throw mapException(e);
+    } catch (e, st) {
+      throw mapException(e, st);
     }
   }
 

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:poms/core/utils/debug_log.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -61,16 +61,14 @@ class AssessmentNotifier extends StateNotifier<AssessmentState> {
   final AssessmentRepository _repository;
 
   Future<void> loadLatestAssessment(String caseId) async {
-    debugPrint('loadLatestAssessment: $caseId');
-    debugPrint(StackTrace.current.toString());
+    debugLog('loadLatestAssessment: $caseId');
     state = state.copyWith(status: AssessmentStatusState.loading);
 
     try {
       final assessment = await _repository.getLatestAssessment(caseId);
-      debugPrint(
+      debugLog(
         'assessmentId=${assessment.assessmentId}, score=${assessment.totalScore}',
       );
-      debugPrint(StackTrace.current.toString());
       final detail = await _repository.getAssessmentDetail(
         assessment.assessmentId,
       );
