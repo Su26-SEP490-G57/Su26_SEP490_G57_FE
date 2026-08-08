@@ -8,7 +8,9 @@ import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/nurse/domain/models/compliance_overview.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 
 class NurseDashboardPage extends ConsumerStatefulWidget {
@@ -67,14 +69,10 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
                 _PriorityPatientList(patients: patientState.patients),
                 const SizedBox(height: 24),
 
-                // ── Phân bố theo phòng ────────────────────────────────
-                _SectionHeader(
-                  label: 'PHÂN BỐ THEO PHÒNG',
-                  viewAllLabel: 'Xem chi tiết',
-                  onViewAll: () => context.push(AppRoutes.nurseReports),
-                ),
+                // ── Tỷ lệ tuân thủ ────────────────────────────────────
+                const _SectionLabel(label: 'TỶ LỆ TUÂN THỦ'),
                 const SizedBox(height: 10),
-                _RoomDistributionCard(patients: patientState.patients),
+                const _ComplianceOverviewCard(),
                 const SizedBox(height: 8),
               ],
             ),
@@ -254,13 +252,8 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.label,
-    required this.onViewAll,
-    this.viewAllLabel = 'Xem tất cả',
-  });
+  const _SectionHeader({required this.label, required this.onViewAll});
   final String label;
-  final String viewAllLabel;
   final VoidCallback onViewAll;
 
   @override
@@ -280,9 +273,9 @@ class _SectionHeader extends StatelessWidget {
         ),
         GestureDetector(
           onTap: onViewAll,
-          child: Text(
-            viewAllLabel,
-            style: const TextStyle(
+          child: const Text(
+            'Xem tất cả',
+            style: TextStyle(
               fontFamily: 'Inter',
               fontSize: 14,
               fontWeight: FontWeight.w400,
@@ -792,64 +785,29 @@ class _AlertSummaryCard extends StatelessWidget {
   }
 }
 */
+String roomLabel(String raw) {
+  final match = RegExp(r'P?(\d+)').firstMatch(raw);
+
+  if (match == null) {
+    return raw;
+  }
+
+  return 'Phòng ${match.group(1)}';
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Room distribution — donut chart + legend
+// Compliance overview — donut chart Tuân thủ / Không tuân thủ
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _RoomDistributionCard extends StatelessWidget {
-  const _RoomDistributionCard({required this.patients});
+class _ComplianceOverviewCard extends ConsumerWidget {
+  const _ComplianceOverviewCard();
 
-  final List<PatientSummary> patients;
   @override
-  Widget build(BuildContext context) {
-    // Palette dùng lại nếu số phòng nhiều hơn 5
-    const colors = [
-      Color(0xFF0050CB),
-      Color(0xFF006A61),
-      Color(0xFFFFC107),
-      Color(0xFFBA1A1A),
-      Color(0xFFA33200),
-      Color(0xFF6A1B9A),
-      Color(0xFF00838F),
-      Color(0xFF2E7D32),
-    ];
-
-    /// room -> count
-    final Map<String, int> roomCount = {};
-
-    for (final patient in patients) {
-      var room = patient.room.trim();
-
-      // -------- Normalize room ----------
-      //
-      // P101-B1  -> 101
-      // P305-B02 -> 305
-      // 101      -> 101
-      // P101     -> 101
-      //
-      final match = RegExp(r'P?(\d+)').firstMatch(room);
-
-      if (match != null) {
-        room = match.group(1)!;
-      }
-
-      roomCount.update(room, (value) => value + 1, ifAbsent: () => 1);
-    }
-
-    final roomData = roomCount.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-
-    final rooms = roomData.asMap().entries.map((entry) {
-      return _RoomData(
-        'Phòng ${entry.value.key}',
-        entry.value.value,
-        colors[entry.key % colors.length],
-      );
-    }).toList();
-
-    final total = patients.length;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overview = ref.watch(complianceOverviewProvider);
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -863,135 +821,152 @@ class _RoomDistributionCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 120,
-            height: 120,
-            child: _DonutChart(rooms: rooms, total: total),
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
-              children: rooms
-                  .map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: r.color,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              r.name,
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 12,
-                                color: Color(0xFF424656),
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '${r.count}',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF191B24),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoomData {
-  const _RoomData(this.name, this.count, this.color);
-  final String name;
-  final int count;
-  final Color color;
-}
-
-class _DonutChart extends StatefulWidget {
-  const _DonutChart({required this.rooms, required this.total});
-  final List<_RoomData> rooms;
-  final int total;
-
-  @override
-  State<_DonutChart> createState() => _DonutChartState();
-}
-
-class _DonutChartState extends State<_DonutChart>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
-    _ctrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, _) => CustomPaint(
-        painter: _DonutPainter(
-          rooms: widget.rooms,
-          total: widget.total,
-          progress: _anim.value,
+      child: overview.when(
+        loading: () => const SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
         ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        error: (_, _) => _ComplianceInlineMessage(
+          message: 'Không thể tải dữ liệu tuân thủ',
+          onRetry: () => ref.invalidate(complianceOverviewProvider),
+        ),
+        data: (overview) {
+          if (overview.total == 0) {
+            return const _ComplianceInlineMessage(
+              message: 'Chưa có dữ liệu tuân thủ',
+            );
+          }
+          final percent = (overview.complianceRate * 100).round();
+
+          return Row(
             children: [
-              Text(
-                '${widget.total}',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF191B24),
-                ),
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: _ComplianceDonut(overview: overview, percent: percent),
               ),
-              const Text(
-                'BỆNH NHÂN',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: Color(0xFF424656),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  children: [
+                    _ComplianceLegendRow(
+                      color: AppColors.statusNormal,
+                      label: 'Tuân thủ',
+                      count: overview.compliant,
+                    ),
+                    const SizedBox(height: 8),
+                    _ComplianceLegendRow(
+                      color: AppColors.error,
+                      label: 'Không tuân thủ',
+                      count: overview.nonCompliant,
+                    ),
+                  ],
                 ),
               ),
             ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ComplianceInlineMessage extends StatelessWidget {
+  const _ComplianceInlineMessage({required this.message, this.onRetry});
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 100,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: Color(0xFF727687),
+              ),
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 4),
+              TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComplianceLegendRow extends StatelessWidget {
+  const _ComplianceLegendRow({
+    required this.color,
+    required this.label,
+    required this.count,
+  });
+  final Color color;
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: Color(0xFF424656),
+            ),
+          ),
+        ),
+        Text(
+          '$count',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF191B24),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ComplianceDonut extends StatelessWidget {
+  const _ComplianceDonut({required this.overview, required this.percent});
+  final ComplianceOverview overview;
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _ComplianceDonutPainter(overview: overview),
+      child: Center(
+        child: Text(
+          '$percent%',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF191B24),
           ),
         ),
       ),
@@ -999,64 +974,43 @@ class _DonutChartState extends State<_DonutChart>
   }
 }
 
-String roomLabel(String raw) {
-  final match = RegExp(r'P?(\d+)').firstMatch(raw);
-
-  if (match == null) {
-    return raw;
-  }
-
-  return 'Phòng ${match.group(1)}';
-}
-
-class _DonutPainter extends CustomPainter {
-  _DonutPainter({
-    required this.rooms,
-    required this.total,
-    required this.progress,
-  });
-
-  final List<_RoomData> rooms;
-  final int total;
-  final double progress;
+class _ComplianceDonutPainter extends CustomPainter {
+  _ComplianceDonutPainter({required this.overview});
+  final ComplianceOverview overview;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final total = overview.total;
     if (total == 0) return;
+
     final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2 - 6;
     const strokeWidth = 14.0;
 
-    // Background track
-    final trackPaint = Paint()
-      ..color = const Color(0xFFECEDFA)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.butt;
+    final segments = [
+      (overview.compliant, AppColors.statusNormal),
+      (overview.nonCompliant, AppColors.error),
+    ];
 
-    canvas.drawCircle(center, radius, trackPaint);
-
-    // Segments
-    double startAngle = -math.pi / 2;
-    for (final room in rooms) {
-      final sweep = (room.count / total) * 2 * math.pi * progress;
-      final paint = Paint()
-        ..color = room.color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.butt;
-
+    var startAngle = -math.pi / 2;
+    for (final (count, color) in segments) {
+      if (count == 0) continue;
+      final sweep = (count / total) * 2 * math.pi;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle,
         sweep,
         false,
-        paint,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.butt,
       );
-      startAngle += (room.count / total) * 2 * math.pi;
+      startAngle += sweep;
     }
   }
 
   @override
-  bool shouldRepaint(_DonutPainter old) => old.progress != progress;
+  bool shouldRepaint(_ComplianceDonutPainter old) => old.overview != overview;
 }
