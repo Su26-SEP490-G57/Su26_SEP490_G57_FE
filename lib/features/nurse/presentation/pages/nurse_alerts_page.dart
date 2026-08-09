@@ -148,14 +148,18 @@ class _AlertCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCritical = alert.alertType.toUpperCase() == 'RED';
-    final cardColor =
-        isCritical ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB);
-    final borderColor =
-        isCritical ? const Color(0xFFFECACA) : const Color(0xFFFDE68A);
-    final iconColor =
-        isCritical ? const Color(0xFFDC2626) : const Color(0xFFD97706);
-    final badgeColor =
-        isCritical ? const Color(0xFFEF4444) : const Color(0xFFF59E0B);
+    final cardColor = isCritical
+        ? const Color(0xFFFEF2F2)
+        : const Color(0xFFFFFBEB);
+    final borderColor = isCritical
+        ? const Color(0xFFFECACA)
+        : const Color(0xFFFDE68A);
+    final iconColor = isCritical
+        ? const Color(0xFFDC2626)
+        : const Color(0xFFD97706);
+    final badgeColor = isCritical
+        ? const Color(0xFFEF4444)
+        : const Color(0xFFF59E0B);
     final badgeText = isCritical ? 'NGUY KỊCH' : 'CẦN CHÚ Ý';
 
     return GestureDetector(
@@ -248,8 +252,9 @@ class _AlertCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color:
-                              AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                          color: AppColors.onSurfaceVariant.withValues(
+                            alpha: 0.8,
+                          ),
                           fontFamily: 'Inter',
                         ),
                       ),

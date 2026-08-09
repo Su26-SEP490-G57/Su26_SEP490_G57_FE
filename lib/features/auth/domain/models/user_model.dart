@@ -107,6 +107,7 @@ class UserModel extends Equatable {
 
     return '${parts[2]}/${parts[1]}/${parts[0]}';
   }
+
   String? get fullAddress {
     final parts = [
       detailedAddress,

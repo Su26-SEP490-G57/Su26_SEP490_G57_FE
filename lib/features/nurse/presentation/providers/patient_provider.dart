@@ -37,10 +37,16 @@ final patientNotifierProvider =
       return PatientNotifier(ref.watch(patientRepositoryProvider));
     });
 
-final patientByIdProvider = Provider.family<PatientSummary?, String>((ref, caseId) {
+final patientByIdProvider = Provider.family<PatientSummary?, String>((
+  ref,
+  caseId,
+) {
   final snapshot = ref.watch(
     patientNotifierProvider.select((state) {
-      final patient = state.patients.where((item) => item.code == caseId).cast<PatientSummary?>().firstOrNull;
+      final patient = state.patients
+          .where((item) => item.code == caseId)
+          .cast<PatientSummary?>()
+          .firstOrNull;
 
       if (patient == null) {
         return null;

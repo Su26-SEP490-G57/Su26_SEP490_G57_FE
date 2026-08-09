@@ -191,7 +191,10 @@ class _PatientHero extends StatelessWidget {
   final PatientSummary patient;
 
   String _displayPod(String pod) {
-    return pod.replaceFirst(RegExp(r'^POD\s*', caseSensitive: false), 'Hậu phẫu ');
+    return pod.replaceFirst(
+      RegExp(r'^POD\s*', caseSensitive: false),
+      'Hậu phẫu ',
+    );
   }
 
   @override
@@ -457,12 +460,16 @@ class _AssessmentTabState extends ConsumerState<_AssessmentTab> {
       return;
     }
 
-    final sortedDates = history
-        .map((item) => _toVietnamTime(item.evaluationDateTime))
-        .map((dateTime) => DateTime(dateTime.year, dateTime.month, dateTime.day))
-        .toSet()
-        .toList()
-      ..sort();
+    final sortedDates =
+        history
+            .map((item) => _toVietnamTime(item.evaluationDateTime))
+            .map(
+              (dateTime) =>
+                  DateTime(dateTime.year, dateTime.month, dateTime.day),
+            )
+            .toSet()
+            .toList()
+          ..sort();
 
     final initialDate = _selectedDate ?? sortedDates.last;
 
@@ -500,7 +507,9 @@ class _AssessmentTabState extends ConsumerState<_AssessmentTab> {
 
   @override
   Widget build(BuildContext context) {
-    final assessmentState = ref.watch(assessmentNotifierProvider(widget.caseId));
+    final assessmentState = ref.watch(
+      assessmentNotifierProvider(widget.caseId),
+    );
     if (assessmentState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -659,11 +668,7 @@ class _AssessmentDateSearchBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.event_rounded,
-              size: 20,
-              color: AppColors.primary,
-            ),
+            const Icon(Icons.event_rounded, size: 20, color: AppColors.primary),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -794,10 +799,7 @@ class _AssessmentHistoryCard extends StatelessWidget {
 
             Text(
               _triageLabel(assessment.triageColor),
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
 
             Text(

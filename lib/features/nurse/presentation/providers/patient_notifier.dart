@@ -68,7 +68,9 @@ class PatientNotifier extends StateNotifier<PatientState> {
   void upsertPatient(PatientSummary patient) {
     if (!mounted) return;
 
-    final index = state.patients.indexWhere((item) => item.code == patient.code);
+    final index = state.patients.indexWhere(
+      (item) => item.code == patient.code,
+    );
 
     if (index < 0) {
       state = state.copyWith(

@@ -44,7 +44,6 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
       }
     }
 
-
     await ref
         .read(authNotifierProvider.notifier)
         .signIn(

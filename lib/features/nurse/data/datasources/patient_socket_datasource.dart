@@ -15,25 +15,19 @@ class PatientSocketDataSource {
     await _socketService.disconnect();
   }
 
-  void onPatientCreated(
-    void Function(PatientResponse patient) callback,
-  ) {
+  void onPatientCreated(void Function(PatientResponse patient) callback) {
     _socketService.on('patient.created', (data) {
       callback(PatientResponse.fromJson(data));
     });
   }
 
-  void onPatientUpdated(
-    void Function(PatientResponse patient) callback,
-  ) {
+  void onPatientUpdated(void Function(PatientResponse patient) callback) {
     _socketService.on('patient.updated', (data) {
       callback(PatientResponse.fromJson(data));
     });
   }
 
-  void onPatientDeleted(
-    void Function(String caseId) callback,
-  ) {
+  void onPatientDeleted(void Function(String caseId) callback) {
     _socketService.on('patient.deleted', (data) {
       callback(data.toString());
     });

@@ -101,9 +101,7 @@ class AssessmentHistoryResponse {
     return AssessmentHistoryResponse(
       data: (json['data'] as List<dynamic>)
           .map(
-            (e) => AssessmentDetailResponse.fromJson(
-              e as Map<String, dynamic>,
-            ),
+            (e) => AssessmentDetailResponse.fromJson(e as Map<String, dynamic>),
           )
           .toList(),
       total: json['total'] as int,

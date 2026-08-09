@@ -6,12 +6,12 @@ import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/nurse/data/models/patient_response.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 import 'package:poms/features/nurse/presentation/providers/assessment_provider.dart'
-  as nurse_assessment;
+    as nurse_assessment;
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/priority_patients_provider.dart';
 import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
 import 'package:poms/features/patient/presentation/providers/survey_provider.dart'
-  as patient_survey;
+    as patient_survey;
 import 'package:poms/main.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
@@ -119,10 +119,9 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
     if (caseId == null || caseId.isEmpty) return;
 
     final surveyEventKey =
-      map?['assessmentId']?.toString() ??
-      map?['assessment_id']?.toString() ??
-      '${caseId}_${map?['totalScore'] ?? map?['total_score'] ?? ''}_${map?['triageColor'] ?? map?['triage_color'] ?? ''}'
-    ;
+        map?['assessmentId']?.toString() ??
+        map?['assessment_id']?.toString() ??
+        '${caseId}_${map?['totalScore'] ?? map?['total_score'] ?? ''}_${map?['triageColor'] ?? map?['triage_color'] ?? ''}';
 
     if (lastSurveyEventKey == surveyEventKey) {
       return;
@@ -133,7 +132,8 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
 
     final patientNotifier = ref.read(patientNotifierProvider.notifier);
     final status = mapPatientStatus(map?['triageColor']);
-    final lastAssessmentTime = map?['evaluationDatetime']?.toString() ??
+    final lastAssessmentTime =
+        map?['evaluationDatetime']?.toString() ??
         map?['createdAt']?.toString() ??
         DateTime.now().toIso8601String();
 

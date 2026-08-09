@@ -102,9 +102,7 @@ class AlertsNotifier extends StateNotifier<AlertsState> {
     if (!mounted) return;
 
     final current = [...state.alerts];
-    final existingIdx = current.indexWhere(
-      (a) => a.caseId == incoming.caseId,
-    );
+    final existingIdx = current.indexWhere((a) => a.caseId == incoming.caseId);
 
     if (existingIdx >= 0) {
       final existing = current[existingIdx];
@@ -142,9 +140,9 @@ class AlertsNotifier extends StateNotifier<AlertsState> {
 
 final alertsNotifierProvider =
     StateNotifierProvider<AlertsNotifier, AlertsState>((ref) {
-  final repository = ref.watch(alertRepositoryProvider);
-  return AlertsNotifier(repository);
-});
+      final repository = ref.watch(alertRepositoryProvider);
+      return AlertsNotifier(repository);
+    });
 
 // ── Latest alert per caseId (what the UI actually shows) ─────────────────────
 
