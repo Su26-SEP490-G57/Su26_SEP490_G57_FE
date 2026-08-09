@@ -41,6 +41,10 @@ class UserModel extends Equatable {
     required this.roles,
     required this.isActive,
     this.phoneNumber,
+    this.dob,
+    this.cityProvince,
+    this.ward,
+    this.detailedAddress,
     this.caseId,
     this.createdAt,
     this.updatedAt,
@@ -56,6 +60,10 @@ class UserModel extends Equatable {
           .toList(),
       isActive: json['isActive'] as bool? ?? true,
       phoneNumber: json['phoneNumber'] as String?,
+      dob: json['dob'] as String?,
+      cityProvince: json['cityProvince'] as String?,
+      ward: json['ward'] as String?,
+      detailedAddress: json['detailedAddress'] as String?,
       caseId: json['caseId'] as String?,
       createdAt: _parseDateTime(json['createdAt']),
       updatedAt: _parseDateTime(json['updatedAt']),
@@ -68,6 +76,10 @@ class UserModel extends Equatable {
   final List<UserRole> roles;
   final bool isActive;
   final String? phoneNumber;
+  final String? dob;
+  final String? cityProvince;
+  final String? ward;
+  final String? detailedAddress;
   final String? caseId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -82,6 +94,30 @@ class UserModel extends Equatable {
   UserRole get primaryRole => roles.isNotEmpty ? roles.first : UserRole.nurse;
 
   String get displayName => fullName;
+  String? get formattedDob {
+    if (dob == null || dob!.isEmpty) {
+      return null;
+    }
+
+    final parts = dob!.split('-');
+
+    if (parts.length != 3) {
+      return dob;
+    }
+
+    return '${parts[2]}/${parts[1]}/${parts[0]}';
+  }
+  String? get fullAddress {
+    final parts = [
+      detailedAddress,
+      ward,
+      cityProvince,
+    ].where((e) => e != null && e.trim().isNotEmpty).cast<String>();
+
+    if (parts.isEmpty) return null;
+
+    return parts.join(', ');
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -90,6 +126,10 @@ class UserModel extends Equatable {
     'roles': roles.map((r) => r.backendValue).toList(),
     'isActive': isActive,
     'phoneNumber': phoneNumber,
+    'dob': dob,
+    'cityProvince': cityProvince,
+    'ward': ward,
+    'detailedAddress': detailedAddress,
     'caseId': caseId,
     'createdAt': createdAt?.toIso8601String(),
     'updatedAt': updatedAt?.toIso8601String(),
@@ -116,6 +156,10 @@ class UserModel extends Equatable {
     List<UserRole>? roles,
     bool? isActive,
     String? phoneNumber,
+    String? dob,
+    String? cityProvince,
+    String? ward,
+    String? detailedAddress,
     String? caseId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -127,6 +171,10 @@ class UserModel extends Equatable {
       roles: roles ?? this.roles,
       isActive: isActive ?? this.isActive,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      dob: dob ?? this.dob,
+      cityProvince: cityProvince ?? this.cityProvince,
+      ward: ward ?? this.ward,
+      detailedAddress: detailedAddress ?? this.detailedAddress,
       caseId: caseId ?? this.caseId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -141,6 +189,10 @@ class UserModel extends Equatable {
     roles,
     isActive,
     phoneNumber,
+    dob,
+    cityProvince,
+    ward,
+    detailedAddress,
     caseId,
     createdAt,
     updatedAt,

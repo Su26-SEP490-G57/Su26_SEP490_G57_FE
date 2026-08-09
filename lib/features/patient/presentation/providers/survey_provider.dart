@@ -65,6 +65,8 @@ class AssessmentNotifier extends StateNotifier<AssessmentState> {
     int? podContext,
     String? shiftPeriod,
   }) async {
+    if (!mounted) return;
+
     state = state.copyWith(status: AssessmentStatus.loading);
     try {
       final result = await _repository.submitSurvey(
@@ -75,8 +77,13 @@ class AssessmentNotifier extends StateNotifier<AssessmentState> {
           shiftPeriod: shiftPeriod,
         ),
       );
+
+      if (!mounted) return;
+
       state = AssessmentState(status: AssessmentStatus.success, result: result);
     } catch (e) {
+      if (!mounted) return;
+
       state = AssessmentState(
         status: AssessmentStatus.error,
         errorMessage: e.toString(),

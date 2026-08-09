@@ -20,4 +20,19 @@ class AssessmentRemoteDataSource {
       response.data as Map<String, dynamic>,
     );
   }
+
+  Future<AssessmentHistoryResponse> getAssessmentHistory(
+    String caseId, {
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final response = await _dio.get(
+      '/patients/$caseId/assessments',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+
+    return AssessmentHistoryResponse.fromJson(
+      response.data as Map<String, dynamic>,
+    );
+  }
 }
