@@ -5,4 +5,10 @@ abstract interface class AssessmentRepository {
   Future<AssessmentSummary> getLatestAssessment(String caseId);
 
   Future<AssessmentDetail> getAssessmentDetail(int assessmentId);
+
+  Future<List<AssessmentDetail>> getAssessmentHistory(
+    String caseId, {
+    int page = 1,
+    int limit = 10,
+  });
 }

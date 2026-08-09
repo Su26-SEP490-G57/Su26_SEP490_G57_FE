@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+//import 'package:flutter/material.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,55 +32,79 @@ class AssessmentState {
     this.status = AssessmentStatusState.initial,
     this.assessment,
     this.detail,
+    this.history = const [],
+    this.selectedAssessmentId,
     this.errorMessage,
   });
 
   final AssessmentStatusState status;
   final AssessmentSummary? assessment;
   final AssessmentDetail? detail;
+  final List<AssessmentDetail> history;
+  final int? selectedAssessmentId;
   final String? errorMessage;
 
   bool get isLoading => status == AssessmentStatusState.loading;
+
+  AssessmentDetail? get selectedAssessment {
+    if (selectedAssessmentId == null) {
+      return detail;
+    }
+
+    for (final item in history) {
+      if (item.assessmentId == selectedAssessmentId) {
+        return item;
+      }
+    }
+
+    return detail;
+  }
 
   AssessmentState copyWith({
     AssessmentStatusState? status,
     AssessmentSummary? assessment,
     AssessmentDetail? detail,
+    List<AssessmentDetail>? history,
+    int? selectedAssessmentId,
     String? errorMessage,
   }) {
     return AssessmentState(
       status: status ?? this.status,
       assessment: assessment ?? this.assessment,
       detail: detail ?? this.detail,
+      history: history ?? this.history,
+      selectedAssessmentId: selectedAssessmentId ?? this.selectedAssessmentId,
       errorMessage: errorMessage,
     );
   }
 }
 
 class AssessmentNotifier extends StateNotifier<AssessmentState> {
-  AssessmentNotifier(this._repository) : super(const AssessmentState());
+  AssessmentNotifier(this._repository, this._caseId)
+    : super(const AssessmentState()) {
+    unawaited(loadAssessmentHistory());
+  }
 
   final AssessmentRepository _repository;
+  final String _caseId;
 
-  Future<void> loadLatestAssessment(String caseId) async {
-    debugPrint('loadLatestAssessment: $caseId');
-    debugPrint(StackTrace.current.toString());
+  Future<void> loadAssessmentHistory() async {
+    if (!mounted) return;
+
     state = state.copyWith(status: AssessmentStatusState.loading);
 
     try {
-      final assessment = await _repository.getLatestAssessment(caseId);
-      debugPrint(
-        'assessmentId=${assessment.assessmentId}, score=${assessment.totalScore}',
-      );
-      debugPrint(StackTrace.current.toString());
-      final detail = await _repository.getAssessmentDetail(
-        assessment.assessmentId,
-      );
+      final history = await _repository.getAssessmentHistory(_caseId);
 
-      state = AssessmentState(
+      if (!mounted) return;
+
+      state = state.copyWith(
         status: AssessmentStatusState.loaded,
-        assessment: assessment,
-        detail: detail,
+        history: history,
+        detail: history.isEmpty ? null : history.first,
+        selectedAssessmentId: history.isEmpty
+            ? null
+            : history.first.assessmentId,
       );
     } on DioException catch (e) {
       String message;
@@ -87,25 +113,50 @@ class AssessmentNotifier extends StateNotifier<AssessmentState> {
         case 404:
           message = 'Chưa có dữ liệu đánh giá của bệnh nhân.';
           break;
-
         default:
-          message = 'Không thể kết nối tới máy chủ. Vui lòng thử lại.';
+          message =
+              'Không có dữ liệu đánh giá hoặc không thể kết nối tới máy chủ.';
       }
 
-      state = AssessmentState(
+      if (!mounted) return;
+
+      state = state.copyWith(
         status: AssessmentStatusState.error,
         errorMessage: message,
       );
     } catch (_) {
-      state = const AssessmentState(
+      if (!mounted) return;
+
+      state = state.copyWith(
         status: AssessmentStatusState.error,
         errorMessage: 'Đã xảy ra lỗi. Vui lòng thử lại.',
       );
     }
   }
+
+  void selectAssessment(int assessmentId) {
+    if (!mounted) return;
+
+    state = state.copyWith(selectedAssessmentId: assessmentId);
+  }
+
+  void appendAssessment(AssessmentDetail assessment) {
+    if (!mounted) return;
+
+    state = state.copyWith(
+      history: [assessment, ...state.history],
+      selectedAssessmentId: assessment.assessmentId,
+    );
+  }
 }
 
 final assessmentNotifierProvider =
-    StateNotifierProvider<AssessmentNotifier, AssessmentState>((ref) {
-      return AssessmentNotifier(ref.watch(assessmentRepositoryProvider));
+    StateNotifierProvider.family<AssessmentNotifier, AssessmentState, String>((
+      ref,
+      caseId,
+    ) {
+      return AssessmentNotifier(
+        ref.watch(assessmentRepositoryProvider),
+        caseId,
+      );
     });

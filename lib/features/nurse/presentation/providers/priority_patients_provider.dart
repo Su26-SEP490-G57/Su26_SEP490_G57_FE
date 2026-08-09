@@ -1,22 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
-import 'package:poms/features/nurse/data/datasources/patient_remote_datasource.dart';
-import 'package:poms/features/nurse/data/repositories/patient_repository_impl.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
-import 'package:poms/features/nurse/domain/repositories/patient_repository.dart';
-
-final patientRemoteDataSourceProvider = Provider<PatientRemoteDataSource>((
-  ref,
-) {
-  final dio = ref.watch(appDioProvider);
-  return PatientRemoteDataSource(dio);
-});
-
-final patientRepositoryProvider = Provider<PatientRepository>((ref) {
-  final remoteDataSource = ref.watch(patientRemoteDataSourceProvider);
-  return PatientRepositoryImpl(remoteDataSource);
-});
+import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 
 // A family provider to fetch patients based on search and optional level filter
 // We will use this to fetch Red and Yellow separately if needed.

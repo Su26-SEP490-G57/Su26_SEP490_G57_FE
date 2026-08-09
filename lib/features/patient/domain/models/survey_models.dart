@@ -119,9 +119,9 @@ extension TriageColorX on TriageColor {
   }
 
   String get label => switch (this) {
-    TriageColor.green => 'GREEN',
-    TriageColor.yellow => 'YELLOW',
-    TriageColor.red => 'RED',
+    TriageColor.green => 'Xanh',
+    TriageColor.yellow => 'Vàng',
+    TriageColor.red => 'Đỏ',
   };
 }
 

@@ -94,6 +94,58 @@ class PatientSummary {
 
   /// POD number chỉ (vd: "POD 2" → "2")
   String get podNumber => pod.replaceAll(RegExp(r'[^0-9]'), '');
+
+  PatientSummary copyWith({
+    String? code,
+    String? name,
+    String? room,
+    String? pod,
+    PatientStatus? status,
+    int? age,
+    String? gender,
+    String? surgeryDate,
+    String? pathway,
+    double? bmi,
+    String? surgeryType,
+    String? diagnosis,
+    int? operationTypeId,
+    String? operationTypeName,
+    String? operationMethod,
+    bool? hasGiAnastomosis,
+    String? nurseInCharge,
+    String? doctorInCharge,
+    int? alertCount,
+    int? assessmentDone,
+    int? assessmentTotal,
+    String? lastAssessmentTime,
+    bool? needsIntervention,
+  }) {
+    return PatientSummary(
+      code: code ?? this.code,
+      name: name ?? this.name,
+      room: room ?? this.room,
+      pod: pod ?? this.pod,
+      status: status ?? this.status,
+      age: age ?? this.age,
+      gender: gender ?? this.gender,
+      surgeryDate: surgeryDate ?? this.surgeryDate,
+      pathway: pathway ?? this.pathway,
+      bmi: bmi ?? this.bmi,
+      surgeryType: surgeryType ?? this.surgeryType,
+      diagnosis: diagnosis ?? this.diagnosis,
+      operationTypeId: operationTypeId ?? this.operationTypeId,
+      operationTypeName: operationTypeName ?? this.operationTypeName,
+      operationMethod: operationMethod ?? this.operationMethod,
+      hasGiAnastomosis: hasGiAnastomosis ?? this.hasGiAnastomosis,
+      nurseInCharge: nurseInCharge ?? this.nurseInCharge,
+      doctorInCharge: doctorInCharge ?? this.doctorInCharge,
+      alertCount: alertCount ?? this.alertCount,
+      assessmentDone: assessmentDone ?? this.assessmentDone,
+      assessmentTotal: assessmentTotal ?? this.assessmentTotal,
+      lastAssessmentTime: lastAssessmentTime ?? this.lastAssessmentTime,
+      needsIntervention: needsIntervention ?? this.needsIntervention,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
