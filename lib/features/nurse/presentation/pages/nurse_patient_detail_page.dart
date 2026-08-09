@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poms/features/nurse/domain/models/assessment_detail.dart';
+import 'package:poms/features/nurse/domain/models/assessment_matrix.dart';
+import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/assessment_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:intl/intl.dart';
@@ -28,7 +30,12 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
-  static const _tabs = ['Tổng quan', 'Đánh giá triệu chứng', 'Ghi chú'];
+  static const _tabs = [
+    'Tổng quan',
+    'Đánh giá triệu chứng',
+    'Ghi chú',
+    'Tuân thủ',
+  ];
 
   @override
   void initState() {
@@ -148,6 +155,7 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
             ),
             _AssessmentTab(caseId: widget.patientId),
             _NotesTab(notes: _mockNotes),
+            _ComplianceTab(caseId: widget.patientId),
           ],
         ),
       ),
@@ -1045,6 +1053,370 @@ class _NoteCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Compliance tab — checklist + counters + bảng đánh giá cuối ngày (POD x câu hỏi)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ComplianceTab extends ConsumerWidget {
+  const _ComplianceTab({required this.caseId});
+  final String caseId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      children: [
+        const Text(
+          'ĐỘ TUÂN THỦ',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+            color: Color(0xFF424656),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _ComplianceStatsCard(caseId: caseId),
+        const SizedBox(height: 24),
+        const Text(
+          'ĐÁNH GIÁ CUỐI NGÀY',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+            color: Color(0xFF424656),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _EndOfDayAssessmentCard(caseId: caseId),
+      ],
+    );
+  }
+}
+
+class _ComplianceInfoCardShell extends StatelessWidget {
+  const _ComplianceInfoCardShell({required this.child, this.padding});
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC2C6D8)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ComplianceEmptyState extends StatelessWidget {
+  const _ComplianceEmptyState({required this.message, this.onRetry});
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ComplianceInfoCardShell(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            children: [
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  color: Color(0xFF727687),
+                ),
+              ),
+              if (onRetry != null) ...[
+                const SizedBox(height: 8),
+                TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComplianceStatsCard extends ConsumerWidget {
+  const _ComplianceStatsCard({required this.caseId});
+  final String caseId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final compliance = ref.watch(patientComplianceProvider(caseId));
+
+    return compliance.when(
+      loading: () => const _ComplianceInfoCardShell(
+        child: SizedBox(
+          height: 160,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (_, _) => _ComplianceEmptyState(
+        message: 'Không thể tải dữ liệu tuân thủ',
+        onRetry: () => ref.invalidate(patientComplianceProvider(caseId)),
+      ),
+      data: (data) => _ComplianceInfoCardShell(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Checklist',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: Color(0xFF727687),
+                  ),
+                ),
+                _ComplianceStatusBadge(isCompliant: data.isCompliant),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _ChecklistRow(
+              label: 'Đã xem hướng dẫn POD',
+              done: data.viewedGuidance,
+            ),
+            const SizedBox(height: 8),
+            _ChecklistRow(
+              label: 'Đã xem giáo dục sức khỏe',
+              done: data.viewedEducation,
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Số liệu',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: Color(0xFF727687),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _CounterRow(
+              label: 'Số đánh giá đã hoàn thành',
+              value: data.assessmentCompletedCount,
+            ),
+            const SizedBox(height: 8),
+            _CounterRow(label: 'Số lần nhắc nhở', value: data.reminderCount),
+            const SizedBox(height: 8),
+            _CounterRow(
+              label: 'Số lần truy cập ứng dụng',
+              value: data.appAccessCount,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComplianceStatusBadge extends StatelessWidget {
+  const _ComplianceStatusBadge({required this.isCompliant});
+  final bool isCompliant;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isCompliant ? AppColors.statusNormal : AppColors.error;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        isCompliant ? 'Tuân thủ' : 'Không tuân thủ',
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _ChecklistRow extends StatelessWidget {
+  const _ChecklistRow({required this.label, required this.done});
+  final String label;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          done ? Icons.check_circle_rounded : Icons.circle_outlined,
+          size: 18,
+          color: done ? AppColors.statusNormal : const Color(0xFFC2C6D8),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14,
+            color: done ? const Color(0xFF191B24) : const Color(0xFF727687),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CounterRow extends StatelessWidget {
+  const _CounterRow({required this.label, required this.value});
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14,
+            color: Color(0xFF424656),
+          ),
+        ),
+        Text(
+          '$value',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF191B24),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EndOfDayAssessmentCard extends ConsumerWidget {
+  const _EndOfDayAssessmentCard({required this.caseId});
+  final String caseId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final matrix = ref.watch(assessmentMatrixProvider(caseId));
+
+    return matrix.when(
+      loading: () => const _ComplianceInfoCardShell(
+        child: SizedBox(
+          height: 160,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (_, _) => _ComplianceEmptyState(
+        message: 'Không thể tải bảng đánh giá',
+        onRetry: () => ref.invalidate(assessmentMatrixProvider(caseId)),
+      ),
+      data: (matrix) {
+        if (matrix.questions.isEmpty) {
+          return const _ComplianceEmptyState(
+            message: 'Chưa có đánh giá cuối ngày cho người bệnh này',
+          );
+        }
+        return _ComplianceInfoCardShell(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: _AssessmentMatrixTable(matrix: matrix),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AssessmentMatrixTable extends StatelessWidget {
+  const _AssessmentMatrixTable({required this.matrix});
+  final AssessmentMatrix matrix;
+
+  @override
+  Widget build(BuildContext context) {
+    const headerStyle = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: Color(0xFF424656),
+    );
+    const cellStyle = TextStyle(
+      fontFamily: 'Inter',
+      fontSize: 13,
+      color: Color(0xFF191B24),
+    );
+
+    return DataTable(
+      headingRowHeight: 40,
+      dataRowMinHeight: 44,
+      dataRowMaxHeight: 44,
+      columnSpacing: 20,
+      columns: [
+        const DataColumn(label: Text('Chỉ số', style: headerStyle)),
+        ...matrix.pods.map(
+          (pod) => DataColumn(label: Text('POD$pod', style: headerStyle)),
+        ),
+      ],
+      rows: matrix.questions.map((question) {
+        return DataRow(
+          cells: [
+            DataCell(
+              SizedBox(
+                width: 140,
+                child: Text(
+                  question.questionText,
+                  style: cellStyle.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            ...matrix.pods.map(
+              (pod) => DataCell(
+                Text(
+                  question.scoreForPod(pod)?.toString() ?? '--',
+                  style: cellStyle,
+                ),
+              ),
+            ),
+          ],
+        );
+      }).toList(),
     );
   }
 }

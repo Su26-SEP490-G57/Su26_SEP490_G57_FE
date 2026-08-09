@@ -15,6 +15,12 @@ abstract final class AppConstants {
   static const String endpointRefresh = '/auth/refresh';
   static const String endpointLogout = '/auth/logout';
   static const endpointPatients = '/patients';
+  static const String endpointAnalyticsOverview =
+      '/patients/analytics/overview';
+  static String endpointPatientCompliance(String caseId) =>
+      '/patients/$caseId/compliance';
+  static String endpointAssessmentMatrix(String caseId) =>
+      '/patients/$caseId/assessment-matrix';
 
   // API
   static const Duration connectTimeout = Duration(seconds: 15);
