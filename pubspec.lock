@@ -33,22 +33,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.4"
-  ansi:
-    dependency: transitive
-    description:
-      name: ansi
-      sha256: "070af96189f9da6f996cee46049682bdcd1d191b483e13f9d2a2600729d8b2a1"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.2"
-  ansi_escapes:
-    dependency: transitive
-    description:
-      name: ansi_escapes
-      sha256: e2a111254904ff663b8d4be744073f7e327157c895a0ad57ad8de7938297bc8c
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
   args:
     dependency: transitive
     description:
@@ -648,14 +632,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.2"
-  lint_staged:
-    dependency: "direct dev"
-    description:
-      name: lint_staged
-      sha256: "969cb1829d5f5ca761dd9029762ab11e73bf83bc270a2ea03297c60eed261e3e"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.5.1"
   lints:
     dependency: transitive
     description:
@@ -989,6 +965,22 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  socket_io_client:
+    dependency: "direct main"
+    description:
+      name: socket_io_client
+      sha256: f5990ff303d385e7b2150f0e57cca097a8d20c6a2ae0a22cb2d496661ea8ed9b
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.6"
+  socket_io_common:
+    dependency: transitive
+    description:
+      name: socket_io_common
+      sha256: "162fbaecbf4bf9a9372a62a341b3550b51dcef2f02f3e5830a297fd48203d45b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.1"
   source_gen:
     dependency: transitive
     description:
@@ -1221,14 +1213,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
-  verbose:
-    dependency: transitive
-    description:
-      name: verbose
-      sha256: "8e63580e35d58a15e4fca702fe91766430b1d28738c160c466e5cb10c373002a"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.1"
   vm_service:
     dependency: transitive
     description:

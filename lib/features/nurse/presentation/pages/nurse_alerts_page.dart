@@ -13,7 +13,11 @@ class NurseAlertsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final alertsAsync = ref.watch(activeAlertsProvider);
+    // Activate realtime socket listener.
+    ref.watch(alertRealtimeProvider);
+
+    final alertsState = ref.watch(alertsNotifierProvider);
+    final alerts = ref.watch(latestAlertPerCaseProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -33,67 +37,67 @@ class NurseAlertsPage extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: () {
-              ref.invalidate(activeAlertsProvider);
-            },
+            onPressed: () => ref.read(alertsNotifierProvider.notifier).load(),
           ),
         ],
       ),
-      body: alertsAsync.when(
-        data: (alerts) {
-          if (alerts.isEmpty) {
-            return _buildEmptyState(context);
-          }
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(activeAlertsProvider);
-            },
-            color: AppColors.primary,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              itemCount: alerts.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final alert = alerts[index];
-                return _AlertCard(alert: alert);
-              },
+      body: () {
+        if (alertsState.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (alertsState.errorMessage != null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: Colors.red,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Lỗi tải dữ liệu cảnh báo:\n${alertsState.errorMessage}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () =>
+                        ref.read(alertsNotifierProvider.notifier).load(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
+                    child: const Text(
+                      'Thử lại',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.error_outline_rounded,
-                  color: Colors.red,
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Lỗi tải dữ liệu cảnh báo:\n$error',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () => ref.invalidate(activeAlertsProvider),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                  ),
-                  child: const Text(
-                    'Thử lại',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
+        }
+
+        if (alerts.isEmpty) {
+          return _buildEmptyState(context);
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async =>
+              ref.read(alertsNotifierProvider.notifier).load(),
+          color: AppColors.primary,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            itemCount: alerts.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 16),
+            itemBuilder: (context, index) => _AlertCard(alert: alerts[index]),
           ),
-        ),
-      ),
+        );
+      }(),
     );
   }
 
@@ -132,6 +136,10 @@ class NurseAlertsPage extends ConsumerWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Alert card — hiển thị alert mới nhất của 1 bệnh nhân
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _AlertCard extends StatelessWidget {
   const _AlertCard({required this.alert});
 
@@ -139,7 +147,7 @@ class _AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCritical = alert.alertType == 'RED';
+    final isCritical = alert.alertType.toUpperCase() == 'RED';
     final cardColor = isCritical
         ? const Color(0xFFFEF2F2)
         : const Color(0xFFFFFBEB);
@@ -155,9 +163,7 @@ class _AlertCard extends StatelessWidget {
     final badgeText = isCritical ? 'NGUY KỊCH' : 'CẦN CHÚ Ý';
 
     return GestureDetector(
-      onTap: () {
-        context.push(AppRoutes.nursePatientDetailPath(alert.caseId));
-      },
+      onTap: () => context.push(AppRoutes.nursePatientDetailPath(alert.caseId)),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -175,7 +181,7 @@ class _AlertCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row
+            // ── Header ───────────────────────────────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -206,15 +212,19 @@ class _AlertCard extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Bệnh nhân: ${alert.caseId}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.onSurface,
-                              fontFamily: 'Inter',
+                          Expanded(
+                            child: Text(
+                              'Bệnh nhân: ${alert.caseId}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.onSurface,
+                                fontFamily: 'Inter',
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -240,7 +250,7 @@ class _AlertCard extends StatelessWidget {
                       Text(
                         _formatDate(alert.triggeredAt),
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: AppColors.onSurfaceVariant.withValues(
                             alpha: 0.8,
@@ -253,6 +263,7 @@ class _AlertCard extends StatelessWidget {
                 ),
               ],
             ),
+
             const SizedBox(height: 16),
             // Status and Details
             Container(
@@ -263,18 +274,19 @@ class _AlertCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  _buildStatusIndicator(),
+                  _StatusDot(status: alert.status),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Trạng thái: ${alert.status}',
+                          'Trạng thái: ${_statusLabel(alert.status)}',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: AppColors.onSurface,
+                            fontFamily: 'Inter',
                           ),
                         ),
                         if (alert.surveyScore != null) ...[
@@ -284,6 +296,7 @@ class _AlertCard extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 14,
                               color: AppColors.onSurfaceVariant,
+                              fontFamily: 'Inter',
                             ),
                           ),
                         ],
@@ -305,25 +318,35 @@ class _AlertCard extends StatelessWidget {
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'Không rõ thời gian';
-    return DateFormat('HH:mm - dd/MM/yyyy').format(date);
+    // Server trả về UTC — convert sang giờ Việt Nam (UTC+7).
+    final vn = date.toUtc().add(const Duration(hours: 7));
+    return DateFormat('HH:mm - dd/MM/yyyy').format(vn);
   }
 
-  Widget _buildStatusIndicator() {
-    Color color;
-    switch (alert.status) {
-      case 'Pending':
-        color = Colors.orange;
-        break;
-      case 'Acknowledged':
-        color = Colors.blue;
-        break;
-      case 'Closed':
-        color = Colors.green;
-        break;
-      default:
-        color = Colors.grey;
-    }
+  String _statusLabel(String status) => switch (status) {
+    'Pending' => 'Chờ xử lý',
+    'Acknowledged' => 'Đã nhận',
+    'Closed' => 'Đã đóng',
+    _ => status,
+  };
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Status dot indicator
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.status});
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (status) {
+      'Pending' => Colors.orange,
+      'Acknowledged' => Colors.blue,
+      'Closed' => Colors.green,
+      _ => Colors.grey,
+    };
     return Container(
       width: 12,
       height: 12,

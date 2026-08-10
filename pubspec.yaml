@@ -40,6 +40,7 @@ dependencies:
   # App version check
   package_info_plus: ^8.3.0
   url_launcher: ^6.3.1
+  socket_io_client: ^3.1.6
 
 dev_dependencies:
   flutter_test:
@@ -53,14 +54,6 @@ dev_dependencies:
   freezed: ^2.5.8
   freezed_annotation: ^2.4.4
   husky: ^0.1.7
-  lint_staged: ^0.5.1
 
 flutter:
   uses-material-design: true
-
-lint_staged:
-  "lib/**.dart":
-    - fvm dart format
-    - fvm dart fix --apply
-    - git add
-    - fvm flutter analyze

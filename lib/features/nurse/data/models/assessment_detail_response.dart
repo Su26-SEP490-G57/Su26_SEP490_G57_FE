@@ -88,3 +88,30 @@ class AssessmentDetailResponse {
     );
   }
 }
+
+class AssessmentHistoryResponse {
+  const AssessmentHistoryResponse({
+    required this.data,
+    required this.total,
+    required this.page,
+    required this.limit,
+  });
+
+  factory AssessmentHistoryResponse.fromJson(Map<String, dynamic> json) {
+    return AssessmentHistoryResponse(
+      data: (json['data'] as List<dynamic>)
+          .map(
+            (e) => AssessmentDetailResponse.fromJson(e as Map<String, dynamic>),
+          )
+          .toList(),
+      total: json['total'] as int,
+      page: json['page'] as int,
+      limit: json['limit'] as int,
+    );
+  }
+
+  final List<AssessmentDetailResponse> data;
+  final int total;
+  final int page;
+  final int limit;
+}

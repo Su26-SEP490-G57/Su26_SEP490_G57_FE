@@ -6,6 +6,7 @@ import 'package:poms/core/constants/app_strings.dart';
 import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/core/router/app_router.dart';
 import 'package:poms/core/services/notification_service.dart';
+import 'package:poms/core/services/statistics_realtime_provider.dart';
 import 'package:poms/core/services/version_check_service.dart';
 import 'package:poms/core/theme/app_theme.dart';
 import 'package:poms/features/auth/domain/models/user_model.dart';
@@ -163,6 +164,7 @@ class _AppState extends ConsumerState<App> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(statisticsRealtimeProvider);
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(

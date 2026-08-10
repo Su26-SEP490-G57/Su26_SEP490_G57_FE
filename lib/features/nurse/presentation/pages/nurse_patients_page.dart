@@ -9,6 +9,7 @@ import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
 //import 'package:poms/features/nurse/domain/models/operation_type.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/presentation/providers/patient_state.dart';
 //import 'package:poms/features/nurse/presentation/providers/operation_type_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/patient_pagination.dart';
 
