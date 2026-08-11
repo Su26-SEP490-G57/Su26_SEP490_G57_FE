@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/presentation/providers/assigned_rooms_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/priority_patients_provider.dart';
 
 class NursePriorityPatientsPage extends ConsumerStatefulWidget {
@@ -152,42 +153,95 @@ class _NursePriorityPatientsPageState
     );
   }
 
+  Widget _buildUnassignedState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF7E6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.meeting_room_outlined,
+                size: 56,
+                color: Color(0xFFF59E0B),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Bạn chưa được phân công phụ trách phòng bệnh nào.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurface,
+                fontFamily: 'Inter',
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Vui lòng liên hệ Điều dưỡng trưởng để được phân công phòng bệnh.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.onSurfaceVariant,
+                fontFamily: 'Inter',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final patientsAsync = ref.watch(priorityPatientsProvider);
+    final assignedRoomsAsync = ref.watch(assignedRoomsProvider);
+
+    final assignedRooms = assignedRoomsAsync.value ?? [];
+    final isUnassigned = assignedRooms.isEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF8FF),
       body: Column(
         children: [
           _TopAppBar(
+            assignedRooms: assignedRooms,
             onSearchTap: () => FocusScope.of(context).requestFocus(),
             onFilterTap: () => _showFilterSheet(context),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              children: [
-                _SearchBar(
-                  controller: _searchController,
-                  onChanged: (v) =>
-                      ref
-                              .read(
-                                priorityPatientsSearchQueryProvider.notifier,
-                              )
-                              .state =
-                          v,
-                ),
-                const SizedBox(height: 12),
-                _FilterChipsRow(
-                  selectedPod: _selectedPod,
-                  selectedPathway: _selectedPathway,
-                  selectedAiLevel: _selectedAiLevel,
-                  onPodTap: () => _showPodPicker(context),
-                  onPathwayTap: () => _showPathwayPicker(context),
-                  onAiLevelTap: () => _showAiLevelPicker(context),
-                ),
-                const SizedBox(height: 10),
+            child: isUnassigned
+                ? _buildUnassignedState()
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    children: [
+                      _SearchBar(
+                        controller: _searchController,
+                        onChanged: (v) =>
+                            ref
+                                    .read(
+                                      priorityPatientsSearchQueryProvider.notifier,
+                                    )
+                                    .state =
+                                v,
+                      ),
+                      const SizedBox(height: 12),
+                      _FilterChipsRow(
+                        selectedPod: _selectedPod,
+                        selectedPathway: _selectedPathway,
+                        selectedAiLevel: _selectedAiLevel,
+                        onPodTap: () => _showPodPicker(context),
+                        onPathwayTap: () => _showPathwayPicker(context),
+                        onAiLevelTap: () => _showAiLevelPicker(context),
+                      ),
+                      const SizedBox(height: 10),
                 patientsAsync.when(
                   data: (patients) {
                     // Local filtering for POD and Level since API might not handle all
@@ -291,13 +345,22 @@ class _NursePriorityPatientsPageState
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TopAppBar extends StatelessWidget {
-  const _TopAppBar({required this.onSearchTap, required this.onFilterTap});
+  const _TopAppBar({
+    required this.onSearchTap,
+    required this.onFilterTap,
+    required this.assignedRooms,
+  });
 
   final VoidCallback onSearchTap;
   final VoidCallback onFilterTap;
+  final List<String> assignedRooms;
 
   @override
   Widget build(BuildContext context) {
+    final roomsText = assignedRooms.isEmpty
+        ? 'Chưa phân phòng'
+        : 'Phòng: ${assignedRooms.join(", ")}';
+
     return Container(
       color: AppColors.primary,
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -311,15 +374,29 @@ class _TopAppBar extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                 onPressed: () => context.pop(),
               ),
-              const Expanded(
-                child: Text(
-                  'Bệnh nhân ưu tiên',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Bệnh nhân ưu tiên',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      roomsText,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               IconButton(

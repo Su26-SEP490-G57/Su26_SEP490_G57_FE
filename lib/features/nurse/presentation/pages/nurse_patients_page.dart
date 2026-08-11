@@ -13,6 +13,8 @@ import 'package:poms/features/nurse/presentation/providers/patient_state.dart';
 //import 'package:poms/features/nurse/presentation/providers/operation_type_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/patient_pagination.dart';
 
+import 'package:poms/features/nurse/presentation/providers/assigned_rooms_provider.dart';
+
 class NursePatientsPage extends ConsumerStatefulWidget {
   const NursePatientsPage({super.key});
 
@@ -86,17 +88,67 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     return patients.sublist(start, end);
   }
 
+  Widget _buildUnassignedState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF7E6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.meeting_room_outlined,
+                size: 56,
+                color: Color(0xFFF59E0B),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Bạn chưa được phân công phụ trách phòng bệnh nào.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.onSurface,
+                fontFamily: 'Inter',
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Vui lòng liên hệ Điều dưỡng trưởng để được phân công phòng bệnh.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.onSurfaceVariant,
+                fontFamily: 'Inter',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final patientState = ref.watch(patientNotifierProvider);
+    final assignedRoomsAsync = ref.watch(assignedRoomsProvider);
 
-    //final operationTypeState = ref.watch(operationTypeNotifierProvider);
-    if (patientState.isLoading) {
+    if (patientState.isLoading || assignedRoomsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     if (patientState.status == PatientStatusState.error) {
       return Center(child: Text(patientState.errorMessage ?? 'Có lỗi xảy ra'));
     }
+
+    final assignedRooms = assignedRoomsAsync.value ?? [];
+    final isUnassigned = assignedRooms.isEmpty;
+
     final filteredPatients = _filtered(patientState.patients);
     final pagedPatients = _paginate(filteredPatients);
     final totalPages = max(1, (filteredPatients.length / _pageSize).ceil());
@@ -113,61 +165,43 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     return Column(
       children: [
         // ── Top App Bar ──────────────────────────────────────────────
-        const _TopAppBar(),
+        _TopAppBar(assignedRooms: assignedRooms),
 
         // ── Body ─────────────────────────────────────────────────────
         Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-            children: [
-              // Search bar
-              _SearchBar(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                    _currentPage = 1;
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Filter chips row
-              _FilterChipsRow(
-                selectedStatuses: _selectedStatuses,
-                onStatusTap: _toggleStatus,
-              ),
-              const SizedBox(height: 10),
-
-              // Count + sort row
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: isUnassigned
+              ? _buildUnassignedState()
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                   children: [
-                    Text(
-                      'Tổng: ${filteredPatients.length} người bệnh',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
-                        color: Color(0xFF727687),
-                      ),
+                    // Search bar
+                    _SearchBar(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                          _currentPage = 1;
+                        });
+                      },
                     ),
-                    GestureDetector(
-                      onTap: () {},
-                      child: const Row(
+                    const SizedBox(height: 12),
+
+                    // Filter chips row
+                    _FilterChipsRow(
+                      selectedStatuses: _selectedStatuses,
+                      onStatusTap: _toggleStatus,
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Count + sort row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(
-                            Icons.sort_rounded,
-                            size: 14,
-                            color: Color(0xFF727687),
-                          ),
-                          SizedBox(width: 4),
                           Text(
-                            'Sắp xếp',
-                            style: TextStyle(
+                            'Tổng: ${filteredPatients.length} người bệnh',
+                            style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -175,53 +209,73 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
                               color: Color(0xFF727687),
                             ),
                           ),
+                          GestureDetector(
+                            onTap: () {},
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.sort_rounded,
+                                  size: 14,
+                                  color: Color(0xFF727687),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Sắp xếp',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.6,
+                                    color: Color(0xFF727687),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 12),
+
+                    // Patient cards
+                    ...pagedPatients.map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _PatientCard(
+                          data: p,
+                          onTap: () => context.push(
+                            AppRoutes.nursePatientDetailPath(p.code),
+                            extra: p,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    PatientPagination(
+                      currentPage: _currentPage,
+                      totalPages: totalPages,
+                      startIndex: startIndex,
+                      endIndex: endIndex,
+                      total: filteredPatients.length,
+                      onPrevious: () {
+                        if (_currentPage <= 1) return;
+
+                        setState(() {
+                          _currentPage--;
+                        });
+                      },
+                      onNext: () {
+                        if (_currentPage >= totalPages) return;
+
+                        setState(() {
+                          _currentPage++;
+                        });
+                      },
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
-
-              // Patient cards
-              ...pagedPatients.map(
-                (p) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _PatientCard(
-                    data: p,
-                    onTap: () => context.push(
-                      AppRoutes.nursePatientDetailPath(p.code),
-                      extra: p,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              PatientPagination(
-                currentPage: _currentPage,
-                totalPages: totalPages,
-                startIndex: startIndex,
-                endIndex: endIndex,
-                total: filteredPatients.length,
-                onPrevious: () {
-                  if (_currentPage <= 1) return;
-
-                  setState(() {
-                    _currentPage--;
-                  });
-                },
-                onNext: () {
-                  if (_currentPage >= totalPages) return;
-
-                  setState(() {
-                    _currentPage++;
-                  });
-                },
-              ),
-            ],
-          ),
         ),
       ],
     );
@@ -233,35 +287,52 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TopAppBar extends StatelessWidget {
-  const _TopAppBar();
+  const _TopAppBar({required this.assignedRooms});
 
-  //final VoidCallback onSearchTap;
-  //final VoidCallback onFilterTap;
+  final List<String> assignedRooms;
 
   @override
   Widget build(BuildContext context) {
+    final roomsText = assignedRooms.isEmpty
+        ? 'Chưa phân phòng'
+        : 'Phòng: ${assignedRooms.join(", ")}';
+
     return Container(
       color: AppColors.primary,
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
       child: SizedBox(
         height: 64,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
               IconButton(
                 icon: const Icon(Icons.menu_rounded, color: Colors.white),
                 onPressed: () {},
               ),
-              const Expanded(
-                child: Text(
-                  'Danh sách người bệnh',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Danh sách người bệnh',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      roomsText,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
