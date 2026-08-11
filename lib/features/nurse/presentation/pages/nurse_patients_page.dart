@@ -86,50 +86,20 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     return patients.sublist(start, end);
   }
 
-  Widget _buildUnassignedState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFF7E6),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.meeting_room_outlined,
-                size: 56,
-                color: Color(0xFFF59E0B),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Bạn chưa được phân công phụ trách phòng bệnh nào.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.onSurface,
-                fontFamily: 'Inter',
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Vui lòng liên hệ Điều dưỡng trưởng để được phân công phòng bệnh.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.onSurfaceVariant,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void _goNext(int totalPages) {
+    if (_currentPage >= totalPages) return;
+    setState(() {
+      _swipeDirection = 1;
+      _currentPage++;
+    });
+  }
+
+  void _goPrev() {
+    if (_currentPage <= 1) return;
+    setState(() {
+      _swipeDirection = -1;
+      _currentPage--;
+    });
   }
 
   @override
