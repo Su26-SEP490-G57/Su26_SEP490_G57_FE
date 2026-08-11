@@ -245,7 +245,8 @@ class _DietGuidanceContent extends StatelessWidget {
             foods: protocol.forbiddenFoods,
             drinks: protocol.forbiddenDrinks,
           ),
-          if (protocol.forbiddenFoods.isNotEmpty || protocol.forbiddenDrinks.isNotEmpty)
+          if (protocol.forbiddenFoods.isNotEmpty ||
+              protocol.forbiddenDrinks.isNotEmpty)
             const SizedBox(height: 24),
           _buildUpgradeCriteriaCard(
             title: 'Điều kiện xem xét nâng mức ăn',
@@ -396,7 +397,8 @@ class _DietGuidanceContent extends StatelessWidget {
 
   Widget _buildVolumeInfoCard() {
     final String volumeText;
-    if (protocol.volumePerMealMin == null && protocol.volumePerMealMax == null) {
+    if (protocol.volumePerMealMin == null &&
+        protocol.volumePerMealMax == null) {
       volumeText = 'Theo khả năng dung nạp';
     } else if (protocol.volumePerMealMin != null &&
         protocol.volumePerMealMax != null) {

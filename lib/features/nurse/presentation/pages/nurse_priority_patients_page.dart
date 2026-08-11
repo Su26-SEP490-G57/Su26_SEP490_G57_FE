@@ -227,7 +227,8 @@ class _NursePriorityPatientsPageState
                         onChanged: (v) =>
                             ref
                                     .read(
-                                      priorityPatientsSearchQueryProvider.notifier,
+                                      priorityPatientsSearchQueryProvider
+                                          .notifier,
                                     )
                                     .state =
                                 v,
@@ -242,49 +243,32 @@ class _NursePriorityPatientsPageState
                         onAiLevelTap: () => _showAiLevelPicker(context),
                       ),
                       const SizedBox(height: 10),
-                patientsAsync.when(
-                  data: (patients) {
-                    // Local filtering for POD and Level since API might not handle all
-                    final filtered = patients.where((p) {
-                      final matchPod =
-                          _selectedPod == null || p.pod == _selectedPod;
-                      final matchLevel =
-                          _selectedAiLevel == null ||
-                          p.status.name == _selectedAiLevel;
-                      return matchPod && matchLevel;
-                    }).toList();
+                      patientsAsync.when(
+                        data: (patients) {
+                          // Local filtering for POD and Level since API might not handle all
+                          final filtered = patients.where((p) {
+                            final matchPod =
+                                _selectedPod == null || p.pod == _selectedPod;
+                            final matchLevel =
+                                _selectedAiLevel == null ||
+                                p.status.name == _selectedAiLevel;
+                            return matchPod && matchLevel;
+                          }).toList();
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                'Tổng: ${filtered.length} người bệnh ưu tiên',
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.6,
-                                  color: Color(0xFF727687),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
                                 ),
-                              ),
-                              GestureDetector(
-                                onTap: () {},
-                                child: const Row(
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Icon(
-                                      Icons.sort_rounded,
-                                      size: 14,
-                                      color: Color(0xFF727687),
-                                    ),
-                                    SizedBox(width: 4),
                                     Text(
-                                      'Sắp xếp',
-                                      style: TextStyle(
+                                      'Tổng: ${filtered.length} người bệnh ưu tiên',
+                                      style: const TextStyle(
                                         fontFamily: 'Inter',
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
@@ -292,47 +276,71 @@ class _NursePriorityPatientsPageState
                                         color: Color(0xFF727687),
                                       ),
                                     ),
+                                    GestureDetector(
+                                      onTap: () {},
+                                      child: const Row(
+                                        children: [
+                                          Icon(
+                                            Icons.sort_rounded,
+                                            size: 14,
+                                            color: Color(0xFF727687),
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Sắp xếp',
+                                            style: TextStyle(
+                                              fontFamily: 'Inter',
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 0.6,
+                                              color: Color(0xFF727687),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (filtered.isEmpty)
-                          const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(32.0),
-                              child: Text('Không có bệnh nhân ưu tiên nào.'),
-                            ),
-                          )
-                        else
-                          ...filtered.map(
-                            (p) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _PatientCard(
-                                data: p,
-                                onTap: () {
-                                  debugPrint('push code = ${p.code}');
-                                  debugPrint('push name = ${p.name}');
+                              const SizedBox(height: 12),
+                              if (filtered.isEmpty)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(32.0),
+                                    child: Text(
+                                      'Không có bệnh nhân ưu tiên nào.',
+                                    ),
+                                  ),
+                                )
+                              else
+                                ...filtered.map(
+                                  (p) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _PatientCard(
+                                      data: p,
+                                      onTap: () {
+                                        debugPrint('push code = ${p.code}');
+                                        debugPrint('push name = ${p.name}');
 
-                                  context.push(
-                                    AppRoutes.nursePatientDetailPath(p.code),
-                                    extra: p,
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (err, _) => Center(child: Text('Lỗi: $err')),
-                ),
-              ],
-            ),
+                                        context.push(
+                                          AppRoutes.nursePatientDetailPath(
+                                            p.code,
+                                          ),
+                                          extra: p,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (err, _) => Center(child: Text('Lỗi: $err')),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),
