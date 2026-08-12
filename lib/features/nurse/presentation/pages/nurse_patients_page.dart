@@ -41,6 +41,9 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
   // Filter state — null = "Tất cả"
   final Set<PatientStatus> _selectedStatuses = {PatientStatus.red};
 
+  // Swipe direction: +1 = forward (next), -1 = backward (prev)
+  int _swipeDirection = 1;
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -78,13 +81,8 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
 
   List<PatientSummary> _paginate(List<PatientSummary> patients) {
     final start = (_currentPage - 1) * _pageSize;
-
-    if (start >= patients.length) {
-      return [];
-    }
-
+    if (start >= patients.length) return [];
     final end = (start + _pageSize).clamp(0, patients.length);
-
     return patients.sublist(start, end);
   }
 
@@ -281,6 +279,7 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     );
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Top App Bar
