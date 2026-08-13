@@ -215,11 +215,6 @@ class _DietGuidanceContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allForbidden = [
-      ...protocol.forbiddenFoods,
-      ...protocol.forbiddenDrinks,
-    ];
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
       child: Column(
@@ -324,6 +319,8 @@ class _DietGuidanceContent extends StatelessWidget {
   }
 
   Widget _buildMealsInfoCard() {
+    final String mealTitle =
+        protocol.dietLevel == 1 ? 'Khuyến nghị uống' : 'Tần suất bữa ăn';
     final String mealText;
     if (protocol.mealsPerDayMin == null && protocol.mealsPerDayMax == null) {
       mealText = 'Uống nhiều lần (theo nhu cầu)';
