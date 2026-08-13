@@ -21,4 +21,19 @@ class AssessmentRepositoryImpl implements AssessmentRepository {
 
     return response.toDomain();
   }
+
+  @override
+  Future<List<AssessmentDetail>> getAssessmentHistory(
+    String caseId, {
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final response = await _dataSource.getAssessmentHistory(
+      caseId,
+      page: page,
+      limit: limit,
+    );
+
+    return response.data.map((e) => e.toDomain()).toList();
+  }
 }

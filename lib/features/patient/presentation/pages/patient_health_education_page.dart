@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/patient/domain/models/current_pod.dart';
 import 'package:poms/features/patient/domain/models/health_education_model.dart';
 import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
 
@@ -21,13 +22,22 @@ class _PatientHealthEducationPageState
   bool _isInitialPodSet = false;
 
   @override
+  void initState() {
+    super.initState();
+    final podData = ref.read(currentPodProvider).valueOrNull;
+    if (podData?.currentPod != null) {
+      _selectedPod = podData!.currentPod!.clamp(0, 7);
+      _isInitialPodSet = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final currentPodAsync = ref.watch(currentPodProvider);
 
-    // Auto-set selected POD to patient's active POD once data loads
-    currentPodAsync.whenData((podData) {
-      if (!_isInitialPodSet && podData?.currentPod != null) {
-        final activePod = podData!.currentPod!.clamp(0, 7);
+    ref.listen<AsyncValue<CurrentPod?>>(currentPodProvider, (previous, next) {
+      if (!_isInitialPodSet && next.value?.currentPod != null) {
+        final activePod = next.value!.currentPod!.clamp(0, 7);
         setState(() {
           _selectedPod = activePod;
           _isInitialPodSet = true;

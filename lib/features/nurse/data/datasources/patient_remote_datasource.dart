@@ -47,6 +47,22 @@ class PatientRemoteDataSource {
     }
   }
 
+  Future<List<String>> getAssignedRooms() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/nurses/me/assigned-rooms',
+      );
+      final data = response.data;
+      if (data != null && data['assignedRooms'] != null) {
+        final list = data['assignedRooms'] as List;
+        return list.map((e) => e.toString()).toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   Never _handleDioError(DioException e) {
     final statusCode = e.response?.statusCode ?? 0;
     final responseData = e.response?.data;

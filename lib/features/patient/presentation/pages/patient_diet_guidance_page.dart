@@ -230,42 +230,33 @@ class _DietGuidanceContent extends StatelessWidget {
           _buildMealsInfoCard(),
           const SizedBox(height: 24),
           _buildVolumeInfoCard(),
-          if (protocol.recommendedFoods.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          _buildFoodsListCard(
+            title: 'Thực phẩm khuyên dùng',
+            items: protocol.recommendedFoods,
+            icon: Icons.check_circle_rounded,
+            iconColor: Colors.green,
+          ),
+          if (protocol.recommendedFoods.isNotEmpty) const SizedBox(height: 24),
+          _buildFoodsListCard(
+            title: 'Đồ uống khuyên dùng',
+            items: protocol.recommendedDrinks,
+            icon: Icons.local_drink_rounded,
+            iconColor: Colors.blue,
+          ),
+          if (protocol.recommendedDrinks.isNotEmpty) const SizedBox(height: 24),
+          _buildForbiddenCard(
+            title: 'Chưa nên sử dụng / Hạn chế',
+            foods: protocol.forbiddenFoods,
+            drinks: protocol.forbiddenDrinks,
+          ),
+          if (protocol.forbiddenFoods.isNotEmpty ||
+              protocol.forbiddenDrinks.isNotEmpty)
             const SizedBox(height: 24),
-            _buildFoodsListCard(
-              title: 'Thực phẩm khuyên dùng',
-              items: protocol.recommendedFoods,
-              icon: Icons.check_circle_rounded,
-              iconColor: const Color(0xFF10B981),
-            ),
-          ],
-          if (protocol.recommendedDrinks.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            _buildFoodsListCard(
-              title: 'Đồ uống khuyên dùng',
-              items: protocol.recommendedDrinks,
-              icon: Icons.local_drink_rounded,
-              iconColor: const Color(0xFF3B82F6),
-            ),
-          ],
-          if (allForbidden.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            _buildFoodsListCard(
-              title: 'Chưa nên sử dụng / Cần hạn chế',
-              items: allForbidden,
-              icon: Icons.warning_amber_rounded,
-              iconColor: const Color(0xFFEF4444),
-            ),
-          ],
-          if (protocol.upgradeCriteria.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            _buildFoodsListCard(
-              title: 'Tiêu chuẩn xem xét tăng mức ăn',
-              items: protocol.upgradeCriteria,
-              icon: Icons.trending_up_rounded,
-              iconColor: const Color(0xFF8B5CF6),
-            ),
-          ],
+          _buildUpgradeCriteriaCard(
+            title: 'Điều kiện xem xét nâng mức ăn',
+            criteria: protocol.upgradeCriteria,
+          ),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
@@ -333,19 +324,18 @@ class _DietGuidanceContent extends StatelessWidget {
   }
 
   Widget _buildMealsInfoCard() {
-    final String mealTitle;
-    final String mealSubtitle;
-
+    final String mealText;
     if (protocol.mealsPerDayMin == null && protocol.mealsPerDayMax == null) {
-      mealTitle = 'Lịch trình uống';
-      mealSubtitle = 'Mỗi 10–15 phút / Theo nhu cầu';
-    } else if (protocol.mealsPerDayMin == protocol.mealsPerDayMax) {
-      mealTitle = 'Số bữa ăn mỗi ngày';
-      mealSubtitle = '${protocol.mealsPerDayMin} bữa/ngày';
+      mealText = 'Uống nhiều lần (theo nhu cầu)';
+    } else if (protocol.mealsPerDayMin != null &&
+        protocol.mealsPerDayMax != null) {
+      mealText = protocol.mealsPerDayMin == protocol.mealsPerDayMax
+          ? '${protocol.mealsPerDayMin} bữa/ngày'
+          : '${protocol.mealsPerDayMin} – ${protocol.mealsPerDayMax} bữa/ngày';
+    } else if (protocol.mealsPerDayMin != null) {
+      mealText = 'Từ ${protocol.mealsPerDayMin} bữa/ngày';
     } else {
-      mealTitle = 'Số bữa ăn mỗi ngày';
-      mealSubtitle =
-          '${protocol.mealsPerDayMin}–${protocol.mealsPerDayMax} lần/ngày';
+      mealText = 'Tối đa ${protocol.mealsPerDayMax} bữa/ngày';
     }
 
     return _buildGlassCard(
@@ -381,7 +371,7 @@ class _DietGuidanceContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      mealSubtitle,
+                      mealText,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 18,
@@ -401,10 +391,10 @@ class _DietGuidanceContent extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               protocol.mealInstruction!,
-              style: TextStyle(
-                color: AppColors.onSurface.withValues(alpha: 0.85),
-                height: 1.6,
+              style: const TextStyle(
                 fontSize: 15,
+                color: AppColors.onSurfaceVariant,
+                height: 1.4,
                 fontFamily: 'Inter',
               ),
             ),
@@ -415,15 +405,19 @@ class _DietGuidanceContent extends StatelessWidget {
   }
 
   Widget _buildVolumeInfoCard() {
-    final String volumeSubtitle;
+    final String volumeText;
     if (protocol.volumePerMealMin == null &&
         protocol.volumePerMealMax == null) {
-      volumeSubtitle = 'Theo hướng dẫn';
-    } else if (protocol.volumePerMealMin == protocol.volumePerMealMax) {
-      volumeSubtitle = '${protocol.volumePerMealMin} ml/g mỗi lần';
+      volumeText = 'Theo khả năng dung nạp';
+    } else if (protocol.volumePerMealMin != null &&
+        protocol.volumePerMealMax != null) {
+      volumeText = protocol.volumePerMealMin == protocol.volumePerMealMax
+          ? '${protocol.volumePerMealMin} ml/lần'
+          : '${protocol.volumePerMealMin} – ${protocol.volumePerMealMax} ml/lần';
+    } else if (protocol.volumePerMealMin != null) {
+      volumeText = 'Từ ${protocol.volumePerMealMin} ml/lần';
     } else {
-      volumeSubtitle =
-          '${protocol.volumePerMealMin}–${protocol.volumePerMealMax} ml/g mỗi lần';
+      volumeText = 'Tối đa ${protocol.volumePerMealMax} ml/lần';
     }
 
     return _buildGlassCard(
@@ -459,7 +453,7 @@ class _DietGuidanceContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      volumeSubtitle,
+                      volumeText,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 18,
@@ -522,6 +516,152 @@ class _DietGuidanceContent extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(icon, color: iconColor, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: AppColors.onSurface,
+                        height: 1.4,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForbiddenCard({
+    required String title,
+    required List<String> foods,
+    required List<String> drinks,
+  }) {
+    final allItems = [...foods, ...drinks];
+    if (allItems.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFDC2626),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: Color(0xFFDC2626),
+                  fontFamily: 'Inter',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...allItems.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.remove_circle_outline_rounded,
+                    color: Color(0xFFDC2626),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: AppColors.onSurface,
+                        height: 1.4,
+                        fontFamily: 'Inter',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpgradeCriteriaCard({
+    required String title,
+    required List<String> criteria,
+  }) {
+    if (criteria.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0F2FE),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.trending_up_rounded,
+                  color: Color(0xFF0284C7),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: Color(0xFF0284C7),
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...criteria.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.task_alt_rounded,
+                    color: Color(0xFF0284C7),
+                    size: 20,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(

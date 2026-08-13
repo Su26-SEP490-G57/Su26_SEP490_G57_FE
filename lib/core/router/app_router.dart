@@ -41,6 +41,7 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 // khi auth state thay đổi — tránh recreate router mỗi lần emit.
 final routerProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _AuthRefreshNotifier();
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
 
   ref.listen<AsyncValue<UserModel?>>(authStateProvider, (_, _) {
     refreshNotifier.notify();
