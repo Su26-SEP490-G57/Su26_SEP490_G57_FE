@@ -9,48 +9,40 @@ class DietGuidanceRepositoryImpl implements DietGuidanceRepository {
 
   @override
   Future<PodProtocolModel?> getCurrentDietGuidance(String caseId) async {
-    // 1. Get Patient Details to get operationTypeId
-    final patientDetail = await _remoteDataSource.getPatientByCaseId(caseId);
-    final operationType =
-        patientDetail['operationType'] as Map<String, dynamic>?;
-
-    if (operationType == null) {
-      throw Exception('Patient does not have an assigned operation type.');
-    }
-
-    final operationTypeId = operationType['id'] as int;
-
-    // 2. Get Current POD
-    final podInfo = await _remoteDataSource.getCurrentPod(caseId);
-    final currentPod = podInfo.currentPod;
-
-    if (currentPod == null) {
-      // Patient has not started ERAS or has no current POD
-      return null;
-    }
-
-    // 3. Get all Pod Protocols for this operation type
-    final podProtocols = await _remoteDataSource.getPodProtocols(
-      operationTypeId,
-    );
-
-    // 4. Find the matching protocol. The label could be 'POD 1' or just match the index/order if label is arbitrary.
-    // However, POD labels usually follow 'POD X' or 'PODX'. We try to find a protocol whose label contains the current POD number.
     try {
-      final matchingProtocol = podProtocols.firstWhere(
-        (p) => p.label.toUpperCase().replaceAll(' ', '') == 'POD$currentPod',
-      );
-      return matchingProtocol;
-    } catch (_) {
-      // If exact match fails, fallback to checking if it just contains the number as a word
-      try {
-        final matchingProtocol = podProtocols.firstWhere(
-          (p) => p.label.contains('$currentPod'),
-        );
-        return matchingProtocol;
-      } catch (_) {
-        return null; // No specific guidance for this POD day
+      final guidance = await _remoteDataSource.getCurrentDietGuidance(caseId);
+      if (guidance != null) {
+        return guidance;
       }
+    } catch (_) {
+      // Fallback below if endpoint fails
+    }
+
+    try {
+      // Fallback: 1. Get Patient Details to get operationTypeId and currentDietLevel
+      final patientDetail = await _remoteDataSource.getPatientByCaseId(caseId);
+      final operationType =
+          patientDetail['operationType'] as Map<String, dynamic>?;
+
+      if (operationType == null) {
+        return null;
+      }
+
+      final operationTypeId = operationType['id'] as int;
+      final dietLevel = patientDetail['currentDietLevel'] as int? ?? 0;
+
+      // 2. Get all Pod Protocols for this operation type
+      final podProtocols = await _remoteDataSource.getPodProtocols(
+        operationTypeId,
+      );
+
+      // 3. Match protocol by dietLevel
+      return podProtocols.firstWhere(
+        (p) => p.dietLevel == dietLevel,
+        orElse: () => podProtocols.first,
+      );
+    } catch (_) {
+      return null;
     }
   }
 }

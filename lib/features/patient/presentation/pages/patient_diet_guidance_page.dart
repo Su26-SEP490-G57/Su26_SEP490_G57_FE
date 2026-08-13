@@ -215,6 +215,11 @@ class _DietGuidanceContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final allForbidden = [
+      ...protocol.forbiddenFoods,
+      ...protocol.forbiddenDrinks,
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
       child: Column(
@@ -225,20 +230,42 @@ class _DietGuidanceContent extends StatelessWidget {
           _buildMealsInfoCard(),
           const SizedBox(height: 24),
           _buildVolumeInfoCard(),
-          const SizedBox(height: 24),
-          _buildFoodsListCard(
-            title: 'Thực phẩm khuyên dùng',
-            items: protocol.recommendedFoods,
-            icon: Icons.check_circle_rounded,
-            iconColor: Colors.green,
-          ),
-          const SizedBox(height: 24),
-          _buildFoodsListCard(
-            title: 'Đồ uống khuyên dùng',
-            items: protocol.recommendedDrinks,
-            icon: Icons.local_drink_rounded,
-            iconColor: Colors.blue,
-          ),
+          if (protocol.recommendedFoods.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildFoodsListCard(
+              title: 'Thực phẩm khuyên dùng',
+              items: protocol.recommendedFoods,
+              icon: Icons.check_circle_rounded,
+              iconColor: const Color(0xFF10B981),
+            ),
+          ],
+          if (protocol.recommendedDrinks.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildFoodsListCard(
+              title: 'Đồ uống khuyên dùng',
+              items: protocol.recommendedDrinks,
+              icon: Icons.local_drink_rounded,
+              iconColor: const Color(0xFF3B82F6),
+            ),
+          ],
+          if (allForbidden.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildFoodsListCard(
+              title: 'Chưa nên sử dụng / Cần hạn chế',
+              items: allForbidden,
+              icon: Icons.warning_amber_rounded,
+              iconColor: const Color(0xFFEF4444),
+            ),
+          ],
+          if (protocol.upgradeCriteria.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildFoodsListCard(
+              title: 'Tiêu chuẩn xem xét tăng mức ăn',
+              items: protocol.upgradeCriteria,
+              icon: Icons.trending_up_rounded,
+              iconColor: const Color(0xFF8B5CF6),
+            ),
+          ],
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
@@ -268,6 +295,10 @@ class _DietGuidanceContent extends StatelessWidget {
   }
 
   Widget _buildStageHeader() {
+    final displayLabel = protocol.label.startsWith('Mức')
+        ? protocol.label
+        : 'Mức ${protocol.dietLevel} – ${protocol.label}';
+
     return Row(
       children: [
         Container(
@@ -277,7 +308,7 @@ class _DietGuidanceContent extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            protocol.label,
+            displayLabel,
             style: const TextStyle(
               color: AppColors.primary,
               fontWeight: FontWeight.w700,
@@ -289,7 +320,7 @@ class _DietGuidanceContent extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            'Hướng dẫn theo lộ trình phục hồi',
+            'Chế độ dinh dưỡng hồi phục ERAS',
             style: TextStyle(
               color: AppColors.onSurface.withValues(alpha: 0.6),
               fontSize: 14,
@@ -302,8 +333,21 @@ class _DietGuidanceContent extends StatelessWidget {
   }
 
   Widget _buildMealsInfoCard() {
-    final mealRange =
-        '${protocol.mealsPerDayMin ?? '?'} - ${protocol.mealsPerDayMax ?? '?'}';
+    final String mealTitle;
+    final String mealSubtitle;
+
+    if (protocol.mealsPerDayMin == null && protocol.mealsPerDayMax == null) {
+      mealTitle = 'Lịch trình uống';
+      mealSubtitle = 'Mỗi 10–15 phút / Theo nhu cầu';
+    } else if (protocol.mealsPerDayMin == protocol.mealsPerDayMax) {
+      mealTitle = 'Số bữa ăn mỗi ngày';
+      mealSubtitle = '${protocol.mealsPerDayMin} bữa/ngày';
+    } else {
+      mealTitle = 'Số bữa ăn mỗi ngày';
+      mealSubtitle =
+          '${protocol.mealsPerDayMin}–${protocol.mealsPerDayMax} lần/ngày';
+    }
+
     return _buildGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,9 +370,9 @@ class _DietGuidanceContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Số bữa ăn mỗi ngày',
-                      style: TextStyle(
+                    Text(
+                      mealTitle,
+                      style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                         color: AppColors.onSurface,
@@ -337,10 +381,10 @@ class _DietGuidanceContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$mealRange bữa/ngày',
+                      mealSubtitle,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 20,
+                        fontSize: 18,
                         color: Color(0xFFF59E0B),
                         fontFamily: 'Inter',
                       ),
@@ -358,8 +402,8 @@ class _DietGuidanceContent extends StatelessWidget {
             Text(
               protocol.mealInstruction!,
               style: TextStyle(
-                color: AppColors.onSurface.withValues(alpha: 0.8),
-                height: 1.5,
+                color: AppColors.onSurface.withValues(alpha: 0.85),
+                height: 1.6,
                 fontSize: 15,
                 fontFamily: 'Inter',
               ),
@@ -371,8 +415,17 @@ class _DietGuidanceContent extends StatelessWidget {
   }
 
   Widget _buildVolumeInfoCard() {
-    final volumeRange =
-        '${protocol.volumePerMealMin ?? '?'} - ${protocol.volumePerMealMax ?? '?'}';
+    final String volumeSubtitle;
+    if (protocol.volumePerMealMin == null &&
+        protocol.volumePerMealMax == null) {
+      volumeSubtitle = 'Theo hướng dẫn';
+    } else if (protocol.volumePerMealMin == protocol.volumePerMealMax) {
+      volumeSubtitle = '${protocol.volumePerMealMin} ml/g mỗi lần';
+    } else {
+      volumeSubtitle =
+          '${protocol.volumePerMealMin}–${protocol.volumePerMealMax} ml/g mỗi lần';
+    }
+
     return _buildGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +449,7 @@ class _DietGuidanceContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Khối lượng mỗi bữa',
+                      'Khối lượng mỗi bữa / lần',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
@@ -406,10 +459,10 @@ class _DietGuidanceContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$volumeRange ml/bữa',
+                      volumeSubtitle,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 20,
+                        fontSize: 18,
                         color: Color(0xFF10B981),
                         fontFamily: 'Inter',
                       ),
@@ -427,8 +480,8 @@ class _DietGuidanceContent extends StatelessWidget {
             Text(
               protocol.volumeInstruction!,
               style: TextStyle(
-                color: AppColors.onSurface.withValues(alpha: 0.8),
-                height: 1.5,
+                color: AppColors.onSurface.withValues(alpha: 0.85),
+                height: 1.6,
                 fontSize: 15,
                 fontFamily: 'Inter',
               ),
