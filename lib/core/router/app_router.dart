@@ -27,17 +27,32 @@ import 'package:poms/features/patient/presentation/pages/patient_health_educatio
 import 'package:poms/features/patient/presentation/pages/patient_notifications_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_profile_page.dart';
 import 'package:poms/core/services/notification_service.dart';
+import 'package:poms/core/services/version_check_service.dart';
 import 'package:poms/core/constants/app_routes.dart';
+
+// Module-level (not local to routerProvider) so any code outside the routed
+// widget tree — e.g. _AppState, which sits above MaterialApp.router and has
+// no Navigator ancestor of its own — can reach a BuildContext that actually
+// resolves via Navigator.of(), by using rootNavigatorKey.currentContext
+// instead of its own context.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 // GoRouter được tạo 1 lần duy nhất, dùng refreshListenable để trigger redirect
 // khi auth state thay đổi — tránh recreate router mỗi lần emit.
 final routerProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _AuthRefreshNotifier();
-  final rootNavigatorKey = GlobalKey<NavigatorState>();
 
   ref.listen<AsyncValue<UserModel?>>(authStateProvider, (_, _) {
     refreshNotifier.notify();
   });
+
+  // Re-evaluate redirect whenever the version-check block flag changes (check
+  // starts/resolves, dialog shown/dismissed) — not just on auth-state changes
+  // — so redirect below can react to it immediately either direction.
+  void onBlockNavigationChanged() => refreshNotifier.notify();
+  VersionCheckService.instance.blockNavigation.addListener(
+    onBlockNavigationChanged,
+  );
 
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
@@ -52,6 +67,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isSplash = state.matchedLocation == AppRoutes.splash;
       final isLogin = state.matchedLocation == AppRoutes.login;
+
+      // Version check in flight, or an update dialog (mandatory or not) is
+      // currently up — stay on/return to splash rather than let auth-based
+      // redirect below (which usually resolves faster, e.g. from cached
+      // "remember me" state) navigate away underneath the dialog.
+      if (VersionCheckService.instance.blockNavigation.value) {
+        return isSplash ? null : AppRoutes.splash;
+      }
 
       if (isLoading) return isSplash ? null : AppRoutes.splash;
 
@@ -205,7 +228,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 
-  ref.onDispose(router.dispose);
+  ref.onDispose(() {
+    VersionCheckService.instance.blockNavigation.removeListener(
+      onBlockNavigationChanged,
+    );
+    router.dispose();
+  });
 
   return router;
 });

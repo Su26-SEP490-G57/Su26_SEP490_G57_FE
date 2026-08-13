@@ -1,0 +1,99 @@
+name: Version Flags Workflow
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select the environment whose version.json should be patched"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      force_update:
+        description: "Force every client not on the latest build to update immediately"
+        required: true
+        default: false
+        type: boolean
+      min_supported_version_code:
+        description: "Minimum supported versionCode (leave blank to use vars.MIN_SUPPORTED_VERSION_CODE)"
+        required: false
+        default: ""
+        type: string
+      release_notes:
+        description: "Optional release notes explaining the flag change (leave blank to keep the current notes)"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  patch_version_flags:
+    name: Patch version.json Flags (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    # 🚦 Never run two flag patches for the same environment concurrently
+    concurrency:
+      group: poms-version-flags-${{ inputs.environment }}
+      cancel-in-progress: false
+      queue: max
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Patch version.json
+        id: patch_version_json
+        run: |
+          ENV="${{ inputs.environment }}"
+          DOMAIN_NAME="${{ vars.DOMAIN_NAME }}"
+
+          MIN_SUPPORTED_VERSION_CODE_INPUT="${{ inputs.min_supported_version_code }}"
+          MIN_SUPPORTED_VERSION_CODE_FALLBACK="${{ vars.MIN_SUPPORTED_VERSION_CODE }}"
+          MIN_SUPPORTED_VERSION_CODE_FALLBACK="${MIN_SUPPORTED_VERSION_CODE_FALLBACK:-1}"
+
+          UPDATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          echo "📥 [Version] Fetching currently-published version.json for '$ENV'..."
+          CURRENT_JSON=$(curl -f -s "https://api-$ENV.$DOMAIN_NAME/version.json") || {
+            echo "❌ No existing version.json found for '$ENV' — run Build Workflow for this environment at least once before patching flags." >&2
+            exit 1
+          }
+
+          jq \
+            --argjson forceUpdate ${{ inputs.force_update }} \
+            --arg minSupportedVersionCodeInput "$MIN_SUPPORTED_VERSION_CODE_INPUT" \
+            --argjson minSupportedVersionCodeFallback "$MIN_SUPPORTED_VERSION_CODE_FALLBACK" \
+            --arg releaseNotesInput "${{ inputs.release_notes }}" \
+            --arg updatedAt "$UPDATED_AT" \
+            '.android.forceUpdate = $forceUpdate
+             | .android.minSupportedVersionCode = (if $minSupportedVersionCodeInput == "" then $minSupportedVersionCodeFallback else ($minSupportedVersionCodeInput | tonumber) end)
+             | .android.releaseNotes = (if $releaseNotesInput == "" then .android.releaseNotes else $releaseNotesInput end)
+             | .android.updatedAt = $updatedAt' \
+            <<< "$CURRENT_JSON" > "version.json"
+
+          echo "----- version.json ($ENV) -----"
+          cat "version.json"
+
+          echo "version_json_path=version.json" >> $GITHUB_OUTPUT
+
+      - name: Write SSH Deploy Key
+        run: |
+          umask 077
+          cat > /tmp/poms_ssh_deploy_key <<'EOF'
+          ${{ secrets.SSH_KEY }}
+          EOF
+
+      - name: Upload version.json via SSH
+        uses: ./.github/actions/retry-scp
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key_path: /tmp/poms_ssh_deploy_key
+          source: "${{ steps.patch_version_json.outputs.version_json_path }}"
+          target: "/var/www/poms-mobile/versions/${{ inputs.environment }}/"
