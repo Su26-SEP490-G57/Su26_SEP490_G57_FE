@@ -580,14 +580,14 @@ class _OptionCardState extends State<_OptionCard> {
                         color: AppColors.onSurface,
                       ),
                     ),
-                    Text(
-                      '(${widget.option.scoreValue} điểm)',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 14,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    ),
+                    // Text(
+                    //   '(${widget.option.scoreValue} điểm)',
+                    //   style: const TextStyle(
+                    //     fontFamily: 'Inter',
+                    //     fontSize: 14,
+                    //     color: AppColors.onSurfaceVariant,
+                    //   ),
+                    // ),
                   ],
                 ),
               ),

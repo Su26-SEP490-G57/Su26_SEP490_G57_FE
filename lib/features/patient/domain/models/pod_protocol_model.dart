@@ -26,7 +26,7 @@ class PodProtocolModel extends Equatable {
       podId: json['podId'] as int,
       operationTypeId: json['operationTypeId'] as int,
       label: json['label'] as String,
-      dietLevel: (json['dietLevel'] as int?) ?? 0,
+      dietLevel: json['dietLevel'] as int? ?? 0,
       mealsPerDayMin: json['mealsPerDayMin'] as int?,
       mealsPerDayMax: json['mealsPerDayMax'] as int?,
       mealInstruction: json['mealInstruction'] as String?,
