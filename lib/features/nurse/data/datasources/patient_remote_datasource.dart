@@ -49,7 +49,9 @@ class PatientRemoteDataSource {
 
   Future<List<String>> getAssignedRooms() async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/nurses/me/assigned-rooms');
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/nurses/me/assigned-rooms',
+      );
       final data = response.data;
       if (data != null && data['assignedRooms'] != null) {
         final list = data['assignedRooms'] as List;
