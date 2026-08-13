@@ -319,8 +319,9 @@ class _DietGuidanceContent extends StatelessWidget {
   }
 
   Widget _buildMealsInfoCard() {
-    final String mealTitle =
-        protocol.dietLevel == 1 ? 'Khuyến nghị uống' : 'Tần suất bữa ăn';
+    final String mealTitle = protocol.dietLevel == 1
+        ? 'Khuyến nghị uống'
+        : 'Tần suất bữa ăn';
     final String mealText;
     if (protocol.mealsPerDayMin == null && protocol.mealsPerDayMax == null) {
       mealText = 'Uống nhiều lần (theo nhu cầu)';

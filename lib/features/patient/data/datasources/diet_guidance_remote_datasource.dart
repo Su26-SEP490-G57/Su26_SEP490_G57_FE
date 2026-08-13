@@ -51,13 +51,10 @@ class DietGuidanceRemoteDataSource {
   }
 
   Future<PodProtocolModel?> getCurrentDietGuidance(String caseId) async {
-    final response = await _dio.get(
-      '/diet-guidance/patient/$caseId/current',
-    );
+    final response = await _dio.get('/diet-guidance/patient/$caseId/current');
     if (response.data == null || response.data == '') {
       return null;
     }
     return PodProtocolModel.fromJson(response.data as Map<String, dynamic>);
   }
 }
-

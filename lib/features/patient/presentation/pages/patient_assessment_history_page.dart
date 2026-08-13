@@ -669,8 +669,8 @@ class _UnassessedDateCard extends StatelessWidget {
             isFuture
                 ? Icons.event_available_outlined
                 : isPast
-                    ? Icons.history_toggle_off_rounded
-                    : Icons.assignment_late_outlined,
+                ? Icons.history_toggle_off_rounded
+                : Icons.assignment_late_outlined,
             size: 48,
             color: (isFuture || isPast)
                 ? AppColors.onSurfaceVariant.withValues(alpha: 0.6)
