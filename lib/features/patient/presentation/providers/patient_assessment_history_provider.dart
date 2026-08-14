@@ -99,7 +99,7 @@ final patientAssessmentHistoryProvider =
                   symptomName: d['questionText'] as String? ?? 'Câu hỏi',
                   shortDescription:
                       'Lựa chọn: ${d['optionText'] ?? 'Đã ghi nhận'}',
-                  resultBadge: '${d['optionText'] ?? ''} ($score điểm)',
+                  resultBadge: d['optionText'] as String? ?? '',
                   status: severity,
                   icon: _getIconForQuestion(d['questionId'] as int? ?? 0),
                 );

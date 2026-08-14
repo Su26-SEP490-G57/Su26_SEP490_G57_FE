@@ -809,11 +809,6 @@ class _AssessmentHistoryCard extends StatelessWidget {
               _triageLabel(assessment.triageColor),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
-
-            Text(
-              '${assessment.totalScore} điểm',
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
           ],
         ),
       ),
@@ -1742,8 +1737,21 @@ class _SummaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final score = assessmentState.detail?.totalScore;
-    final assessmentStr = score == null ? '-' : '$score điểm';
+    final triage = assessmentState.detail?.triageColor;
+    final assessmentStr = triage == null
+        ? '-'
+        : (triage.toUpperCase() == 'GREEN'
+            ? 'An toàn'
+            : triage.toUpperCase() == 'YELLOW'
+                ? 'Theo dõi'
+                : 'Can thiệp');
+    final assessmentValColor = triage == null
+        ? const Color(0xFF191B24)
+        : (triage.toUpperCase() == 'GREEN'
+            ? const Color(0xFF006E2F)
+            : triage.toUpperCase() == 'YELLOW'
+                ? const Color(0xFF735C00)
+                : AppColors.error);
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -1757,7 +1765,7 @@ class _SummaryGrid extends StatelessWidget {
           iconColor: const Color(0xFF006A61),
           label: 'ĐÁNH GIÁ',
           value: assessmentStr,
-          valueColor: const Color(0xFF191B24),
+          valueColor: assessmentValColor,
           bgColor: Colors.white,
           onTap: onAssessmentTap,
         ),
