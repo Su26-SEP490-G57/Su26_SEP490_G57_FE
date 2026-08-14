@@ -7,6 +7,7 @@ import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/patient/presentation/providers/patient_profile_provider.dart';
+import 'package:poms/shared/widgets/logout_confirmation_dialog.dart';
 
 class PatientProfilePage extends ConsumerWidget {
   const PatientProfilePage({super.key});
@@ -220,12 +221,6 @@ class PatientProfilePage extends ConsumerWidget {
                         icon: Icons.menu_book_rounded,
                         title: 'Hướng dẫn sử dụng',
                         onTap: () => _showUserGuideModal(context),
-                      ),
-                      const Divider(height: 1, color: Color(0xFFF1F1F6)),
-                      _buildActionItem(
-                        icon: Icons.contact_support_rounded,
-                        title: 'Liên hệ y tế',
-                        onTap: () => _showMedicalContactModal(context),
                       ),
                       const Divider(height: 1, color: Color(0xFFF1F1F6)),
                       _buildActionItem(
@@ -528,140 +523,6 @@ class PatientProfilePage extends ConsumerWidget {
     );
   }
 
-  void _showMedicalContactModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Liên hệ y tế',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onSurface,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFEBEE),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.error.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(
-                        color: AppColors.error,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.phone_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Hotline Cấp cứu 24/7',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.error,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            '1900 6868',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.error,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FE),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Column(
-                  children: [
-                    _ContactDetailRow(
-                      icon: Icons.local_hospital_rounded,
-                      title: 'Khoa điều trị',
-                      value: 'Khoa Phẫu thuật Tiêu hóa',
-                    ),
-                    Divider(height: 20),
-                    _ContactDetailRow(
-                      icon: Icons.person_rounded,
-                      title: 'Bác sĩ điều trị',
-                      value: 'Đội ngũ Y bác sĩ Ca phẫu thuật',
-                    ),
-                    Divider(height: 20),
-                    _ContactDetailRow(
-                      icon: Icons.access_time_filled_rounded,
-                      title: 'Thời gian hỗ trợ trực tuyến',
-                      value: '07:00 - 21:00 Hàng ngày',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   void _showNotificationSettingsModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -672,7 +533,6 @@ class PatientProfilePage extends ConsumerWidget {
       builder: (context) {
         bool dailyReminder = true;
         bool dietNotice = true;
-        bool doctorNotice = true;
 
         return StatefulBuilder(
           builder: (context, setState) {
@@ -749,25 +609,6 @@ class PatientProfilePage extends ConsumerWidget {
                     value: dietNotice,
                     onChanged: (val) => setState(() => dietNotice = val),
                   ),
-                  const Divider(),
-                  SwitchListTile(
-                    activeTrackColor: AppColors.primary,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Tin nhắn từ Bác sĩ / Điều dưỡng',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: const Text(
-                      'Nhận thông báo khi nhân viên y tế gửi phản hồi',
-                      style: TextStyle(fontFamily: 'Inter', fontSize: 13),
-                    ),
-                    value: doctorNotice,
-                    onChanged: (val) => setState(() => doctorNotice = val),
-                  ),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -809,110 +650,9 @@ class PatientProfilePage extends ConsumerWidget {
   }
 
   void _showLogoutConfirmation(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Xác nhận đăng xuất',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w600,
-              fontSize: 18,
-            ),
-          ),
-          content: const Text(
-            'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản?',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              color: AppColors.onSurfaceVariant,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Hủy',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  color: AppColors.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                ref.read(authNotifierProvider.notifier).signOut();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Đăng xuất',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _ContactDetailRow extends StatelessWidget {
-  const _ContactDetailRow({
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppColors.primary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    LogoutConfirmationDialog.show(
+      context,
+      onConfirm: () => ref.read(authNotifierProvider.notifier).signOut(),
     );
   }
 }

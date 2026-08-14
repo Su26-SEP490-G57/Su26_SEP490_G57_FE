@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poms/features/auth/domain/models/user_model.dart';
 
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/shared/widgets/logout_confirmation_dialog.dart';
 
 /// Không dùng Scaffold — NurseShell đã cung cấp.
 class NurseProfilePage extends ConsumerWidget {
@@ -86,8 +87,13 @@ class NurseProfilePage extends ConsumerWidget {
                     width: double.infinity,
                     height: 48,
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          ref.read(authNotifierProvider.notifier).signOut(),
+                      onPressed: () {
+                        LogoutConfirmationDialog.show(
+                          context,
+                          onConfirm: () =>
+                              ref.read(authNotifierProvider.notifier).signOut(),
+                        );
+                      },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFFBA1A1A),
                         side: const BorderSide(color: Color(0xFFBA1A1A)),

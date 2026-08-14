@@ -289,17 +289,6 @@ class _AlertCard extends StatelessWidget {
                             fontFamily: 'Inter',
                           ),
                         ),
-                        if (alert.surveyScore != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'Điểm khảo sát: ${alert.surveyScore}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.onSurfaceVariant,
-                              fontFamily: 'Inter',
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),

@@ -16,16 +16,9 @@ import 'package:poms/features/patient/domain/models/survey_models.dart';
 
 enum _ResultLevel { green, yellow, red }
 
-_ResultLevel _levelFromScore(int score) {
-  if (score <= 1) return _ResultLevel.green;
-  if (score <= 3) return _ResultLevel.yellow;
-  return _ResultLevel.red;
-}
-
 class _LevelConfig {
   const _LevelConfig({
     required this.label,
-    required this.scoreRange,
     required this.primaryColor,
     required this.bgColor,
     required this.cardBgColor,
@@ -37,7 +30,6 @@ class _LevelConfig {
   });
 
   final String label;
-  final String scoreRange;
   final Color primaryColor;
   final Color bgColor;
   final Color cardBgColor;
@@ -51,7 +43,6 @@ class _LevelConfig {
     return switch (level) {
       _ResultLevel.green => const _LevelConfig(
         label: 'XANH - AN TOÀN',
-        scoreRange: '(0–1 điểm)',
         primaryColor: Color(0xFF006E2F),
         bgColor: Color(0xFFF0FFF4),
         cardBgColor: Color(0xFFD1FAE5),
@@ -64,7 +55,6 @@ class _LevelConfig {
       ),
       _ResultLevel.yellow => const _LevelConfig(
         label: 'VÀNG - CẦN THEO DÕI',
-        scoreRange: '(2–3 điểm)',
         primaryColor: Color(0xFF735C00),
         bgColor: Color(0xFFFFFBEB),
         cardBgColor: Color(0xFFFEF9C3),
@@ -78,7 +68,6 @@ class _LevelConfig {
       ),
       _ResultLevel.red => const _LevelConfig(
         label: 'ĐỎ - CẦN CAN THIỆP',
-        scoreRange: '(4+ điểm)',
         primaryColor: Color(0xFFBA1A1A),
         bgColor: Color(0xFFFFF5F5),
         cardBgColor: Color(0xFFFFDAD6),
@@ -119,9 +108,9 @@ class _PatientAssessmentResultPageState
   void initState() {
     super.initState();
     _level = switch (widget.result.triageColor) {
+      TriageColor.green => _ResultLevel.green,
       TriageColor.yellow => _ResultLevel.yellow,
       TriageColor.red => _ResultLevel.red,
-      TriageColor.green => _levelFromScore(widget.result.totalScore),
     };
     _config = _LevelConfig.from(_level);
 
@@ -178,10 +167,7 @@ class _PatientAssessmentResultPageState
                       const SizedBox(height: 32),
 
                       // Assessment card
-                      _AssessmentCard(
-                        config: _config,
-                        totalScore: widget.result.totalScore,
-                      ),
+                      _AssessmentCard(config: _config),
                       const SizedBox(height: 32),
 
                       // Action buttons
@@ -253,15 +239,6 @@ class _HeroSection extends StatelessWidget {
             letterSpacing: 2,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          config.scoreRange,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 16,
-            color: AppColors.onSurfaceVariant,
-          ),
-        ),
       ],
     );
   }
@@ -272,9 +249,8 @@ class _HeroSection extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AssessmentCard extends StatelessWidget {
-  const _AssessmentCard({required this.config, required this.totalScore});
+  const _AssessmentCard({required this.config});
   final _LevelConfig config;
-  final int totalScore;
 
   @override
   Widget build(BuildContext context) {
@@ -308,24 +284,6 @@ class _AssessmentCard extends StatelessWidget {
               height: 1.5,
             ),
             textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          // Score display
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              'Tổng điểm: $totalScore',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: config.primaryColor,
-              ),
-            ),
           ),
         ],
       ),
