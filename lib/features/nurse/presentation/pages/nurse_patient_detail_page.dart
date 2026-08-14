@@ -1987,8 +1987,8 @@ class _BottomActionBar extends StatelessWidget {
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () {},
-              icon: const Icon(Icons.chat_outlined, size: 20),
-              label: const Text('Thông báo bác sĩ'),
+              icon: const Icon(Icons.done, size: 20),
+              label: const Text('Xác nhận hoàn thành xử trí'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
