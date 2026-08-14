@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:poms/core/constants/app_colors.dart';
 
 class LogoutConfirmationDialog extends StatelessWidget {
-  const LogoutConfirmationDialog({
-    required this.onConfirm,
-    super.key,
-  });
+  const LogoutConfirmationDialog({required this.onConfirm, super.key});
 
   final VoidCallback onConfirm;
 
@@ -27,9 +24,7 @@ class LogoutConfirmationDialog extends StatelessWidget {
       surfaceTintColor: Colors.transparent,
       elevation: 16,
       shadowColor: Colors.black.withValues(alpha: 0.25),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380),

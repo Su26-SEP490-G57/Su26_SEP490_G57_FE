@@ -1741,17 +1741,17 @@ class _SummaryGrid extends StatelessWidget {
     final assessmentStr = triage == null
         ? '-'
         : (triage.toUpperCase() == 'GREEN'
-            ? 'An toàn'
-            : triage.toUpperCase() == 'YELLOW'
-                ? 'Theo dõi'
-                : 'Can thiệp');
+              ? 'An toàn'
+              : triage.toUpperCase() == 'YELLOW'
+              ? 'Theo dõi'
+              : 'Can thiệp');
     final assessmentValColor = triage == null
         ? const Color(0xFF191B24)
         : (triage.toUpperCase() == 'GREEN'
-            ? const Color(0xFF006E2F)
-            : triage.toUpperCase() == 'YELLOW'
-                ? const Color(0xFF735C00)
-                : AppColors.error);
+              ? const Color(0xFF006E2F)
+              : triage.toUpperCase() == 'YELLOW'
+              ? const Color(0xFF735C00)
+              : AppColors.error);
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
