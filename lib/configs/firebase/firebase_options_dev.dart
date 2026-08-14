@@ -27,10 +27,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -54,8 +51,8 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBDIGOdAGkoIxW5S3t45b3Phc1_oPVFeC0',
-    appId: '1:602989772547:web:b2dd37593062a8fe957336',
+    apiKey: 'AIzaSyC1rAqH-kyeyLdGxqqGybOPRgtIlGnhkIE',
+    appId: '1:602989772547:web:3755a9ca41f24faf957336',
     messagingSenderId: '602989772547',
     projectId: 'sep490-g57-poms',
     authDomain: 'sep490-g57-poms.firebaseapp.com',
@@ -68,5 +65,13 @@ class DefaultFirebaseOptions {
     messagingSenderId: '602989772547',
     projectId: 'sep490-g57-poms',
     storageBucket: 'sep490-g57-poms.firebasestorage.app',
+  );
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyDgNn4X-mrx5yoxGevn7plW5jnvQLvrqBk',
+    appId: '1:602989772547:ios:c8f7a573050e39e7957336',
+    messagingSenderId: '602989772547',
+    projectId: 'sep490-g57-poms',
+    storageBucket: 'sep490-g57-poms.firebasestorage.app',
+    iosBundleId: 'android.app.poms',
   );
 }

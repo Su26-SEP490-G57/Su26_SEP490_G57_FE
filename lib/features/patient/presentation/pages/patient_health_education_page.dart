@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/patient/domain/models/current_pod.dart';
 import 'package:poms/features/patient/domain/models/health_education_model.dart';
 import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
+import 'package:poms/features/patient/presentation/providers/engagement_provider.dart';
 
 class PatientHealthEducationPage extends ConsumerStatefulWidget {
   const PatientHealthEducationPage({super.key});
@@ -28,6 +30,24 @@ class _PatientHealthEducationPageState
     if (podData?.currentPod != null) {
       _selectedPod = podData!.currentPod!.clamp(0, 7);
       _isInitialPodSet = true;
+    }
+
+    final caseId = ref.read(authNotifierProvider).user?.caseId;
+    if (caseId != null) {
+      ref
+          .read(engagementRepositoryProvider)
+          .logEngagement(caseId: caseId, viewedEducation: true)
+          .then(
+            (_) =>
+                debugPrint('[engagement] viewedEducation logged for $caseId'),
+          )
+          .catchError(
+            (e) => debugPrint(
+              '[engagement] viewedEducation FAILED for $caseId: $e',
+            ),
+          );
+    } else {
+      debugPrint('[engagement] skipped viewedEducation: caseId is null');
     }
   }
 
