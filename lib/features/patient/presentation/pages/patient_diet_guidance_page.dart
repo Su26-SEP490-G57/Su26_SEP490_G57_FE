@@ -5,16 +5,46 @@ import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/patient/domain/models/pod_protocol_model.dart';
 import 'package:poms/features/patient/presentation/providers/diet_guidance_provider.dart';
 import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
+import 'package:poms/features/patient/presentation/providers/engagement_provider.dart';
 import 'package:poms/features/patient/presentation/widgets/locked_pod_banner.dart';
 
-class PatientDietGuidancePage extends ConsumerWidget {
+class PatientDietGuidancePage extends ConsumerStatefulWidget {
   const PatientDietGuidancePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PatientDietGuidancePage> createState() =>
+      _PatientDietGuidancePageState();
+}
+
+class _PatientDietGuidancePageState
+    extends ConsumerState<PatientDietGuidancePage> {
+  @override
+  void initState() {
+    super.initState();
+    final caseId = ref.read(authNotifierProvider).user?.caseId;
+    if (caseId != null) {
+      ref
+          .read(engagementRepositoryProvider)
+          .logEngagement(caseId: caseId, viewedGuidance: true)
+          .then(
+            (_) => debugPrint('[engagement] viewedGuidance logged for $caseId'),
+          )
+          .catchError(
+            (e) => debugPrint(
+              '[engagement] viewedGuidance FAILED for $caseId: $e',
+            ),
+          );
+    } else {
+      debugPrint('[engagement] skipped viewedGuidance: caseId is null');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final dietGuidanceAsync = ref.watch(currentDietGuidanceProvider);
     final currentPodAsync = ref.watch(currentPodProvider);
 

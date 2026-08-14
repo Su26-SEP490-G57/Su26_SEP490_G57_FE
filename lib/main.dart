@@ -20,9 +20,14 @@ void main({FlavorConfig? flavorConfig}) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: currentFirebaseOptions);
-  await NotificationService.instance.initialize();
-  await NotificationService.instance.requestPermissions();
-  await PushNotificationService.instance.initialize();
+  try {
+    await NotificationService.instance.initialize();
+    await NotificationService.instance.requestPermissions();
+    await PushNotificationService.instance.initialize();
+  } catch (error, stackTrace) {
+    debugPrint('Notification setup failed, continuing without it: $error');
+    debugPrintStack(stackTrace: stackTrace);
+  }
 
   appFlavorConfig = flavorConfig ?? DevFlavorConfig();
   appPackageInfo = await PackageInfo.fromPlatform();

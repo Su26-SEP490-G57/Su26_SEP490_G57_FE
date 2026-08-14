@@ -4,6 +4,15 @@ import 'package:flutter/foundation.dart';
 import 'package:poms/configs/flavor/current_firebase_options.dart';
 import 'package:poms/core/services/notification_service.dart';
 
+Future<void> _awaitApnsTokenOnIOS(FirebaseMessaging messaging) async {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+
+  for (var attempt = 0; attempt < 5; attempt++) {
+    if (await messaging.getAPNSToken() != null) return;
+    await Future.delayed(const Duration(seconds: 1));
+  }
+}
+
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: currentFirebaseOptions);
@@ -45,6 +54,7 @@ class PushNotificationService {
       sound: true,
     );
     debugPrint('Permission: ${settings.authorizationStatus}');
+    await _awaitApnsTokenOnIOS(messaging);
     final token = await messaging.getToken();
     debugPrint('FCM Token:');
     debugPrint(token);
