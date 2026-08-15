@@ -136,7 +136,7 @@ class _TopAppBar extends StatelessWidget {
                     ),
                   ),
                   const Text(
-                    'ĐIỀU DƯỠNG TRƯỞNG',
+                    'ĐIỀU DƯỠNG',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 10,

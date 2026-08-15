@@ -136,6 +136,31 @@ class AlertsNotifier extends StateNotifier<AlertsState> {
       alerts: state.alerts.where((a) => a.caseId != caseId).toList(),
     );
   }
+
+  /// Marks an alert as HANDLED in the in-memory list so the UI updates
+  /// immediately after acknowledging without requiring a full reload.
+  void markHandled(int alertId) {
+    if (!mounted) return;
+    final updated = state.alerts.map((a) {
+      if (a.alertId == alertId) {
+        return AlertModel(
+          alertId: a.alertId,
+          caseId: a.caseId,
+          assessmentId: a.assessmentId,
+          alertType: a.alertType,
+          status: 'HANDLED',
+          surveyScore: a.surveyScore,
+          isAutoProgression: a.isAutoProgression,
+          triggeredAt: a.triggeredAt,
+          nurseAction: a.nurseAction,
+          nursingNote: a.nursingNote,
+          closedAt: a.closedAt,
+        );
+      }
+      return a;
+    }).toList();
+    state = state.copyWith(alerts: updated);
+  }
 }
 
 final alertsNotifierProvider =
@@ -154,6 +179,14 @@ final alertsNotifierProvider =
 /// Sorted: newest triggeredAt first.
 final latestAlertPerCaseProvider = Provider<List<AlertModel>>((ref) {
   return ref.watch(alertsNotifierProvider).alerts;
+});
+
+/// Fetches the active (PENDING_REVIEW) alert for a specific patient case.
+/// Auto-disposes so that each page visit gets a fresh fetch.
+final activeAlertForPatientProvider =
+    FutureProvider.autoDispose.family<AlertModel?, String>((ref, caseId) async {
+  final ds = ref.watch(alertRemoteDataSourceProvider);
+  return ds.getActiveAlertByCaseId(caseId);
 });
 
 // ── Realtime alert socket provider ────────────────────────────────────────────

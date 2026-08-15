@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:poms/features/nurse/domain/models/alert_model.dart';
 import 'package:poms/features/nurse/domain/models/assessment_detail.dart';
 import 'package:poms/features/nurse/domain/models/assessment_matrix.dart';
+import 'package:poms/features/nurse/presentation/providers/alert_provider.dart';
 import 'package:poms/features/nurse/domain/models/patient_compliance.dart';
 import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/assessment_provider.dart';
@@ -30,6 +32,8 @@ class NursePatientDetailPage extends ConsumerStatefulWidget {
 class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  bool _isUpdatingCare = false;
+  bool _isHandlingAlert = false;
 
   static const _tabs = [
     'Tổng quan',
@@ -50,12 +54,234 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     super.dispose();
   }
 
+  Future<void> _runCareAction(
+    Future<void> Function() action,
+    String successMessage,
+  ) async {
+    setState(() => _isUpdatingCare = true);
+
+    try {
+      await action();
+      await ref.read(patientNotifierProvider.notifier).loadPatients(limit: 100);
+      ref.invalidate(patientPodStatusProvider(widget.patientId));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMessage)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể cập nhật tình trạng người bệnh')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUpdatingCare = false);
+    }
+  }
+
+  Future<String?> _requestHoldReason() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Tạm dừng mức ăn'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 2,
+          maxLines: 4,
+          maxLength: 500,
+          decoration: const InputDecoration(
+            labelText: 'Lý do tạm dừng',
+            hintText: 'Ví dụ: Người bệnh chưa dung nạp tốt chế độ ăn hiện tại',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isEmpty) return;
+              Navigator.of(dialogContext).pop(value);
+            },
+            child: const Text('Tạm dừng'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return reason;
+  }
+
+  Future<bool> _confirm({required String title, required String message, required String confirmLabel}) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Hủy'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(confirmLabel),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _togglePodLock(bool isLocked) async {
+    if (isLocked) {
+      final confirmed = await _confirm(
+        title: 'Tiếp tục mức ăn',
+        message: 'Cho phép tiếp tục tiến trình mức ăn cho người bệnh?',
+        confirmLabel: 'Tiếp tục',
+      );
+      if (!confirmed) return;
+      await _runCareAction(
+        () => ref
+            .read(patientRemoteDatasourceProvider)
+            .setPodLock(caseId: widget.patientId, isLocked: false),
+        'Đã tiếp tục mức ăn',
+      );
+      return;
+    }
+
+    final reason = await _requestHoldReason();
+    if (reason == null) return;
+    await _runCareAction(
+      () => ref
+          .read(patientRemoteDatasourceProvider)
+          .setPodLock(caseId: widget.patientId, isLocked: true, holdReason: reason),
+      'Đã tạm dừng mức ăn',
+    );
+  }
+
+  Future<void> _rollbackDietLevel(PatientSummary patient) async {
+    if (patient.dietLevel <= 0) return;
+    final nextLevel = patient.dietLevel - 1;
+    final confirmed = await _confirm(
+      title: 'Lùi mức ăn',
+      message: 'Chuyển mức ăn từ ${patient.dietLevel} về mức $nextLevel?',
+      confirmLabel: 'Xác nhận',
+    );
+    if (!confirmed) return;
+
+    await _runCareAction(
+      () => ref
+          .read(patientRemoteDatasourceProvider)
+          .updateDietLevel(caseId: widget.patientId, dietLevel: nextLevel),
+      'Đã lùi mức ăn về mức $nextLevel',
+    );
+  }
+
+  Future<void> _acknowledgeAlert(AlertModel alert) async {
+    final noteController = TextEditingController();
+    final actionController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xác nhận đã xử trí'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bệnh nhân mức ${alert.alertType == 'RED' ? '🔴 ĐỎ' : '🟡 VÀNG'} — Xác nhận đã can thiệp và hoàn thành xử trí?',
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: actionController,
+                decoration: const InputDecoration(
+                  labelText: 'Hành động đã thực hiện (tùy chọn)',
+                  hintText: 'VD: Thông báo bác sĩ, điều chỉnh mức ăn...',
+                  border: OutlineInputBorder(),
+                ),
+                minLines: 2,
+                maxLines: 3,
+                maxLength: 300,
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: noteController,
+                decoration: const InputDecoration(
+                  labelText: 'Ghi chú điều dưỡng (tùy chọn)',
+                  hintText: 'Ghi chú thêm nếu cần...',
+                  border: OutlineInputBorder(),
+                ),
+                minLines: 2,
+                maxLines: 4,
+                maxLength: 500,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF006E2F),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Xác nhận đã xử trí'),
+          ),
+        ],
+      ),
+    );
+    final nurseAction = actionController.text.trim();
+    final nursingNote = noteController.text.trim();
+    actionController.dispose();
+    noteController.dispose();
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isHandlingAlert = true);
+    try {
+      await ref.read(alertRemoteDataSourceProvider).acknowledgeAlert(
+        alertId: alert.alertId,
+        nurseAction: nurseAction.isNotEmpty ? nurseAction : null,
+        nursingNote: nursingNote.isNotEmpty ? nursingNote : null,
+      );
+      // Cập nhật trạng thái trong-bộ-nhớ + reload danh sách
+      ref.read(alertsNotifierProvider.notifier).markHandled(alert.alertId);
+      ref.invalidate(activeAlertForPatientProvider(widget.patientId));
+      await ref.read(patientNotifierProvider.notifier).loadPatients(limit: 100);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Đã xác nhận xử trí thành công'),
+          backgroundColor: Color(0xFF006E2F),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể cập nhật trạng thái xử trí')),
+      );
+    } finally {
+      if (mounted) setState(() => _isHandlingAlert = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final livePatient = ref.watch(patientByIdProvider(widget.patientId));
     final assessmentState = ref.watch(
       assessmentNotifierProvider(widget.patientId),
     );
+    final podStatusAsync = ref.watch(patientPodStatusProvider(widget.patientId));
+    final activeAlertAsync = ref.watch(activeAlertForPatientProvider(widget.patientId));
     final patient =
         livePatient ??
         widget.patient ??
@@ -150,6 +376,11 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
             _OverviewTab(
               patient: patient,
               assessmentState: assessmentState,
+              activeAlert: activeAlertAsync.asData?.value,
+              isHandlingAlert: _isHandlingAlert,
+              onAlertAcknowledge: activeAlertAsync.asData?.value != null
+                  ? () => _acknowledgeAlert(activeAlertAsync.asData!.value!)
+                  : null,
               onAssessmentTap: () {
                 _tabController.animateTo(1);
               },
@@ -160,7 +391,17 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
           ],
         ),
       ),
-      bottomNavigationBar: const _BottomActionBar(),
+      bottomNavigationBar: _BottomActionBar(
+        dietLevel: patient.dietLevel,
+        isPodLocked: podStatusAsync.asData?.value.isLocked,
+        isLoading: _isUpdatingCare || podStatusAsync.isLoading,
+        onPodLockPressed: podStatusAsync.asData == null
+            ? null
+            : () => _togglePodLock(podStatusAsync.asData!.value.isLocked),
+        onDietRollback: patient.dietLevel > 0
+            ? () => _rollbackDietLevel(patient)
+            : null,
+      ),
     );
   }
 }
@@ -202,7 +443,7 @@ class _PatientHero extends StatelessWidget {
   String _displayPod(String pod) {
     return pod.replaceFirst(
       RegExp(r'^POD\s*', caseSensitive: false),
-      'Hậu phẫu ',
+      'POD ',
     );
   }
 
@@ -365,11 +606,17 @@ class _OverviewTab extends StatelessWidget {
     required this.patient,
     required this.assessmentState,
     required this.onAssessmentTap,
+    this.activeAlert,
+    this.isHandlingAlert = false,
+    this.onAlertAcknowledge,
   });
 
   final PatientSummary? patient;
   final AssessmentState assessmentState;
   final VoidCallback onAssessmentTap;
+  final AlertModel? activeAlert;
+  final bool isHandlingAlert;
+  final VoidCallback? onAlertAcknowledge;
 
   @override
   Widget build(BuildContext context) {
@@ -383,8 +630,13 @@ class _OverviewTab extends StatelessWidget {
         _InfoGrid(patient: p),
         const SizedBox(height: 16),
 
-        if (p.needsIntervention) ...[
-          _AlertBanner(patient: p),
+        if (p.needsIntervention || activeAlert != null) ...[
+          _AlertBanner(
+            patient: p,
+            activeAlert: activeAlert,
+            isHandlingAlert: isHandlingAlert,
+            onAcknowledge: onAlertAcknowledge,
+          ),
           const SizedBox(height: 16),
         ],
         const Text(
@@ -1740,64 +1992,117 @@ class _PersonnelItem extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AlertBanner extends StatelessWidget {
-  const _AlertBanner({required this.patient});
+  const _AlertBanner({
+    required this.patient,
+    this.activeAlert,
+    this.isHandlingAlert = false,
+    this.onAcknowledge,
+  });
+
   final PatientSummary patient;
+  final AlertModel? activeAlert;
+  final bool isHandlingAlert;
+  final VoidCallback? onAcknowledge;
+
+  bool get _isRed => activeAlert?.alertType.toUpperCase() == 'RED';
 
   @override
   Widget build(BuildContext context) {
+    final alertColor = _isRed ? AppColors.error : const Color(0xFFA33200);
+    final alertBg = _isRed ? AppColors.errorContainer : const Color(0xFFFFF3E0);
+    final alertBorder = _isRed
+        ? AppColors.error.withValues(alpha: 0.2)
+        : const Color(0xFFA33200).withValues(alpha: 0.2);
+    final iconData = _isRed ? Icons.emergency_rounded : Icons.warning_amber_rounded;
+    final title = _isRed ? 'Cảnh báo khẩn: Mức ĐỎ' : 'Cần theo dõi: Mức VÀNG';
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.errorContainer,
+        color: alertBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+        border: Border.all(color: alertBorder),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: AppColors.error,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.warning_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: alertColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(iconData, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: alertColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Thời gian đánh giá gần nhất: ${patient.lastAssessmentTime ?? 'Chưa có'}',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: alertColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Trạng thái hiện tại: Cần can thiệp',
-                  style: TextStyle(
+          if (activeAlert != null && activeAlert!.status == 'PENDING_REVIEW') ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0x1F000000)),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: isHandlingAlert ? null : onAcknowledge,
+                icon: isHandlingAlert
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.check_circle_outline_rounded, size: 18),
+                label: Text(
+                  isHandlingAlert ? 'Đang xử lý...' : 'Xác nhận đã hoàn thành xử trí',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF006E2F),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                  textStyle: const TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF93000A),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Thời gian đánh giá gần nhất: ${patient.lastAssessmentTime ?? 'Chưa có'}',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    color: Color(0xFF93000A),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.error,
-            size: 22,
-          ),
+          ],
         ],
       ),
     );
@@ -1878,7 +2183,7 @@ class _SummaryGrid extends StatelessWidget {
         _SummaryCard(
           icon: Icons.calendar_view_day_outlined,
           iconColor: AppColors.primary,
-          label: 'HẬU PHẪU',
+          label: 'POD',
           value: patient.podNumber,
           valueColor: const Color(0xFF191B24),
           bgColor: Colors.white,
@@ -1966,7 +2271,19 @@ class _SummaryCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BottomActionBar extends StatelessWidget {
-  const _BottomActionBar();
+  const _BottomActionBar({
+    required this.dietLevel,
+    required this.isPodLocked,
+    required this.isLoading,
+    required this.onPodLockPressed,
+    required this.onDietRollback,
+  });
+
+  final int dietLevel;
+  final bool? isPodLocked;
+  final bool isLoading;
+  final VoidCallback? onPodLockPressed;
+  final VoidCallback? onDietRollback;
 
   @override
   Widget build(BuildContext context) {
@@ -1983,23 +2300,52 @@ class _BottomActionBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.done, size: 20),
-              label: const Text('Xác nhận hoàn thành xử trí'),
+              onPressed: isLoading ? null : onPodLockPressed,
+              icon: Icon(
+                isPodLocked == true
+                    ? Icons.play_arrow_rounded
+                    : Icons.pause_rounded,
+                size: 20,
+              ),
+              label: Text(
+                isPodLocked == true ? 'Tiếp tục mức ăn' : 'Tạm dừng mức ăn',
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                disabledBackgroundColor: const Color(0xFFC2C6D8),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 elevation: 0,
                 textStyle: const TextStyle(
                   fontFamily: 'Inter',
-                  fontSize: 16,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: isLoading ? null : onDietRollback,
+              icon: const Icon(Icons.restaurant_rounded, size: 20),
+              label: Text(dietLevel > 0 ? 'Lùi mức ăn ($dietLevel → ${dietLevel - 1})' : 'Lùi mức ăn'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF9A3412),
+                disabledForegroundColor: const Color(0xFF9CA3AF),
+                side: const BorderSide(color: Color(0xFFF0B79D)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
