@@ -65,11 +65,15 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
       await ref.read(patientNotifierProvider.notifier).loadPatients(limit: 100);
       ref.invalidate(patientPodStatusProvider(widget.patientId));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMessage)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(successMessage)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể cập nhật tình trạng người bệnh')),
+        const SnackBar(
+          content: Text('Không thể cập nhật tình trạng người bệnh'),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isUpdatingCare = false);
@@ -79,13 +83,17 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
   Future<String?> _requestHoldReason() async {
     final reason = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => const _HoldReasonDialog()
+      builder: (dialogContext) => const _HoldReasonDialog(),
     );
-    
+
     return reason;
   }
 
-  Future<bool> _confirm({required String title, required String message, required String confirmLabel}) async {
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) async {
     return await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
@@ -128,7 +136,11 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     await _runCareAction(
       () => ref
           .read(patientRemoteDatasourceProvider)
-          .setPodLock(caseId: widget.patientId, isLocked: true, holdReason: reason),
+          .setPodLock(
+            caseId: widget.patientId,
+            isLocked: true,
+            holdReason: reason,
+          ),
       'Đã tạm dừng mức ăn',
     );
   }
@@ -156,74 +168,21 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     final actionController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Xác nhận đã xử trí'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Bệnh nhân mức ${alert.alertType == 'RED' ? '🔴 ĐỎ' : '🟡 VÀNG'} — Xác nhận đã can thiệp và hoàn thành xử trí?',
-                style: const TextStyle(fontSize: 14, height: 1.5),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: actionController,
-                decoration: const InputDecoration(
-                  labelText: 'Hành động đã thực hiện (tùy chọn)',
-                  hintText: 'VD: Thông báo bác sĩ, điều chỉnh mức ăn...',
-                  border: OutlineInputBorder(),
-                ),
-                minLines: 2,
-                maxLines: 3,
-                maxLength: 300,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: noteController,
-                decoration: const InputDecoration(
-                  labelText: 'Ghi chú điều dưỡng (tùy chọn)',
-                  hintText: 'Ghi chú thêm nếu cần...',
-                  border: OutlineInputBorder(),
-                ),
-                minLines: 2,
-                maxLines: 4,
-                maxLength: 500,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF006E2F),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Xác nhận đã xử trí'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) => const _ConfirmHandledDialog()
     );
     final nurseAction = actionController.text.trim();
     final nursingNote = noteController.text.trim();
-    actionController.dispose();
-    noteController.dispose();
-
     if (confirmed != true || !mounted) return;
 
     setState(() => _isHandlingAlert = true);
     try {
-      await ref.read(alertRemoteDataSourceProvider).acknowledgeAlert(
-        alertId: alert.alertId,
-        nurseAction: nurseAction.isNotEmpty ? nurseAction : null,
-        nursingNote: nursingNote.isNotEmpty ? nursingNote : null,
-      );
+      await ref
+          .read(alertRemoteDataSourceProvider)
+          .acknowledgeAlert(
+            alertId: alert.alertId,
+            nurseAction: nurseAction.isNotEmpty ? nurseAction : null,
+            nursingNote: nursingNote.isNotEmpty ? nursingNote : null,
+          );
       // Cập nhật trạng thái trong-bộ-nhớ + reload danh sách
       ref.read(alertsNotifierProvider.notifier).markHandled(alert.alertId);
       ref.invalidate(activeAlertForPatientProvider(widget.patientId));
@@ -251,8 +210,12 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     final assessmentState = ref.watch(
       assessmentNotifierProvider(widget.patientId),
     );
-    final podStatusAsync = ref.watch(patientPodStatusProvider(widget.patientId));
-    final activeAlertAsync = ref.watch(activeAlertForPatientProvider(widget.patientId));
+    final podStatusAsync = ref.watch(
+      patientPodStatusProvider(widget.patientId),
+    );
+    final activeAlertAsync = ref.watch(
+      activeAlertForPatientProvider(widget.patientId),
+    );
     final patient =
         livePatient ??
         widget.patient ??
@@ -433,6 +396,89 @@ class _HoldReasonDialogState extends State<_HoldReasonDialog> {
   }
 }
 
+class _ConfirmHandledDialog extends StatefulWidget {
+  const _ConfirmHandledDialog();
+
+  @override
+  State<_ConfirmHandledDialog> createState() => _ConfirmHandledDialogState();
+}
+
+class _ConfirmHandledDialogState extends State<_ConfirmHandledDialog> {
+  late final TextEditingController _noteController;
+  late final TextEditingController _actionController;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController = TextEditingController();
+    _actionController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    _actionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Xác nhận đã xử trí'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Bệnh nhân mức Xác nhận đã can thiệp và hoàn thành xử trí?',
+              style: TextStyle(fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _actionController,
+              decoration: const InputDecoration(
+                labelText: 'Hành động đã thực hiện (tùy chọn)',
+                hintText: 'VD: Thông báo bác sĩ, điều chỉnh mức ăn...',
+                border: OutlineInputBorder(),
+              ),
+              minLines: 2,
+              maxLines: 3,
+              maxLength: 300,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(
+                labelText: 'Ghi chú điều dưỡng (tùy chọn)',
+                hintText: 'Ghi chú thêm nếu cần...',
+                border: OutlineInputBorder(),
+              ),
+              minLines: 2,
+              maxLines: 4,
+              maxLength: 500,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Hủy'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF006E2F),
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Xác nhận đã xử trí'),
+        ),
+      ],
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // TabBar sticky delegate
 // ─────────────────────────────────────────────────────────────────────────────
@@ -468,10 +514,7 @@ class _PatientHero extends StatelessWidget {
   final PatientSummary patient;
 
   String _displayPod(String pod) {
-    return pod.replaceFirst(
-      RegExp(r'^POD\s*', caseSensitive: false),
-      'POD ',
-    );
+    return pod.replaceFirst(RegExp(r'^POD\s*', caseSensitive: false), 'POD ');
   }
 
   @override
@@ -2040,7 +2083,9 @@ class _AlertBanner extends StatelessWidget {
     final alertBorder = _isRed
         ? AppColors.error.withValues(alpha: 0.2)
         : const Color(0xFFA33200).withValues(alpha: 0.2);
-    final iconData = _isRed ? Icons.emergency_rounded : Icons.warning_amber_rounded;
+    final iconData = _isRed
+        ? Icons.emergency_rounded
+        : Icons.warning_amber_rounded;
     final title = _isRed ? 'Cảnh báo khẩn: Mức ĐỎ' : 'Cần theo dõi: Mức VÀNG';
 
     return Container(
@@ -2092,7 +2137,8 @@ class _AlertBanner extends StatelessWidget {
               ),
             ],
           ),
-          if (activeAlert != null && activeAlert!.status == 'PENDING_REVIEW') ...[
+          if (activeAlert != null &&
+              activeAlert!.status == 'PENDING_REVIEW') ...[
             const SizedBox(height: 12),
             const Divider(height: 1, color: Color(0x1F000000)),
             const SizedBox(height: 12),
@@ -2111,7 +2157,9 @@ class _AlertBanner extends StatelessWidget {
                       )
                     : const Icon(Icons.check_circle_outline_rounded, size: 18),
                 label: Text(
-                  isHandlingAlert ? 'Đang xử lý...' : 'Xác nhận đã hoàn thành xử trí',
+                  isHandlingAlert
+                      ? 'Đang xử lý...'
+                      : 'Xác nhận đã hoàn thành xử trí',
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF006E2F),
@@ -2361,7 +2409,11 @@ class _BottomActionBar extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: isLoading ? null : onDietRollback,
               icon: const Icon(Icons.restaurant_rounded, size: 20),
-              label: Text(dietLevel > 0 ? 'Lùi mức ăn ($dietLevel → ${dietLevel - 1})' : 'Lùi mức ăn'),
+              label: Text(
+                dietLevel > 0
+                    ? 'Lùi mức ăn ($dietLevel → ${dietLevel - 1})'
+                    : 'Lùi mức ăn',
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF9A3412),
                 disabledForegroundColor: const Color(0xFF9CA3AF),
