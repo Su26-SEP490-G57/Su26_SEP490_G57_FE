@@ -77,40 +77,11 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
   }
 
   Future<String?> _requestHoldReason() async {
-    final controller = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Tạm dừng mức ăn'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          minLines: 2,
-          maxLines: 4,
-          maxLength: 500,
-          decoration: const InputDecoration(
-            labelText: 'Lý do tạm dừng',
-            hintText: 'Ví dụ: Người bệnh chưa dung nạp tốt chế độ ăn hiện tại',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.isEmpty) return;
-              Navigator.of(dialogContext).pop(value);
-            },
-            child: const Text('Tạm dừng'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) => const _HoldReasonDialog()
     );
-    controller.dispose();
+    
     return reason;
   }
 
@@ -402,6 +373,62 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
             ? () => _rollbackDietLevel(patient)
             : null,
       ),
+    );
+  }
+}
+
+class _HoldReasonDialog extends StatefulWidget {
+  const _HoldReasonDialog();
+
+  @override
+  State<_HoldReasonDialog> createState() => _HoldReasonDialogState();
+}
+
+class _HoldReasonDialogState extends State<_HoldReasonDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Tạm dừng mức ăn'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        minLines: 2,
+        maxLines: 4,
+        maxLength: 500,
+        decoration: const InputDecoration(
+          labelText: 'Lý do tạm dừng',
+          hintText: 'Ví dụ: Người bệnh chưa dung nạp tốt chế độ ăn hiện tại',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Hủy'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final value = _controller.text.trim();
+            if (value.isEmpty) return;
+            Navigator.of(context).pop(value);
+          },
+          child: const Text('Tạm dừng'),
+        ),
+      ],
     );
   }
 }
