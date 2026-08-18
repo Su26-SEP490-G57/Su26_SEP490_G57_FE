@@ -41,6 +41,9 @@ class PatientComplianceResponse {
     required this.appAccessCount,
     required this.assessmentCompletedCount,
     required this.isCompliant,
+    required this.morningAssessmentStatus,
+    required this.afternoonAssessmentStatus,
+    required this.isDailyCompliant,
   });
 
   factory PatientComplianceResponse.fromJson(Map<String, dynamic> json) {
@@ -52,6 +55,9 @@ class PatientComplianceResponse {
       appAccessCount: json['appAccessCount'] as int? ?? 0,
       assessmentCompletedCount: json['assessmentCompletedCount'] as int? ?? 0,
       isCompliant: json['isCompliant'] as bool? ?? false,
+      morningAssessmentStatus: json['morningAssessmentStatus'] as String?,
+      afternoonAssessmentStatus: json['afternoonAssessmentStatus'] as String?,
+      isDailyCompliant: json['isDailyCompliant'] as bool? ?? false,
     );
   }
 
@@ -62,6 +68,9 @@ class PatientComplianceResponse {
   final int appAccessCount;
   final int assessmentCompletedCount;
   final bool isCompliant;
+  final String? morningAssessmentStatus;
+  final String? afternoonAssessmentStatus;
+  final bool isDailyCompliant;
 }
 
 class AssessmentMatrixCellResponse {

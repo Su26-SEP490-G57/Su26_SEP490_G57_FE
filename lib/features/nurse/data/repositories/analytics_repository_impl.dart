@@ -37,6 +37,13 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
         appAccessCount: response.appAccessCount,
         assessmentCompletedCount: response.assessmentCompletedCount,
         isCompliant: response.isCompliant,
+        morningAssessmentStatus: ScheduledAssessmentStatus.fromApi(
+          response.morningAssessmentStatus,
+        ),
+        afternoonAssessmentStatus: ScheduledAssessmentStatus.fromApi(
+          response.afternoonAssessmentStatus,
+        ),
+        isDailyCompliant: response.isDailyCompliant,
       );
     } catch (e) {
       throw mapException(e);
