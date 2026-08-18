@@ -1197,10 +1197,7 @@ class _ComplianceStatsCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            _ChecklistRow(
-              label: 'Hướng dẫn ăn',
-              done: data.viewedGuidance,
-            ),
+            _ChecklistRow(label: 'Hướng dẫn ăn', done: data.viewedGuidance),
             const SizedBox(height: 8),
             _ChecklistRow(
               label: 'Giáo dục sức khỏe',
@@ -1342,7 +1339,11 @@ class _AssessmentSlotRow extends StatelessWidget {
         AppColors.statusWarning,
         'Chưa làm',
       ),
-      null => (Icons.remove_circle_outline, AppColors.statusUnknown, 'Chưa làm'),
+      null => (
+        Icons.remove_circle_outline,
+        AppColors.statusUnknown,
+        'Chưa làm',
+      ),
     };
 
     return Row(
