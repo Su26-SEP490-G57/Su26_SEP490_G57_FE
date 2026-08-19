@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poms/features/nurse/domain/models/assessment_detail.dart';
 import 'package:poms/features/nurse/domain/models/assessment_matrix.dart';
+import 'package:poms/features/nurse/domain/models/patient_compliance.dart';
 import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/assessment_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
@@ -1192,18 +1193,42 @@ class _ComplianceStatsCard extends ConsumerWidget {
                     color: Color(0xFF727687),
                   ),
                 ),
-                _ComplianceStatusBadge(isCompliant: data.isCompliant),
+                _ComplianceStatusBadge(isCompliant: data.isDailyCompliant),
               ],
             ),
             const SizedBox(height: 10),
+            _ChecklistRow(label: 'Hướng dẫn ăn', done: data.viewedGuidance),
+            const SizedBox(height: 8),
             _ChecklistRow(
-              label: 'Đã xem hướng dẫn POD',
-              done: data.viewedGuidance,
+              label: 'Giáo dục sức khỏe',
+              done: data.viewedEducation,
             ),
             const SizedBox(height: 8),
             _ChecklistRow(
-              label: 'Đã xem giáo dục sức khỏe',
-              done: data.viewedEducation,
+              label: 'Đánh giá định kỳ',
+              done:
+                  data.morningAssessmentStatus ==
+                      ScheduledAssessmentStatus.completed &&
+                  data.afternoonAssessmentStatus ==
+                      ScheduledAssessmentStatus.completed,
+            ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.only(left: 26),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _AssessmentSlotRow(
+                    label: 'Khung giờ sáng (06:00 - 08:00)',
+                    status: data.morningAssessmentStatus,
+                  ),
+                  const SizedBox(height: 6),
+                  _AssessmentSlotRow(
+                    label: 'Khung giờ chiều (16:00 - 18:00)',
+                    status: data.afternoonAssessmentStatus,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 18),
             const Text(
@@ -1283,6 +1308,65 @@ class _ChecklistRow extends StatelessWidget {
             fontFamily: 'Inter',
             fontSize: 14,
             color: done ? const Color(0xFF191B24) : const Color(0xFF727687),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AssessmentSlotRow extends StatelessWidget {
+  const _AssessmentSlotRow({required this.label, required this.status});
+
+  final String label;
+  final ScheduledAssessmentStatus? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color, text) = switch (status) {
+      ScheduledAssessmentStatus.completed => (
+        Icons.check_circle_rounded,
+        AppColors.statusNormal,
+        'Hoàn thành',
+      ),
+      ScheduledAssessmentStatus.missed => (
+        Icons.cancel_rounded,
+        AppColors.statusCritical,
+        'Bỏ lỡ',
+      ),
+      ScheduledAssessmentStatus.pending => (
+        Icons.circle_outlined,
+        AppColors.statusWarning,
+        'Chưa làm',
+      ),
+      null => (
+        Icons.remove_circle_outline,
+        AppColors.statusUnknown,
+        'Chưa làm',
+      ),
+    };
+
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              color: Color(0xFF727687),
+            ),
+          ),
+        ),
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: color,
           ),
         ),
       ],
