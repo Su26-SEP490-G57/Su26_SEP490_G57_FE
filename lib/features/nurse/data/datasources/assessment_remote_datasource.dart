@@ -38,4 +38,24 @@ class AssessmentRemoteDataSource {
     final raw = response.data;
     return AssessmentHistoryResponse.fromRaw(raw);
   }
+
+  Future<AssessmentDetailResponse> submitReassessment(
+    String caseId, {
+    String? triageColor,
+    String? nurseNote,
+    String source = 'REASSESSMENT',
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/patients/$caseId/reassessments',
+      data: {
+        'caseId': caseId,
+        'triageColor': ?triageColor,
+        if (nurseNote != null && nurseNote.isNotEmpty) 'nurseNote': nurseNote,
+        'source': source,
+      },
+    );
+    final data = response.data;
+    if (data == null) throw Exception('Empty response from server');
+    return AssessmentDetailResponse.fromJson(data);
+  }
 }

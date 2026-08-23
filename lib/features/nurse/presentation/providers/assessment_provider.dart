@@ -159,6 +159,31 @@ class AssessmentNotifier extends StateNotifier<AssessmentState> {
       selectedAssessmentId: assessment.assessmentId,
     );
   }
+
+  Future<AssessmentDetail?> submitReassessment({
+    String? triageColor,
+    String? nurseNote,
+    String source = 'REASSESSMENT',
+  }) async {
+    try {
+      final newAssessment = await _repository.submitReassessment(
+        _caseId,
+        triageColor: triageColor,
+        nurseNote: nurseNote,
+        source: source,
+      );
+      await loadAssessmentHistory();
+      return newAssessment;
+    } catch (e, st) {
+      developer.log(
+        'AssessmentNotifier submitReassessment error: $e',
+        name: 'AssessmentNotifier',
+        error: e,
+        stackTrace: st,
+      );
+      return null;
+    }
+  }
 }
 
 final assessmentNotifierProvider =

@@ -310,7 +310,7 @@ class _TopAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final roomsText = assignedRooms.isEmpty
         ? 'Chưa phân phòng'
-        : 'Phòng: ${assignedRooms.join(", ")}';
+        : assignedRooms.join(', ');
 
     return Container(
       color: AppColors.primary,

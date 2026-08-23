@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/core/utils/extensions.dart';
+import 'package:poms/features/auth/domain/models/user_model.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/nurse/domain/models/compliance_overview.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
@@ -38,28 +39,30 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
   Widget build(BuildContext context) {
     final patientState = ref.watch(patientNotifierProvider);
     final user = ref.watch(authNotifierProvider).user;
-    final displayName = user?.displayName ?? 'Điều dưỡng';
+    // Chỉnh padding bottom để bù cho floating glass nav bar ở NurseShell.
+    // MediaQuery.padding.bottom đã được NurseShell inject thêm 78px (chiều cao nav).
+    final bottomPad = MediaQuery.of(context).padding.bottom;
 
     return Column(
       children: [
-        _TopAppBar(displayName: displayName),
+        _TopAppBar(user: user),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, bottomPad + 36),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Date row ──────────────────────────────────────────
+                // ── Date row ──────────────────────────────────────────────────
                 const _DateRow(),
                 const SizedBox(height: 24),
 
-                // ── Tổng quan toàn khoa ───────────────────────────────
-                const _SectionLabel(label: 'TỔNG QUAN TOÀN KHOA'),
+                // ── Tổng quan toàn khoa ─────────────────────────────────────
+                const _SectionLabel(label: 'TỔNG QUAN'),
                 const SizedBox(height: 10),
                 _WardOverviewGrid(patients: patientState.patients),
                 const SizedBox(height: 24),
 
-                // ── Nhóm cần ưu tiên ─────────────────────────────────
+                // ── Nhóm cần ưu tiên ─────────────────────────────────────
                 _SectionHeader(
                   label: 'NHÓM CẦN ƯU TIÊN',
                   onViewAll: () =>
@@ -69,7 +72,7 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
                 _PriorityPatientList(patients: patientState.patients),
                 const SizedBox(height: 24),
 
-                // ── Tỷ lệ tuân thủ ────────────────────────────────────
+                // ── Tỷ lệ tuân thủ ─────────────────────────────────────────
                 const _SectionLabel(label: 'TỶ LỆ TUÂN THỦ'),
                 const SizedBox(height: 10),
                 const _ComplianceOverviewCard(),
@@ -88,11 +91,23 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TopAppBar extends StatelessWidget {
-  const _TopAppBar({required this.displayName});
-  final String displayName;
+  const _TopAppBar({required this.user});
+  final UserModel? user;
 
   @override
   Widget build(BuildContext context) {
+    final displayName = user?.displayName ?? 'Người dùng';
+    final role = user?.primaryRole;
+
+    final rolePrefix = switch (role) {
+      UserRole.headNurse => 'ĐĐT.',
+      UserRole.admin => 'QTV.',
+      UserRole.patient => 'BN.',
+      _ => 'ĐD.',
+    };
+
+    final roleLabel = role?.displayName.toUpperCase() ?? 'ĐIỀU DƯỠNG';
+
     return Container(
       color: AppColors.primary,
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -126,7 +141,7 @@ class _TopAppBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'ĐD. $displayName',
+                    '$rolePrefix $displayName',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,
@@ -135,9 +150,9 @@ class _TopAppBar extends StatelessWidget {
                       height: 1.2,
                     ),
                   ),
-                  const Text(
-                    'ĐIỀU DƯỠNG',
-                    style: TextStyle(
+                  Text(
+                    roleLabel,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 10,
                       fontWeight: FontWeight.w700,

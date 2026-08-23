@@ -181,6 +181,28 @@ final latestAlertPerCaseProvider = Provider<List<AlertModel>>((ref) {
   return ref.watch(alertsNotifierProvider).alerts;
 });
 
+/// Chỉ trả về các alert đang ở trạng thái chờ xử lý (PENDING_REVIEW).
+/// Alert đã handled/closed bị loại bỏ khỏi danh sách hoàn toàn.
+///
+/// Sắp xếp: overdue lên trên (triggeredAt cũ nhất = chờ lâu nhất lên đầu),
+/// alert mới nhất xuống cuối.
+final pendingAlertsProvider = Provider<List<AlertModel>>((ref) {
+  final all = ref.watch(alertsNotifierProvider).alerts;
+  // Backend dùng 'PENDING_REVIEW'; sau khi nurse xác nhận in-memory sẽ là 'HANDLED'.
+  // Filter: giữ lại tất cả alert KHÔNG phải trạng thái đã xử lý / đã đóng.
+  const handledStatuses = {'HANDLED', 'Handled', 'handled', 'Closed', 'closed', 'Acknowledged', 'acknowledged'};
+  final pending = all
+      .where((a) => !handledStatuses.contains(a.status))
+      .toList()
+    ..sort((a, b) {
+      // Cũ nhất (overdue) lên đầu → ascending triggeredAt.
+      final ta = a.triggeredAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final tb = b.triggeredAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return ta.compareTo(tb);
+    });
+  return pending;
+});
+
 /// Fetches the active (PENDING_REVIEW) alert for a specific patient case.
 /// Auto-disposes so that each page visit gets a fresh fetch.
 final activeAlertForPatientProvider =

@@ -56,6 +56,8 @@ class AssessmentDetailResponse {
     required this.totalScore,
     required this.triageColor,
     required this.details,
+    this.source = 'SURVEY',
+    this.nurseNote,
   });
 
   final int assessmentId;
@@ -65,6 +67,8 @@ class AssessmentDetailResponse {
   final int totalScore;
   final String triageColor;
   final List<AssessmentDetailItemResponse> details;
+  final String source;
+  final String? nurseNote;
 
   // ignore: sort_constructors_first
   factory AssessmentDetailResponse.fromJson(Map<String, dynamic> json) {
@@ -105,6 +109,8 @@ class AssessmentDetailResponse {
       totalScore: _parseInt(json['totalScore']) ?? 0,
       triageColor: (json['triageColor'] as String?) ?? 'GREEN',
       details: details,
+      source: (json['source'] as String?) ?? 'SURVEY',
+      nurseNote: json['nurseNote'] as String?,
     );
   }
 
@@ -117,6 +123,8 @@ class AssessmentDetailResponse {
       totalScore: totalScore,
       triageColor: triageColor,
       details: details.map((e) => e.toDomain()).toList(),
+      source: source,
+      nurseNote: nurseNote,
     );
   }
 }
