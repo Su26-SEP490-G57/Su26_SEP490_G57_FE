@@ -19,7 +19,9 @@ class PatientNotifier extends StateNotifier<PatientState> {
 
     _initialized = true;
 
-    await loadPatients();
+    // The patient screen paginates locally (five cards at a time), so its
+    // initial snapshot must include the full assigned-room list.
+    await loadPatients(limit: 100);
   }
 
   Future<void> loadPatients({

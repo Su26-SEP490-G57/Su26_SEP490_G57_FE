@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 //import 'package:flutter/material.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
@@ -107,26 +108,37 @@ class AssessmentNotifier extends StateNotifier<AssessmentState> {
             : history.first.assessmentId,
       );
     } on DioException catch (e) {
-      String message;
+      // Log the real HTTP error for debugging.
+      developer.log(
+        'AssessmentNotifier DioException: status=${e.response?.statusCode} body=${e.response?.data}',
+        name: 'AssessmentNotifier',
+        error: e,
+      );
 
+      final String message;
       switch (e.response?.statusCode) {
         case 404:
           message = 'Chưa có dữ liệu đánh giá của bệnh nhân.';
-          break;
         default:
           message =
               'Không có dữ liệu đánh giá hoặc không thể kết nối tới máy chủ.';
       }
 
       if (!mounted) return;
-
       state = state.copyWith(
         status: AssessmentStatusState.error,
         errorMessage: message,
       );
-    } catch (_) {
-      if (!mounted) return;
+    } catch (e, st) {
+      // Log the REAL exception (usually a parsing error) so we can diagnose it.
+      developer.log(
+        'AssessmentNotifier unexpected error: $e',
+        name: 'AssessmentNotifier',
+        error: e,
+        stackTrace: st,
+      );
 
+      if (!mounted) return;
       state = state.copyWith(
         status: AssessmentStatusState.error,
         errorMessage: 'Đã xảy ra lỗi. Vui lòng thử lại.',
@@ -147,6 +159,31 @@ class AssessmentNotifier extends StateNotifier<AssessmentState> {
       history: [assessment, ...state.history],
       selectedAssessmentId: assessment.assessmentId,
     );
+  }
+
+  Future<AssessmentDetail?> submitReassessment({
+    String? triageColor,
+    String? nurseNote,
+    String source = 'REASSESSMENT',
+  }) async {
+    try {
+      final newAssessment = await _repository.submitReassessment(
+        _caseId,
+        triageColor: triageColor,
+        nurseNote: nurseNote,
+        source: source,
+      );
+      await loadAssessmentHistory();
+      return newAssessment;
+    } catch (e, st) {
+      developer.log(
+        'AssessmentNotifier submitReassessment error: $e',
+        name: 'AssessmentNotifier',
+        error: e,
+        stackTrace: st,
+      );
+      return null;
+    }
   }
 }
 

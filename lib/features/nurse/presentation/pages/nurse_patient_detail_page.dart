@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:poms/features/nurse/domain/models/alert_model.dart';
 import 'package:poms/features/nurse/domain/models/assessment_detail.dart';
 import 'package:poms/features/nurse/domain/models/assessment_matrix.dart';
 import 'package:poms/features/nurse/domain/models/patient_compliance.dart';
+import 'package:poms/features/nurse/presentation/providers/alert_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/assessment_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:intl/intl.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
 class NursePatientDetailPage extends ConsumerStatefulWidget {
@@ -30,13 +33,10 @@ class NursePatientDetailPage extends ConsumerStatefulWidget {
 class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  bool _isUpdatingCare = false;
+  bool _isHandlingAlert = false;
 
-  static const _tabs = [
-    'Tổng quan',
-    'Đánh giá triệu chứng',
-    'Ghi chú',
-    'Tuân thủ',
-  ];
+  static const _tabs = ['Tổng quan', 'Lịch sử đánh giá', 'Ghi chú', 'Tuân thủ'];
 
   @override
   void initState() {
@@ -50,11 +50,161 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     super.dispose();
   }
 
+  Future<void> _runCareAction(
+    Future<void> Function() action,
+    String successMessage,
+  ) async {
+    setState(() => _isUpdatingCare = true);
+
+    try {
+      await action();
+      await ref.read(patientNotifierProvider.notifier).loadPatients(limit: 100);
+      ref.invalidate(patientPodStatusProvider(widget.patientId));
+      if (!mounted) return;
+      context.showTopToast(successMessage, isSuccess: true);
+    } catch (_) {
+      if (!mounted) return;
+      context.showTopToast(
+        'Không thể cập nhật tình trạng người bệnh',
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isUpdatingCare = false);
+    }
+  }
+
+  Future<String?> _requestHoldReason() async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => const _HoldReasonDialog(),
+    );
+
+    return reason;
+  }
+
+  Future<bool> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(title),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Hủy'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(confirmLabel),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _togglePodLock(bool isLocked) async {
+    if (isLocked) {
+      final confirmed = await _confirm(
+        title: 'Tiếp tục mức ăn',
+        message: 'Cho phép tiếp tục tiến trình mức ăn cho người bệnh?',
+        confirmLabel: 'Tiếp tục',
+      );
+      if (!confirmed) return;
+      await _runCareAction(
+        () => ref
+            .read(patientRemoteDatasourceProvider)
+            .setPodLock(caseId: widget.patientId, isLocked: false),
+        'Đã tiếp tục mức ăn',
+      );
+      return;
+    }
+
+    final reason = await _requestHoldReason();
+    if (reason == null) return;
+    await _runCareAction(
+      () => ref
+          .read(patientRemoteDatasourceProvider)
+          .setPodLock(
+            caseId: widget.patientId,
+            isLocked: true,
+            holdReason: reason,
+          ),
+      'Đã tạm dừng mức ăn',
+    );
+  }
+
+  Future<void> _rollbackDietLevel(PatientSummary patient) async {
+    if (patient.dietLevel <= 0) return;
+    final nextLevel = patient.dietLevel - 1;
+    final confirmed = await _confirm(
+      title: 'Lùi mức ăn',
+      message: 'Chuyển mức ăn từ ${patient.dietLevel} về mức $nextLevel?',
+      confirmLabel: 'Xác nhận',
+    );
+    if (!confirmed) return;
+
+    await _runCareAction(
+      () => ref
+          .read(patientRemoteDatasourceProvider)
+          .updateDietLevel(caseId: widget.patientId, dietLevel: nextLevel),
+      'Đã lùi mức ăn về mức $nextLevel',
+    );
+  }
+
+  Future<void> _acknowledgeAlert(AlertModel alert) async {
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (dialogContext) =>
+          _ConfirmHandledDialog(alertType: alert.alertType),
+    );
+
+    if (result == null || !mounted) return;
+
+    final nurseAction = result['nurseAction'] ?? '';
+    final nursingNote = result['nursingNote'] ?? '';
+
+    setState(() => _isHandlingAlert = true);
+    try {
+      await ref
+          .read(alertRemoteDataSourceProvider)
+          .acknowledgeAlert(
+            alertId: alert.alertId,
+            nurseAction: nurseAction.isNotEmpty ? nurseAction : null,
+            nursingNote: nursingNote.isNotEmpty ? nursingNote : null,
+          );
+      // Cập nhật trạng thái trong-bộ-nhớ + reload danh sách
+      ref.read(alertsNotifierProvider.notifier).markHandled(alert.alertId);
+      ref.invalidate(activeAlertForPatientProvider(widget.patientId));
+      await ref.read(patientNotifierProvider.notifier).loadPatients(limit: 100);
+      if (!mounted) return;
+      context.showTopToast('Đã xác nhận xử trí thành công', isSuccess: true);
+    } catch (_) {
+      if (!mounted) return;
+      context.showTopToast(
+        'Không thể cập nhật trạng thái xử trí',
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isHandlingAlert = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final livePatient = ref.watch(patientByIdProvider(widget.patientId));
     final assessmentState = ref.watch(
       assessmentNotifierProvider(widget.patientId),
+    );
+    final podStatusAsync = ref.watch(
+      patientPodStatusProvider(widget.patientId),
+    );
+    final activeAlertAsync = ref.watch(
+      activeAlertForPatientProvider(widget.patientId),
     );
     final patient =
         livePatient ??
@@ -64,11 +214,15 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
           orElse: () => kMockPatients.first,
         );
 
+    // Có alert (vàng hoặc đỏ) → hiện nút xác nhận
+    final activeAlert = activeAlertAsync.asData?.value;
+    final hasAlert = activeAlert != null;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAF8FF),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // ── Pinned AppBar — không expandedHeight, không FlexibleSpace ──
+          // ── Pinned AppBar ──
           SliverAppBar(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
@@ -82,7 +236,7 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
               onPressed: () => context.pop(),
             ),
             title: const Text(
-              'Chi tiết người bệnh',
+              'Chi tiết',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 18,
@@ -92,16 +246,14 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
             ),
             actions: [
               IconButton(
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Colors.white,
-                ),
-                onPressed: () {},
+                icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
+                tooltip: 'Thêm ghi chú',
+                onPressed: () => _handleAddNote(patient),
               ),
             ],
           ),
 
-          // ── Hero section — Container riêng, bo 2 góc dưới ──────
+          // ── Hero section ──
           SliverToBoxAdapter(
             child: Container(
               decoration: const BoxDecoration(
@@ -116,7 +268,7 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
             ),
           ),
 
-          // ── TabBar sticky ────────────────────────────────────────
+          // ── TabBar sticky ──
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabBarDelegate(
@@ -150,17 +302,364 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
             _OverviewTab(
               patient: patient,
               assessmentState: assessmentState,
-              onAssessmentTap: () {
-                _tabController.animateTo(1);
-              },
+              activeAlert: activeAlert,
+              onAssessmentTap: () => _tabController.animateTo(1),
             ),
             _AssessmentTab(caseId: widget.patientId),
-            _NotesTab(notes: _mockNotes),
+            _NotesTab(caseId: widget.patientId),
             _ComplianceTab(caseId: widget.patientId),
           ],
         ),
       ),
-      bottomNavigationBar: const _BottomActionBar(),
+      bottomNavigationBar: _BottomActionBar(
+        dietLevel: patient.dietLevel,
+        isPodLocked: podStatusAsync.asData?.value.isLocked,
+        isLoading: _isUpdatingCare || podStatusAsync.isLoading,
+        isHandlingAlert: _isHandlingAlert,
+        activeAlert: hasAlert ? activeAlert : null,
+        onPodLockPressed: podStatusAsync.asData == null
+            ? null
+            : () => _togglePodLock(podStatusAsync.asData!.value.isLocked),
+        onDietRollback: patient.dietLevel > 0
+            ? () => _rollbackDietLevel(patient)
+            : null,
+        onAcknowledge: hasAlert ? () => _acknowledgeAlert(activeAlert) : null,
+        onReassess: () => _handleReassess(patient),
+      ),
+    );
+  }
+
+  Future<void> _handleReassess(PatientSummary patient) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) =>
+          _ReassessmentDialog(caseId: widget.patientId, patient: patient),
+    );
+
+    if (result == null || !mounted) return;
+
+    final triageColor = result['triageColor'] as String;
+    final noteText = result['note'] as String;
+
+    String statusLabel;
+    PatientStatus patientStatus;
+    if (triageColor == 'RED') {
+      statusLabel = 'Nguy cấp';
+      patientStatus = PatientStatus.red;
+    } else if (triageColor == 'YELLOW') {
+      statusLabel = 'Cần theo dõi';
+      patientStatus = PatientStatus.yellow;
+    } else {
+      statusLabel = 'Ổn định';
+      patientStatus = PatientStatus.green;
+    }
+
+    // 1. Gửi API tới server để lưu vào CSDL (PostgreSQL)
+    final newAssessment = await ref
+        .read(assessmentNotifierProvider(widget.patientId).notifier)
+        .submitReassessment(
+          triageColor: triageColor,
+          nurseNote: noteText.isNotEmpty ? noteText : null,
+        );
+
+    // 2. Cập nhật trạng thái người bệnh và danh sách cảnh báo trong FE
+    ref
+        .read(patientNotifierProvider.notifier)
+        .patchPatient(
+          widget.patientId,
+          status: patientStatus,
+          needsIntervention: triageColor != 'GREEN',
+        );
+    ref.read(alertsNotifierProvider.notifier).load();
+    ref.invalidate(activeAlertForPatientProvider(widget.patientId));
+
+    if (!mounted) return;
+
+    if (newAssessment != null) {
+      _tabController.animateTo(1);
+      context.showTopToast(
+        'Đã cập nhật đánh giá lại: $statusLabel',
+        isSuccess: true,
+      );
+    } else {
+      context.showTopToast(
+        'Không thể lưu đánh giá lại. Vui lòng thử lại.',
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> _handleAddNote(PatientSummary patient) async {
+    final noteText = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => const _AddNoteDialog(),
+    );
+
+    if (noteText == null || noteText.trim().isEmpty || !mounted) return;
+
+    // Gửi API lưu ghi chú đơn thuần (source = 'NOTE', không đổi triage color của bệnh nhân)
+    final newAssessment = await ref
+        .read(assessmentNotifierProvider(widget.patientId).notifier)
+        .submitReassessment(nurseNote: noteText.trim(), source: 'NOTE');
+
+    if (!mounted) return;
+
+    if (newAssessment != null) {
+      context.showTopToast(
+        'Đã lưu ghi chú lâm sàng vào cơ sở dữ liệu',
+        isSuccess: true,
+      );
+    } else {
+      context.showTopToast(
+        'Không thể lưu ghi chú. Vui lòng thử lại.',
+        isError: true,
+      );
+    }
+  }
+}
+
+class _AddNoteDialog extends StatefulWidget {
+  const _AddNoteDialog();
+
+  @override
+  State<_AddNoteDialog> createState() => _AddNoteDialogState();
+}
+
+class _AddNoteDialogState extends State<_AddNoteDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Row(
+        children: [
+          Icon(Icons.edit_note_rounded, color: AppColors.primary),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Thêm ghi chú lâm sàng',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ghi chú này sẽ được lưu vào cơ sở dữ liệu và hiển thị ở tab Ghi chú.',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'Nhập ghi chú diễn biến lâm sàng, chỉ định theo dõi...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
+            ),
+            minLines: 3,
+            maxLines: 6,
+            maxLength: 500,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Hủy'),
+        ),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          onPressed: () {
+            final text = _controller.text.trim();
+            if (text.isEmpty) return;
+            Navigator.of(context).pop(text);
+          },
+          icon: const Icon(Icons.save_rounded, size: 18),
+          label: const Text('Lưu ghi chú'),
+        ),
+      ],
+    );
+  }
+}
+
+class _HoldReasonDialog extends StatefulWidget {
+  const _HoldReasonDialog();
+
+  @override
+  State<_HoldReasonDialog> createState() => _HoldReasonDialogState();
+}
+
+class _HoldReasonDialogState extends State<_HoldReasonDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Tạm dừng mức ăn'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        minLines: 2,
+        maxLines: 4,
+        maxLength: 500,
+        decoration: const InputDecoration(
+          labelText: 'Lý do tạm dừng',
+          hintText: 'Ví dụ: Người bệnh chưa dung nạp tốt chế độ ăn hiện tại',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Hủy'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final value = _controller.text.trim();
+            if (value.isEmpty) return;
+            Navigator.of(context).pop(value);
+          },
+          child: const Text('Tạm dừng'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ConfirmHandledDialog extends StatefulWidget {
+  const _ConfirmHandledDialog({required this.alertType});
+
+  final String alertType;
+
+  @override
+  State<_ConfirmHandledDialog> createState() => _ConfirmHandledDialogState();
+}
+
+class _ConfirmHandledDialogState extends State<_ConfirmHandledDialog> {
+  late final TextEditingController _actionController;
+  late final TextEditingController _noteController;
+
+  @override
+  void initState() {
+    super.initState();
+    _actionController = TextEditingController();
+    _noteController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _actionController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isRed = widget.alertType.toUpperCase() == 'RED';
+    final levelLabel = isRed ? '🔴 Mức ĐỎ' : '🟡 Mức VÀNG';
+
+    return AlertDialog(
+      title: const Text('Xác nhận đã xử trí'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bệnh nhân $levelLabel — Xác nhận đã can thiệp và hoàn thành xử trí?',
+              style: const TextStyle(fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _actionController,
+              decoration: const InputDecoration(
+                labelText: 'Hành động đã thực hiện (tùy chọn)',
+                hintText:
+                    'VD: Báo bác sĩ, điều chỉnh mức ăn, xử trí theo phác đồ...',
+                border: OutlineInputBorder(),
+              ),
+              minLines: 2,
+              maxLines: 3,
+              maxLength: 300,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(
+                labelText: 'Ghi chú điều dưỡng (tùy chọn)',
+                hintText: 'Ghi chú thêm nếu cần...',
+                border: OutlineInputBorder(),
+              ),
+              minLines: 2,
+              maxLines: 4,
+              maxLength: 500,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Hủy'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF006E2F),
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () {
+            Navigator.of(context).pop({
+              'nurseAction': _actionController.text.trim(),
+              'nursingNote': _noteController.text.trim(),
+            });
+          },
+          child: const Text('Xác nhận đã xử trí'),
+        ),
+      ],
     );
   }
 }
@@ -199,12 +698,9 @@ class _PatientHero extends StatelessWidget {
   const _PatientHero({required this.patient});
   final PatientSummary patient;
 
-  String _displayPod(String pod) {
-    return pod.replaceFirst(
-      RegExp(r'^POD\s*', caseSensitive: false),
-      'Hậu phẫu ',
-    );
-  }
+  // String _displayPod(String pod) {
+  //   return pod.replaceFirst(RegExp(r'^POD\s*', caseSensitive: false), 'POD ');
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +728,7 @@ class _PatientHero extends StatelessWidget {
               child: const Icon(
                 Icons.person_rounded,
                 color: AppColors.primary,
-                size: 44,
+                size: 40,
               ),
             ),
             Positioned(
@@ -265,7 +761,7 @@ class _PatientHero extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '${patient.code} - ${patient.name}',
+                      patient.name,
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 18,
@@ -313,7 +809,7 @@ class _PatientHero extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '${_displayPod(patient.pod)}${patient.surgeryType != null ? ' - ${patient.surgeryType}' : ''}',
+                          'Mức ${patient.dietLevel}${patient.surgeryType != null ? ' - ${patient.surgeryType}' : ''}',
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 12,
@@ -365,11 +861,13 @@ class _OverviewTab extends StatelessWidget {
     required this.patient,
     required this.assessmentState,
     required this.onAssessmentTap,
+    this.activeAlert,
   });
 
   final PatientSummary? patient;
   final AssessmentState assessmentState;
   final VoidCallback onAssessmentTap;
+  final AlertModel? activeAlert;
 
   @override
   Widget build(BuildContext context) {
@@ -378,30 +876,20 @@ class _OverviewTab extends StatelessWidget {
     }
     final p = patient!;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 220),
       children: [
         _InfoGrid(patient: p),
         const SizedBox(height: 16),
 
-        if (p.needsIntervention) ...[
-          _AlertBanner(patient: p),
-          const SizedBox(height: 16),
-        ],
-        const Text(
-          'Tổng quan đánh giá',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
-            color: Color(0xFF424656),
-          ),
-        ),
-        _SummaryGrid(
-          patient: p,
-          assessmentState: assessmentState,
-          onAssessmentTap: onAssessmentTap,
-        ),
+        // if (p.needsIntervention || activeAlert != null) ...[
+        //   _AlertBanner(patient: p, activeAlert: activeAlert),
+        //   const SizedBox(height: 16),
+        // ],
+        // _SummaryGrid(
+        //   patient: p,
+        //   assessmentState: assessmentState,
+        //   onAssessmentTap: onAssessmentTap,
+        // ),
       ],
     );
   }
@@ -419,6 +907,15 @@ class _AssessmentTab extends ConsumerStatefulWidget {
   ConsumerState<_AssessmentTab> createState() => _AssessmentTabState();
 }
 
+class _DayGroup {
+  const _DayGroup({required this.date, required this.assessments});
+
+  final DateTime date;
+  final List<AssessmentDetail> assessments;
+
+  AssessmentDetail get latestAssessment => assessments.last;
+}
+
 class _AssessmentTabState extends ConsumerState<_AssessmentTab> {
   DateTime? _selectedDate;
 
@@ -432,54 +929,39 @@ class _AssessmentTabState extends ConsumerState<_AssessmentTab> {
         left.day == right.day;
   }
 
-  List<AssessmentDetail> _filteredHistory(List<AssessmentDetail> history) {
-    final selectedDate = _selectedDate;
+  List<_DayGroup> _buildDayGroups(List<AssessmentDetail> history) {
+    // Chỉ lấy bài đánh giá khảo sát (SURVEY) và đánh giá lại (REASSESSMENT).
+    // Ghi chú đơn thuần (NOTE) sẽ hiển thị ở Tab Ghi chú.
+    final assessmentHistory = history
+        .where((item) => item.source != 'NOTE')
+        .toList();
 
-    if (selectedDate == null) {
-      return history;
+    if (assessmentHistory.isEmpty) return [];
+
+    final map = <DateTime, List<AssessmentDetail>>{};
+    for (final item in assessmentHistory) {
+      final vnTime = _toVietnamTime(item.evaluationDateTime);
+      final dayKey = DateTime(vnTime.year, vnTime.month, vnTime.day);
+      map.putIfAbsent(dayKey, () => []).add(item);
     }
 
-    return history.where((item) {
-      return _isSameDay(_toVietnamTime(item.evaluationDateTime), selectedDate);
+    // Ngày tăng dần (xếp từ trái sang phải: ngày cũ ở trái, ngày mới ở phải)
+    final sortedDates = map.keys.toList()..sort();
+
+    return sortedDates.map((date) {
+      final list = map[date]!;
+      // Sắp xếp các bài trong ngày theo giờ tăng dần -> bài cuối cùng là bài mới nhất trong ngày
+      list.sort((a, b) => a.evaluationDateTime.compareTo(b.evaluationDateTime));
+      return _DayGroup(date: date, assessments: list);
     }).toList();
   }
 
-  AssessmentDetail? _selectedDetail(
-    AssessmentState state,
-    List<AssessmentDetail> visibleHistory,
-  ) {
-    if (visibleHistory.isEmpty) {
-      return null;
-    }
-
-    final selectedAssessmentId = state.selectedAssessmentId;
-    if (selectedAssessmentId != null) {
-      for (final item in visibleHistory) {
-        if (item.assessmentId == selectedAssessmentId) {
-          return item;
-        }
-      }
-    }
-
-    return visibleHistory.first;
-  }
-
-  Future<void> _pickAssessmentDate(List<AssessmentDetail> history) async {
-    if (history.isEmpty) {
+  Future<void> _pickAssessmentDate(List<_DayGroup> dayGroups) async {
+    if (dayGroups.isEmpty) {
       return;
     }
 
-    final sortedDates =
-        history
-            .map((item) => _toVietnamTime(item.evaluationDateTime))
-            .map(
-              (dateTime) =>
-                  DateTime(dateTime.year, dateTime.month, dateTime.day),
-            )
-            .toSet()
-            .toList()
-          ..sort();
-
+    final sortedDates = dayGroups.map((g) => g.date).toList()..sort();
     final initialDate = _selectedDate ?? sortedDates.last;
 
     DateTime? pickedDate;
@@ -512,6 +994,14 @@ class _AssessmentTabState extends ConsumerState<_AssessmentTab> {
         confirmedDate.day,
       );
     });
+
+    final matchGroup = dayGroups.firstWhere(
+      (g) => _isSameDay(g.date, confirmedDate),
+      orElse: () => dayGroups.last,
+    );
+    ref
+        .read(assessmentNotifierProvider(widget.caseId).notifier)
+        .selectAssessment(matchGroup.latestAssessment.assessmentId);
   }
 
   @override
@@ -547,13 +1037,11 @@ class _AssessmentTabState extends ConsumerState<_AssessmentTab> {
       );
     }
 
-    final visibleHistory = _filteredHistory(assessmentState.history);
-    final detail = _selectedDetail(assessmentState, visibleHistory);
+    final dayGroups = _buildDayGroups(assessmentState.history);
 
-    // Search bar always rendered so user can change/clear the date filter
     final searchBar = _AssessmentDateSearchBar(
       selectedDate: _selectedDate,
-      onTap: () => _pickAssessmentDate(assessmentState.history),
+      onTap: () => _pickAssessmentDate(dayGroups),
       onClear: _selectedDate == null
           ? null
           : () {
@@ -563,7 +1051,66 @@ class _AssessmentTabState extends ConsumerState<_AssessmentTab> {
             },
     );
 
-    if (detail == null) {
+    if (dayGroups.isEmpty) {
+      return CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: searchBar,
+            ),
+          ),
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.event_note_outlined,
+                      size: 72,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Chưa có dữ liệu',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 15, color: Color(0xFF424656)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    _DayGroup? selectedDayGroup;
+    if (_selectedDate != null) {
+      final index = dayGroups.indexWhere(
+        (g) => _isSameDay(g.date, _selectedDate!),
+      );
+      if (index != -1) {
+        selectedDayGroup = dayGroups[index];
+      }
+    } else {
+      if (assessmentState.selectedAssessmentId != null) {
+        final index = dayGroups.indexWhere(
+          (g) => g.assessments.any(
+            (a) => a.assessmentId == assessmentState.selectedAssessmentId,
+          ),
+        );
+        if (index != -1) {
+          selectedDayGroup = dayGroups[index];
+        }
+      }
+      selectedDayGroup ??= dayGroups.last;
+    }
+
+    if (selectedDayGroup == null) {
       return CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -586,27 +1133,20 @@ class _AssessmentTabState extends ConsumerState<_AssessmentTab> {
                       color: Color(0xFF9CA3AF),
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      assessmentState.history.isEmpty
-                          ? 'Chưa có dữ liệu'
-                          : 'Không có bài đánh giá trong ngày đã chọn',
+                    const Text(
+                      'Không có bài đánh giá trong ngày đã chọn',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: Color(0xFF424656),
-                      ),
+                      style: TextStyle(fontSize: 15, color: Color(0xFF424656)),
                     ),
-                    if (_selectedDate != null) ...[
-                      const SizedBox(height: 10),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedDate = null;
-                          });
-                        },
-                        child: const Text('Xóa bộ lọc ngày'),
-                      ),
-                    ],
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedDate = null;
+                        });
+                      },
+                      child: const Text('Xóa bộ lọc ngày'),
+                    ),
                   ],
                 ),
               ),
@@ -616,25 +1156,59 @@ class _AssessmentTabState extends ConsumerState<_AssessmentTab> {
       );
     }
 
+    AssessmentDetail activeDetail = selectedDayGroup.latestAssessment;
+    if (assessmentState.selectedAssessmentId != null) {
+      final match = selectedDayGroup.assessments.firstWhere(
+        (a) => a.assessmentId == assessmentState.selectedAssessmentId,
+        orElse: () => selectedDayGroup!.latestAssessment,
+      );
+      activeDetail = match;
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
         searchBar,
         const SizedBox(height: 16),
-        if (visibleHistory.isNotEmpty)
-          _AssessmentHistoryTimeline(
-            caseId: widget.caseId,
-            state: assessmentState,
-            history: visibleHistory,
-          ),
-        const SizedBox(height: 16),
 
-        ...detail.details.map(
-          (item) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _AssessmentItemCard(item: item),
-          ),
+        _AssessmentHistoryTimeline(
+          caseId: widget.caseId,
+          activeDate: selectedDayGroup.date,
+          dayGroups: dayGroups,
+          onSelectDay: (group) {
+            setState(() {
+              _selectedDate = group.date;
+            });
+            ref
+                .read(assessmentNotifierProvider(widget.caseId).notifier)
+                .selectAssessment(group.latestAssessment.assessmentId);
+          },
         ),
+
+        if (selectedDayGroup.assessments.length > 1) ...[
+          const SizedBox(height: 8),
+          _AssessmentIntraDayTimeSelector(
+            assessments: selectedDayGroup.assessments,
+            selectedAssessmentId: activeDetail.assessmentId,
+            onSelectAssessment: (assessmentId) {
+              ref
+                  .read(assessmentNotifierProvider(widget.caseId).notifier)
+                  .selectAssessment(assessmentId);
+            },
+          ),
+        ],
+
+        const SizedBox(height: 8),
+
+        if (activeDetail.details.isEmpty)
+          _ReassessmentNoAnswersCard(assessment: activeDetail)
+        else
+          ...activeDetail.details.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _AssessmentItemCard(item: item),
+            ),
+          ),
       ],
     );
   }
@@ -657,12 +1231,16 @@ class _AssessmentDateSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasDate = selectedDate != null;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: hasDate ? 5 : 10,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -676,32 +1254,44 @@ class _AssessmentDateSearchBar extends StatelessWidget {
           ],
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Icon(Icons.event_rounded, size: 20, color: AppColors.primary),
-            const SizedBox(width: 10),
+            Icon(
+              Icons.event_rounded,
+              size: hasDate ? 16 : 18,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
-                selectedDate == null
-                    ? 'Chọn ngày đánh giá'
-                    : _formatSelectedDate(selectedDate!),
-                style: const TextStyle(
+                hasDate
+                    ? _formatSelectedDate(selectedDate!)
+                    : 'Chọn ngày đánh giá',
+                style: TextStyle(
                   fontFamily: 'Inter',
-                  fontSize: 14,
+                  fontSize: hasDate ? 13 : 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF191B24),
+                  color: const Color(0xFF191B24),
                 ),
               ),
             ),
             if (onClear != null)
-              IconButton(
-                onPressed: onClear,
-                icon: const Icon(Icons.close_rounded, size: 18),
-                tooltip: 'Xóa bộ lọc ngày',
+              GestureDetector(
+                onTap: onClear,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 2),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: Color(0xFF727687),
+                  ),
+                ),
               )
             else
               const Icon(
                 Icons.chevron_right_rounded,
-                size: 20,
+                size: 18,
                 color: Color(0xFF727687),
               ),
           ],
@@ -711,38 +1301,105 @@ class _AssessmentDateSearchBar extends StatelessWidget {
   }
 }
 
-class _AssessmentHistoryTimeline extends ConsumerWidget {
+class _AssessmentHistoryTimeline extends StatefulWidget {
   const _AssessmentHistoryTimeline({
     required this.caseId,
-    required this.state,
-    required this.history,
+    required this.activeDate,
+    required this.dayGroups,
+    required this.onSelectDay,
   });
 
   final String caseId;
-  final AssessmentState state;
-  final List<AssessmentDetail> history;
+  final DateTime activeDate;
+  final List<_DayGroup> dayGroups;
+  final ValueChanged<_DayGroup> onSelectDay;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<_AssessmentHistoryTimeline> createState() =>
+      _AssessmentHistoryTimelineState();
+}
+
+class _AssessmentHistoryTimelineState
+    extends State<_AssessmentHistoryTimeline> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActiveDate());
+  }
+
+  @override
+  void didUpdateWidget(covariant _AssessmentHistoryTimeline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.activeDate != widget.activeDate ||
+        oldWidget.dayGroups.length != widget.dayGroups.length) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToActiveDate(),
+      );
+    }
+  }
+
+  void _scrollToActiveDate() {
+    if (!_scrollController.hasClients || widget.dayGroups.isEmpty) return;
+
+    final index = widget.dayGroups.indexWhere(
+      (g) => _isSameDay(g.date, widget.activeDate),
+    );
+
+    if (index == -1) return;
+
+    if (index == widget.dayGroups.length - 1) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } else {
+      const itemWidth = 70.0;
+      const separatorWidth = 12.0;
+      final targetOffset = index * (itemWidth + separatorWidth);
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      final clampedOffset = targetOffset.clamp(0.0, maxExtent);
+
+      _scrollController.animateTo(
+        clampedOffset,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  bool _isSameDay(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return SizedBox(
-      height: 104,
+      height: 60,
       child: ListView.separated(
+        controller: _scrollController,
         scrollDirection: Axis.horizontal,
-        itemCount: history.length,
+        itemCount: widget.dayGroups.length,
         separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          final item = history[index];
-
-          final selected = item.assessmentId == state.selectedAssessmentId;
+          final group = widget.dayGroups[index];
+          final selected = _isSameDay(group.date, widget.activeDate);
 
           return _AssessmentHistoryCard(
-            assessment: item,
+            dayGroup: group,
             selected: selected,
-            onTap: () {
-              ref
-                  .read(assessmentNotifierProvider(caseId).notifier)
-                  .selectAssessment(item.assessmentId);
-            },
+            onTap: () => widget.onSelectDay(group),
           );
         },
       ),
@@ -752,66 +1409,210 @@ class _AssessmentHistoryTimeline extends ConsumerWidget {
 
 class _AssessmentHistoryCard extends StatelessWidget {
   const _AssessmentHistoryCard({
-    required this.assessment,
+    required this.dayGroup,
     required this.selected,
     required this.onTap,
   });
 
-  final AssessmentDetail assessment;
+  final _DayGroup dayGroup;
   final bool selected;
   final VoidCallback onTap;
 
-  DateTime _toVietnamTime(DateTime dateTime) {
-    return dateTime.toUtc().add(const Duration(hours: 7));
-  }
-
-  String _triageLabel(String triageColor) {
-    return switch (triageColor.toUpperCase()) {
-      'GREEN' => 'Xanh',
-      'YELLOW' => 'Vàng',
-      'RED' => 'Đỏ',
-      _ => triageColor,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
-    final vietnamTime = _toVietnamTime(assessment.evaluationDateTime);
-    final date = DateFormat('dd/MM').format(vietnamTime);
+    final dateStr = DateFormat('dd/MM').format(dayGroup.date);
+    final repAssessment = dayGroup.latestAssessment;
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 96,
+        width: 70,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? const Color(0xffEEF4FF) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected ? AppColors.primary : const Color(0xffE2E8F0),
+            width: selected ? 1.8 : 1.0,
           ),
         ),
-
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-
           children: [
-            Text(date, style: const TextStyle(fontWeight: FontWeight.w700)),
-
-            const SizedBox(height: 6),
-
-            _AssessmentColorDot(assessment.triageColor),
-
-            const SizedBox(height: 4),
-
             Text(
-              _triageLabel(assessment.triageColor),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              dateStr,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? AppColors.primary : const Color(0xFF191B24),
+              ),
             ),
+            const SizedBox(height: 3),
+            _AssessmentColorDot(repAssessment.triageColor),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AssessmentIntraDayTimeSelector extends StatefulWidget {
+  const _AssessmentIntraDayTimeSelector({
+    required this.assessments,
+    required this.selectedAssessmentId,
+    required this.onSelectAssessment,
+  });
+
+  final List<AssessmentDetail> assessments;
+  final int selectedAssessmentId;
+  final ValueChanged<int> onSelectAssessment;
+
+  @override
+  State<_AssessmentIntraDayTimeSelector> createState() =>
+      _AssessmentIntraDayTimeSelectorState();
+}
+
+class _AssessmentIntraDayTimeSelectorState
+    extends State<_AssessmentIntraDayTimeSelector> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _scrollToSelectedTime(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _AssessmentIntraDayTimeSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedAssessmentId != widget.selectedAssessmentId ||
+        oldWidget.assessments.length != widget.assessments.length) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToSelectedTime(),
+      );
+    }
+  }
+
+  void _scrollToSelectedTime() {
+    if (!_scrollController.hasClients || widget.assessments.isEmpty) return;
+
+    final index = widget.assessments.indexWhere(
+      (a) => a.assessmentId == widget.selectedAssessmentId,
+    );
+
+    if (index == -1) return;
+
+    if (index == widget.assessments.length - 1) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    } else {
+      const estimatedWidth = 75.0;
+      final targetOffset = index * estimatedWidth;
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      final clampedOffset = targetOffset.clamp(0.0, maxExtent);
+
+      _scrollController.animateTo(
+        clampedOffset,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  DateTime _toVietnamTime(DateTime dateTime) {
+    return dateTime.toUtc().add(const Duration(hours: 7));
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Text(
+            'Thời gian:',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: widget.assessments.map((a) {
+                  final isSel = a.assessmentId == widget.selectedAssessmentId;
+                  final timeStr = DateFormat(
+                    'HH:mm',
+                  ).format(_toVietnamTime(a.evaluationDateTime));
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: InkWell(
+                      onTap: () => widget.onSelectAssessment(a.assessmentId),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSel ? AppColors.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSel
+                                ? AppColors.primary
+                                : const Color(0xFFCBD5E1),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _AssessmentColorDot(a.triageColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              timeStr,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: isSel
+                                    ? Colors.white
+                                    : const Color(0xFF334155),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -844,8 +1645,8 @@ class _AssessmentColorDot extends StatelessWidget {
     }
 
     return Container(
-      width: 14,
-      height: 14,
+      width: 12,
+      height: 12,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
@@ -860,7 +1661,7 @@ class _AssessmentItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -885,7 +1686,7 @@ class _AssessmentItemCard extends StatelessWidget {
               color: Color(0xFF191B24),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -898,25 +1699,16 @@ class _AssessmentItemCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF2FF),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '+${item.scoreEarned}',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
+              // Container(
+              //   padding: const EdgeInsets.symmetric(
+              //     horizontal: 10,
+              //     vertical: 4,
+              //   ),
+              //   decoration: BoxDecoration(
+              //     color: const Color(0xFFEAF2FF),
+              //     borderRadius: BorderRadius.circular(20),
+              //   ),
+              // ),
             ],
           ),
         ],
@@ -926,55 +1718,122 @@ class _AssessmentItemCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Notes tab (mock data, replace with real api called when available)
+// Notes tab — hiển thị ghi chú đánh giá lại thực tế của điều dưỡng (bỏ mock data)
 // ─────────────────────────────────────────────────────────────────────────────
+
 class _PatientNote {
   const _PatientNote({
+    required this.id,
+    required this.caseId,
     required this.author,
     required this.createdAt,
+    required this.statusLabel,
+    required this.triageColor,
     required this.content,
   });
 
+  final String id;
+  final String caseId;
   final String author;
   final DateTime createdAt;
+  final String statusLabel; // "Nguy cấp", "Cần theo dõi", "Ổn định"
+  final String triageColor; // "RED", "YELLOW", "GREEN"
   final String content;
 }
 
-final _mockNotes = <_PatientNote>[
-  _PatientNote(
-    author: 'ĐD. Nguyễn Thị Hoa',
-    createdAt: DateTime(2026, 7, 14, 9, 30),
-    content:
-        'Bệnh nhân buồn nôn nhiều sau bữa sáng. Đã thông báo bác sĩ trực để theo dõi thêm.',
-  ),
-  _PatientNote(
-    author: 'BS. Trần Văn Nam',
-    createdAt: DateTime(2026, 7, 13, 18, 15),
-    content:
-        'Tiếp tục theo dõi triệu chứng tiêu hóa. Chưa chỉ định can thiệp thêm.',
-  ),
-  _PatientNote(
-    author: 'ĐD. Nguyễn Thị Hoa',
-    createdAt: DateTime(2026, 7, 13, 8, 20),
-    content:
-        'Người bệnh hợp tác tốt, đã hoàn thành khảo sát triệu chứng trong ngày.',
-  ),
-];
+class _NotesTab extends ConsumerWidget {
+  const _NotesTab({required this.caseId});
 
-class _NotesTab extends StatelessWidget {
-  const _NotesTab({required this.notes});
-
-  final List<_PatientNote> notes;
+  final String caseId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final assessmentState = ref.watch(assessmentNotifierProvider(caseId));
+
+    if (assessmentState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final noteItems = assessmentState.history
+        .where(
+          (item) =>
+              item.source == 'REASSESSMENT' ||
+              item.source == 'NOTE' ||
+              (item.nurseNote != null && item.nurseNote!.isNotEmpty) ||
+              item.details.isEmpty,
+        )
+        .toList();
+
+    final notes = noteItems.map((item) {
+      final isPlainNote = item.source == 'NOTE';
+      final triage = item.triageColor.toUpperCase();
+      final statusLabel = isPlainNote
+          ? ''
+          : (triage == 'RED'
+                ? 'Nguy cấp'
+                : (triage == 'YELLOW' ? 'Cần theo dõi' : 'Ổn định'));
+      final content = (item.nurseNote != null && item.nurseNote!.isNotEmpty)
+          ? item.nurseNote!
+          : 'Đã cập nhật trạng thái người bệnh thành $statusLabel.';
+      return _PatientNote(
+        id: item.assessmentId.toString(),
+        caseId: caseId,
+        author: isPlainNote
+            ? 'Điều dưỡng (Ghi chú lâm sàng)'
+            : 'Điều dưỡng (Đánh giá lại)',
+        createdAt: item.evaluationDateTime.toUtc().add(
+          const Duration(hours: 7),
+        ),
+        statusLabel: statusLabel,
+        triageColor: triage,
+        content: content,
+      );
+    }).toList();
+
+    if (notes.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.note_alt_outlined,
+                size: 72,
+                color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Chưa có ghi chú lâm sàng nào',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF191B24),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Các ghi chú diễn biến lâm sàng và đánh giá lại của điều dưỡng sẽ hiển thị tại đây.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       itemCount: notes.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 16),
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final note = notes[index];
-
         return _NoteCard(note: note);
       },
     );
@@ -989,6 +1848,21 @@ class _NoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final time = DateFormat('dd/MM/yyyy • HH:mm').format(note.createdAt);
+    final hasStatusBadge = note.statusLabel.isNotEmpty;
+
+    final isRed = note.triageColor.toUpperCase() == 'RED';
+    final isYellow = note.triageColor.toUpperCase() == 'YELLOW';
+
+    final badgeColor = hasStatusBadge
+        ? (isRed
+              ? const Color(0xFFEF4444)
+              : (isYellow ? const Color(0xFFF59E0B) : const Color(0xFF10B981)))
+        : const Color(0xFF64748B);
+    final badgeBg = hasStatusBadge
+        ? (isRed
+              ? const Color(0xFFFEF2F2)
+              : (isYellow ? const Color(0xFFFFFBEB) : const Color(0xFFECFDF5)))
+        : const Color(0xFFF1F5F9);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1026,6 +1900,50 @@ class _NoteCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (hasStatusBadge)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: badgeColor.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Text(
+                    note.statusLabel,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: badgeColor,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: const Text(
+                    '📝 Ghi chú',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 4),
@@ -1037,13 +1955,410 @@ class _NoteCard extends StatelessWidget {
               color: Color(0xFF6B7280),
             ),
           ),
-          const Divider(height: 24),
+          const Divider(height: 20),
           Text(
             note.content,
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 14,
               height: 1.5,
+              color: Color(0xFF424656),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reassessment Dialog & Cards
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ReassessmentDialog extends StatefulWidget {
+  const _ReassessmentDialog({required this.caseId, required this.patient});
+
+  final String caseId;
+  final PatientSummary patient;
+
+  @override
+  State<_ReassessmentDialog> createState() => _ReassessmentDialogState();
+}
+
+class _ReassessmentDialogState extends State<_ReassessmentDialog> {
+  late final TextEditingController _noteController;
+
+  String _selectedTriage = 'YELLOW';
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController = TextEditingController();
+    _noteController.addListener(_onNoteChanged);
+    if (widget.patient.status == PatientStatus.red) {
+      _selectedTriage = 'RED';
+    } else if (widget.patient.status == PatientStatus.yellow) {
+      _selectedTriage = 'YELLOW';
+    } else {
+      _selectedTriage = 'GREEN';
+    }
+  }
+
+  void _onNoteChanged() {
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _noteController.removeListener(_onNoteChanged);
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  bool get _hasNote => _noteController.text.trim().isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Row(
+        children: [
+          Icon(Icons.rate_review_rounded, color: AppColors.primary),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Đánh giá lại người bệnh',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Text(
+                  'Ghi chú đánh giá lại:',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF191B24),
+                  ),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  '*',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFDC2626),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _noteController,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText:
+                    'Nhập diễn biến lâm sàng hoặc lý do điều chỉnh trạng thái...',
+                errorText: _hasNote ? null : 'Ghi chú là bắt buộc',
+                border: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                ),
+              ),
+              minLines: 3,
+              maxLines: 5,
+              maxLength: 500,
+            ),
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                const Text(
+                  'Cập nhật trạng thái mới:',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF191B24),
+                  ),
+                ),
+                if (!_hasNote) ...[
+                  const SizedBox(width: 6),
+                  const Text(
+                    '(Khóa)',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF94A3B8),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            _StatusOptionTile(
+              title: 'Nguy cấp',
+              subtitle: 'Tương ứng Mức Đỏ',
+              color: const Color(0xFFDC2626),
+              icon: Icons.emergency_rounded,
+              selected: _selectedTriage == 'RED',
+              enabled: _hasNote,
+              onTap: _hasNote
+                  ? () => setState(() => _selectedTriage = 'RED')
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            _StatusOptionTile(
+              title: 'Cần theo dõi',
+              subtitle: 'Tương ứng Mức Vàng',
+              color: const Color(0xFFD97706),
+              icon: Icons.warning_amber_rounded,
+              selected: _selectedTriage == 'YELLOW',
+              enabled: _hasNote,
+              onTap: _hasNote
+                  ? () => setState(() => _selectedTriage = 'YELLOW')
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            _StatusOptionTile(
+              title: 'Ổn định',
+              subtitle: 'Tương ứng Mức Xanh',
+              color: const Color(0xFF16A34A),
+              icon: Icons.check_circle_rounded,
+              selected: _selectedTriage == 'GREEN',
+              enabled: _hasNote,
+              onTap: _hasNote
+                  ? () => setState(() => _selectedTriage = 'GREEN')
+                  : null,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Hủy'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _hasNote
+                ? AppColors.primary
+                : const Color(0xFFCBD5E1),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          onPressed: _hasNote
+              ? () {
+                  Navigator.of(context).pop({
+                    'triageColor': _selectedTriage,
+                    'note': _noteController.text.trim(),
+                  });
+                }
+              : null,
+          child: const Text('Xác nhận đánh giá lại'),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusOptionTile extends StatelessWidget {
+  const _StatusOptionTile({
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  final String title;
+  final String subtitle;
+  final Color color;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = enabled ? color : const Color(0xFF94A3B8);
+
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.5,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected && enabled
+                ? color.withValues(alpha: 0.08)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected && enabled ? color : const Color(0xFFE2E8F0),
+              width: selected && enabled ? 2.0 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: effectiveColor, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: selected && enabled
+                            ? color
+                            : const Color(0xFF191B24),
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected && enabled)
+                Icon(Icons.radio_button_checked_rounded, color: color, size: 20)
+              else
+                const Icon(
+                  Icons.radio_button_unchecked_rounded,
+                  color: Color(0xFFCBD5E1),
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReassessmentNoAnswersCard extends StatelessWidget {
+  const _ReassessmentNoAnswersCard({required this.assessment});
+
+  final AssessmentDetail assessment;
+
+  DateTime _toVietnamTime(DateTime dateTime) {
+    return dateTime.toUtc().add(const Duration(hours: 7));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vnTime = _toVietnamTime(assessment.evaluationDateTime);
+    final timeStr = DateFormat('HH:mm - dd/MM/yyyy').format(vnTime);
+
+    final isRed = assessment.triageColor.toUpperCase() == 'RED';
+    final isYellow = assessment.triageColor.toUpperCase() == 'YELLOW';
+
+    final color = isRed
+        ? const Color(0xFFDC2626)
+        : (isYellow ? const Color(0xFFD97706) : const Color(0xFF16A34A));
+    final label = isRed ? 'Nguy cấp' : (isYellow ? 'Cần theo dõi' : 'Ổn định');
+
+    final noteContent =
+        (assessment.nurseNote != null && assessment.nurseNote!.isNotEmpty)
+        ? assessment.nurseNote!
+        : 'Đã cập nhật trạng thái người bệnh thành $label.';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFC2C6D8)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.rate_review_rounded, color: color, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Đánh giá của y tá/bác sĩ',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF191B24),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: color.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Thời gian: $timeStr',
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const Divider(height: 20),
+          Text(
+            noteContent,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              height: 1.4,
               color: Color(0xFF424656),
             ),
           ),
@@ -1516,6 +2831,8 @@ class _InfoGrid extends StatelessWidget {
           title: 'Thông tin chung',
           child: Column(
             children: [
+              _InfoRow(label: 'Mã hồ sơ', value: patient.code),
+
               if (patient.age != null)
                 _InfoRow(label: 'Tuổi', value: '${patient.age}'),
 
@@ -1528,7 +2845,7 @@ class _InfoGrid extends StatelessWidget {
               if (patient.surgeryDate != null)
                 _InfoRow(
                   label: 'Ngày phẫu thuật',
-                  value: patient.surgeryDate!,
+                  value: '${patient.surgeryDate!} - ${patient.pod}',
                   isLast: true,
                 ),
             ],
@@ -1739,75 +3056,95 @@ class _PersonnelItem extends StatelessWidget {
 // Alert banner
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AlertBanner extends StatelessWidget {
-  const _AlertBanner({required this.patient});
-  final PatientSummary patient;
+// class _AlertBanner extends StatelessWidget {
+//   const _AlertBanner({required this.patient, this.activeAlert});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.errorContainer,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: AppColors.error,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.warning_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Trạng thái hiện tại: Cần can thiệp',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF93000A),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Thời gian đánh giá gần nhất: ${patient.lastAssessmentTime ?? 'Chưa có'}',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    color: Color(0xFF93000A),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.error,
-            size: 22,
-          ),
-        ],
-      ),
-    );
-  }
-}
+//   final PatientSummary patient;
+//   final AlertModel? activeAlert;
+
+//   bool get _isRed => activeAlert?.alertType.toUpperCase() == 'RED';
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final alertColor = _isRed ? AppColors.error : const Color(0xFFA33200);
+//     final alertBg = _isRed ? AppColors.errorContainer : const Color(0xFFFFF3E0);
+//     final alertBorder = _isRed
+//         ? AppColors.error.withValues(alpha: 0.2)
+//         : const Color(0xFFA33200).withValues(alpha: 0.2);
+//     final iconData = _isRed
+//         ? Icons.emergency_rounded
+//         : Icons.warning_amber_rounded;
+//     final title = _isRed ? 'Cảnh báo khẩn: Mức ĐỎ' : 'Cần theo dõi: Mức VÀNG';
+//     final subtitle = _isRed
+//         ? 'Nhấn “Xác nhận đã xử trí” phía dưới để ghi nhận can thiệp.'
+//         : 'Tiếp tục theo dõi triệu chứng bệnh nhân.';
+
+//     return Container(
+//       padding: const EdgeInsets.all(14),
+//       decoration: BoxDecoration(
+//         color: alertBg,
+//         borderRadius: BorderRadius.circular(12),
+//         border: Border.all(color: alertBorder),
+//       ),
+//       child: Row(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Container(
+//             width: 38,
+//             height: 38,
+//             decoration: BoxDecoration(
+//               color: alertColor,
+//               shape: BoxShape.circle,
+//             ),
+//             child: Icon(iconData, color: Colors.white, size: 20),
+//           ),
+//           const SizedBox(width: 12),
+//           Expanded(
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Text(
+//                   title,
+//                   style: TextStyle(
+//                     fontFamily: 'Inter',
+//                     fontSize: 13,
+//                     fontWeight: FontWeight.w700,
+//                     color: alertColor,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 3),
+//                 Text(
+//                   subtitle,
+//                   style: TextStyle(
+//                     fontFamily: 'Inter',
+//                     fontSize: 11,
+//                     color: alertColor,
+//                     height: 1.4,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 3),
+//                 Text(
+//                   'ĐG gần nhất: ${patient.lastAssessmentTime ?? 'Chưa có'}',
+//                   style: TextStyle(
+//                     fontFamily: 'Inter',
+//                     fontSize: 10.5,
+//                     color: alertColor.withValues(alpha: 0.75),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Summary grid
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ignore: unused_element
 class _SummaryGrid extends StatelessWidget {
   const _SummaryGrid({
     required this.patient,
@@ -1878,7 +3215,7 @@ class _SummaryGrid extends StatelessWidget {
         _SummaryCard(
           icon: Icons.calendar_view_day_outlined,
           iconColor: AppColors.primary,
-          label: 'HẬU PHẪU',
+          label: 'POD',
           value: patient.podNumber,
           valueColor: const Color(0xFF191B24),
           bgColor: Colors.white,
@@ -1966,46 +3303,232 @@ class _SummaryCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BottomActionBar extends StatelessWidget {
-  const _BottomActionBar();
+  const _BottomActionBar({
+    required this.dietLevel,
+    required this.isPodLocked,
+    required this.isLoading,
+    required this.isHandlingAlert,
+    required this.onPodLockPressed,
+    required this.onDietRollback,
+    required this.onReassess,
+    this.activeAlert,
+    this.onAcknowledge,
+  });
+
+  final int dietLevel;
+  final bool? isPodLocked;
+  final bool isLoading;
+  final bool isHandlingAlert;
+  final VoidCallback? onPodLockPressed;
+  final VoidCallback? onDietRollback;
+  final VoidCallback onReassess;
+  final AlertModel? activeAlert;
+  final VoidCallback? onAcknowledge;
+
+  bool get _hasAlert => activeAlert != null;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        12 + MediaQuery.of(context).padding.bottom,
-      ),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFAF8FF),
-        border: Border(top: BorderSide(color: Color(0xFFC2C6D8))),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.chat_outlined, size: 20),
-              label: const Text('Thông báo bác sĩ'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-                textStyle: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+    final isRedAlert = activeAlert?.alertType.toUpperCase() == 'RED';
+    final safeAreaBottom = MediaQuery.of(context).viewPadding.bottom;
+    // `NurseShell` injects its nav-bar height into `padding.bottom` for
+    // scrollable content. Using it here adds an extra gap above the floating
+    // navigation. Reserve only the nav bar's actual footprint instead.
+    final navigationClearance =
+        66.0 + (safeAreaBottom > 0 ? safeAreaBottom : 12.0);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, navigationClearance + 5),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        // decoration: BoxDecoration(
+        //   color: Colors.white,
+        //   borderRadius: BorderRadius.circular(16),
+        //   border: Border.all(color: const Color(0xFFC2C6D8), width: 0.8),
+        //   boxShadow: [
+        //     BoxShadow(
+        //       color: const Color(0xFF00459A).withValues(alpha: 0.08),
+        //       blurRadius: 16,
+        //       offset: const Offset(0, 4),
+        //     ),
+        //     BoxShadow(
+        //       color: Colors.black.withValues(alpha: 0.04),
+        //       blurRadius: 6,
+        //       offset: const Offset(0, 2),
+        //     ),
+        //   ],
+        // ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Hàng 1: Xác nhận đã xử trí (chỉ xuất hiện khi có cảnh báo vàng hoặc đỏ) ──
+            if (_hasAlert) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: isHandlingAlert ? null : onAcknowledge,
+                  icon: isHandlingAlert
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : const Icon(Icons.check_circle_rounded, size: 18),
+                  label: Text(
+                    isHandlingAlert ? 'Đang xử lý...' : 'Xác nhận đã xử trí',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isRedAlert
+                        ? AppColors.error
+                        : const Color(0xFFC05600),
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: const Color(0xFFC2C6D8),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                    textStyle: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(height: 8),
+            ],
+
+            // ── Hàng 2: [Lùi mức ăn] | [Tạm dừng mức ăn (ở giữa)] | [Đánh giá lại] ──
+            Row(
+              children: [
+                // 1. Nút Lùi mức ăn
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: isLoading ? null : onDietRollback,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF9A3412),
+                      disabledForegroundColor: const Color(0xFF9CA3AF),
+                      side: const BorderSide(color: Color(0xFFF0B79D)),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 4,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.restaurant_rounded, size: 16),
+                        const SizedBox(height: 2),
+                        Text(
+                          dietLevel > 0
+                              ? 'Lùi mức ăn ($dietLevel→${dietLevel - 1})'
+                              : 'Lùi mức ăn',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // 2. Nút Tạm dừng / Tiếp tục mức ăn (ở GIỮA)
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : onPodLockPressed,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFFC2C6D8),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 4,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                      textStyle: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isPodLocked == true
+                              ? Icons.play_arrow_rounded
+                              : Icons.pause_rounded,
+                          size: 16,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isPodLocked == true ? 'Tiếp tục ăn' : 'Tạm dừng ăn',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // 3. Nút Đánh giá lại
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onReassess,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.4),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 4,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.assignment_outlined, size: 16),
+                        SizedBox(height: 2),
+                        Text(
+                          'Đánh giá lại',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
