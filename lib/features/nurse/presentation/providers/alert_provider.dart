@@ -7,6 +7,7 @@ import 'package:poms/features/nurse/data/datasources/alert_remote_datasource.dar
 import 'package:poms/features/nurse/data/repositories/alert_repository_impl.dart';
 import 'package:poms/features/nurse/domain/models/alert_model.dart';
 import 'package:poms/features/nurse/domain/repositories/alert_repository.dart';
+import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:poms/main.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:poms/core/services/socket_service.dart';
@@ -136,6 +137,31 @@ class AlertsNotifier extends StateNotifier<AlertsState> {
       alerts: state.alerts.where((a) => a.caseId != caseId).toList(),
     );
   }
+
+  /// Marks an alert as HANDLED in the in-memory list so the UI updates
+  /// immediately after acknowledging without requiring a full reload.
+  void markHandled(int alertId) {
+    if (!mounted) return;
+    final updated = state.alerts.map((a) {
+      if (a.alertId == alertId) {
+        return AlertModel(
+          alertId: a.alertId,
+          caseId: a.caseId,
+          assessmentId: a.assessmentId,
+          alertType: a.alertType,
+          status: 'HANDLED',
+          surveyScore: a.surveyScore,
+          isAutoProgression: a.isAutoProgression,
+          triggeredAt: a.triggeredAt,
+          nurseAction: a.nurseAction,
+          nursingNote: a.nursingNote,
+          closedAt: a.closedAt,
+        );
+      }
+      return a;
+    }).toList();
+    state = state.copyWith(alerts: updated);
+  }
 }
 
 final alertsNotifierProvider =
@@ -155,6 +181,42 @@ final alertsNotifierProvider =
 final latestAlertPerCaseProvider = Provider<List<AlertModel>>((ref) {
   return ref.watch(alertsNotifierProvider).alerts;
 });
+
+/// Chỉ trả về các alert đang ở trạng thái chờ xử lý (PENDING_REVIEW).
+/// Alert đã handled/closed bị loại bỏ khỏi danh sách hoàn toàn.
+///
+/// Sắp xếp: overdue lên trên (triggeredAt cũ nhất = chờ lâu nhất lên đầu),
+/// alert mới nhất xuống cuối.
+final pendingAlertsProvider = Provider<List<AlertModel>>((ref) {
+  final all = ref.watch(alertsNotifierProvider).alerts;
+  // Backend dùng 'PENDING_REVIEW'; sau khi nurse xác nhận in-memory sẽ là 'HANDLED'.
+  // Filter: giữ lại tất cả alert KHÔNG phải trạng thái đã xử lý / đã đóng.
+  const handledStatuses = {
+    'HANDLED',
+    'Handled',
+    'handled',
+    'Closed',
+    'closed',
+    'Acknowledged',
+    'acknowledged',
+  };
+  final pending = all.where((a) => !handledStatuses.contains(a.status)).toList()
+    ..sort((a, b) {
+      // Cũ nhất (overdue) lên đầu → ascending triggeredAt.
+      final ta = a.triggeredAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final tb = b.triggeredAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return ta.compareTo(tb);
+    });
+  return pending;
+});
+
+/// Fetches the active (PENDING_REVIEW) alert for a specific patient case.
+/// Auto-disposes so that each page visit gets a fresh fetch.
+final activeAlertForPatientProvider = FutureProvider.autoDispose
+    .family<AlertModel?, String>((ref, caseId) async {
+      final ds = ref.watch(alertRemoteDataSourceProvider);
+      return ds.getActiveAlertByCaseId(caseId);
+    });
 
 // ── Realtime alert socket provider ────────────────────────────────────────────
 
@@ -193,11 +255,19 @@ final alertRealtimeProvider = Provider<void>((ref) {
     final alert = parseAlert(payload);
     if (alert == null) return;
     ref.read(alertsNotifierProvider.notifier).upsertAlert(alert);
+    // Reload bệnh nhân để Dashboard "Nhóm cần ưu tiên" cập nhật trạng thái alert live.
+    ref.read(patientNotifierProvider.notifier).loadPatients(limit: 100);
   }
 
   socket.on('alert.created', handleAlert);
   socket.on('alert.updated', handleAlert);
-  socket.on('alert.closed', handleAlert);
+  socket.on('alert.closed', (dynamic payload) {
+    final alert = parseAlert(payload);
+    if (alert == null) return;
+    ref.read(alertsNotifierProvider.notifier).upsertAlert(alert);
+    // Khi alert đóng, reload danh sách bệnh nhân để xoá dấu đỏ.
+    ref.read(patientNotifierProvider.notifier).loadPatients(limit: 100);
+  });
 
   // Connect/disconnect following auth state.
   final currentAuth = ref.read(authStateProvider);

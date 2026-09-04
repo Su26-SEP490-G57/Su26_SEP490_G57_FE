@@ -27,19 +27,17 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
   int _currentPage = 1;
   static const int _pageSize = 5;
 
-  @override
-  void initState() {
-    super.initState();
-
-    Future.microtask(() {
-      ref.read(patientNotifierProvider.notifier).loadPatients();
-    });
-  }
-
   String _searchQuery = '';
 
   // Filter state — null = "Tất cả"
-  final Set<PatientStatus> _selectedStatuses = {PatientStatus.red};
+  final Set<PatientStatus> _selectedStatuses = {
+    PatientStatus.red,
+    PatientStatus.yellow,
+    PatientStatus.green,
+  };
+
+  // Swipe direction: +1 = forward (next), -1 = backward (prev)
+  int _swipeDirection = 1;
 
   @override
   void dispose() {
@@ -76,15 +74,10 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     });
   }
 
-  List<PatientSummary> _paginate(List<PatientSummary> patients) {
-    final start = (_currentPage - 1) * _pageSize;
-
-    if (start >= patients.length) {
-      return [];
-    }
-
+  List<PatientSummary> _paginate(List<PatientSummary> patients, int page) {
+    final start = (page - 1) * _pageSize;
+    if (start >= patients.length) return [];
     final end = (start + _pageSize).clamp(0, patients.length);
-
     return patients.sublist(start, end);
   }
 
@@ -134,6 +127,22 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     );
   }
 
+  void _goNext(int totalPages) {
+    if (_currentPage >= totalPages) return;
+    setState(() {
+      _swipeDirection = 1;
+      _currentPage++;
+    });
+  }
+
+  void _goPrev() {
+    if (_currentPage <= 1) return;
+    setState(() {
+      _swipeDirection = -1;
+      _currentPage--;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final patientState = ref.watch(patientNotifierProvider);
@@ -146,21 +155,25 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
       return Center(child: Text(patientState.errorMessage ?? 'Có lỗi xảy ra'));
     }
 
+    if (assignedRoomsAsync.hasError) {
+      return const Center(
+        child: Text('Không thể tải phòng bệnh được phân công'),
+      );
+    }
+
     final assignedRooms = assignedRoomsAsync.value ?? [];
     final isUnassigned = assignedRooms.isEmpty;
 
     final filteredPatients = _filtered(patientState.patients);
-    final pagedPatients = _paginate(filteredPatients);
     final totalPages = max(1, (filteredPatients.length / _pageSize).ceil());
-    if (_currentPage > totalPages) {
-      _currentPage = totalPages;
-    }
+    final currentPage = min(_currentPage, totalPages);
+    final pagedPatients = _paginate(filteredPatients, currentPage);
 
     final startIndex = filteredPatients.isEmpty
         ? 0
-        : (_currentPage - 1) * _pageSize + 1;
+        : (currentPage - 1) * _pageSize + 1;
 
-    final endIndex = min(_currentPage * _pageSize, filteredPatients.length);
+    final endIndex = min(currentPage * _pageSize, filteredPatients.length);
 
     return Column(
       children: [
@@ -169,113 +182,161 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
 
         // ── Body ─────────────────────────────────────────────────────
         Expanded(
-          child: isUnassigned
-              ? _buildUnassignedState()
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                  children: [
-                    // Search bar
-                    _SearchBar(
-                      controller: _searchController,
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value;
-                          _currentPage = 1;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
+          child: GestureDetector(
+            // Swipe right-to-left → next page
+            // Swipe left-to-right → prev page
+            onHorizontalDragEnd: (details) {
+              const threshold = 80.0;
+              final dx = details.primaryVelocity ?? 0;
+              if (dx < -threshold) {
+                _goNext(totalPages);
+              } else if (dx > threshold) {
+                _goPrev();
+              }
+            },
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              children: [
+                // ── Search bar ───────────────────────────────────────
+                if (isUnassigned)
+                  _buildUnassignedState()
+                else ...[
+                  _SearchBar(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                        _currentPage = 1;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
 
-                    // Filter chips row
-                    _FilterChipsRow(
-                      selectedStatuses: _selectedStatuses,
-                      onStatusTap: _toggleStatus,
-                    ),
-                    const SizedBox(height: 10),
+                  // Filter chips row
+                  _FilterChipsRow(
+                    selectedStatuses: _selectedStatuses,
+                    onStatusTap: _toggleStatus,
+                  ),
+                  const SizedBox(height: 10),
 
-                    // Count + sort row
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Tổng: ${filteredPatients.length} người bệnh',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
-                              color: Color(0xFF727687),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {},
-                            child: const Row(
-                              children: [
-                                Icon(
-                                  Icons.sort_rounded,
-                                  size: 14,
-                                  color: Color(0xFF727687),
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Sắp xếp',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.6,
-                                    color: Color(0xFF727687),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Patient cards
-                    ...pagedPatients.map(
-                      (p) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _PatientCard(
-                          data: p,
-                          onTap: () => context.push(
-                            AppRoutes.nursePatientDetailPath(p.code),
-                            extra: p,
+                  // Count + sort row
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Tổng: ${filteredPatients.length} người bệnh',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: Color(0xFF727687),
                           ),
                         ),
-                      ),
+                        GestureDetector(
+                          onTap: () {},
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.sort_rounded,
+                                size: 14,
+                                color: Color(0xFF727687),
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Sắp xếp',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.6,
+                                  color: Color(0xFF727687),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  const SizedBox(height: 12),
 
-                    const SizedBox(height: 16),
-
-                    PatientPagination(
-                      currentPage: _currentPage,
-                      totalPages: totalPages,
-                      startIndex: startIndex,
-                      endIndex: endIndex,
-                      total: filteredPatients.length,
-                      onPrevious: () {
-                        if (_currentPage <= 1) return;
-
-                        setState(() {
-                          _currentPage--;
-                        });
-                      },
-                      onNext: () {
-                        if (_currentPage >= totalPages) return;
-
-                        setState(() {
-                          _currentPage++;
-                        });
-                      },
+                  // ── Animated patient list ─────────────────────────────
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 280),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      final isIncoming =
+                          child.key == ValueKey<int>(currentPage);
+                      final position = isIncoming
+                          ? Tween<Offset>(
+                              begin: Offset(_swipeDirection.toDouble(), 0),
+                              end: Offset.zero,
+                            ).animate(animation)
+                          : Tween<Offset>(
+                              begin: Offset.zero,
+                              end: Offset(-_swipeDirection.toDouble(), 0),
+                            ).animate(ReverseAnimation(animation));
+                      return SlideTransition(
+                        position: position,
+                        child: FadeTransition(opacity: animation, child: child),
+                      );
+                    },
+                    child: Column(
+                      key: ValueKey<int>(currentPage),
+                      children: [
+                        if (pagedPatients.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 32),
+                            child: Center(
+                              child: Text(
+                                'Không có bệnh nhân nào',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 15,
+                                  color: Color(0xFF9CA3AF),
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ...pagedPatients.map(
+                            (p) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _PatientCard(
+                                data: p,
+                                onTap: () => context.push(
+                                  AppRoutes.nursePatientDetailPath(p.code),
+                                  extra: p,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Pagination bar ────────────────────────────────────
+                  PatientPagination(
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    startIndex: startIndex,
+                    endIndex: endIndex,
+                    total: filteredPatients.length,
+                    onPrevious: _goPrev,
+                    onNext: () => _goNext(totalPages),
+                  ),
+
+                  const SizedBox(height: 8),
+                ],
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -295,7 +356,7 @@ class _TopAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final roomsText = assignedRooms.isEmpty
         ? 'Chưa phân phòng'
-        : 'Phòng: ${assignedRooms.join(", ")}';
+        : assignedRooms.join(', ');
 
     return Container(
       color: AppColors.primary,
