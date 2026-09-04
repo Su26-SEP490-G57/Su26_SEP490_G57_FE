@@ -7,17 +7,18 @@ import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/features/nurse/domain/models/alert_model.dart';
 import 'package:poms/features/nurse/presentation/providers/alert_provider.dart';
+import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 
 class NurseAlertsPage extends ConsumerWidget {
   const NurseAlertsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Activate realtime socket listener.
     ref.watch(alertRealtimeProvider);
 
     final alertsState = ref.watch(alertsNotifierProvider);
-    final alerts = ref.watch(latestAlertPerCaseProvider);
+    // Chi hien thi cac canh bao dang pending, cu nhat (overdue) len dau.
+    final alerts = ref.watch(pendingAlertsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -41,305 +42,333 @@ class NurseAlertsPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: () {
-        if (alertsState.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (alertsState.errorMessage != null) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.error_outline_rounded,
-                    color: Colors.red,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Lỗi tải dữ liệu cảnh báo:\n${alertsState.errorMessage}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () =>
-                        ref.read(alertsNotifierProvider.notifier).load(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                    ),
-                    child: const Text(
-                      'Thử lại',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        if (alerts.isEmpty) {
-          return _buildEmptyState(context);
-        }
-
-        return RefreshIndicator(
-          onRefresh: () async =>
-              ref.read(alertsNotifierProvider.notifier).load(),
-          color: AppColors.primary,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            itemCount: alerts.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 16),
-            itemBuilder: (context, index) => _AlertCard(alert: alerts[index]),
-          ),
-        );
-      }(),
+      body: _buildBody(context, ref, alertsState, alerts),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.check_circle_outline_rounded,
-            size: 80,
-            color: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
+  Widget _buildBody(
+    BuildContext context,
+    WidgetRef ref,
+    AlertsState alertsState,
+    List<AlertModel> alerts,
+  ) {
+    if (alertsState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (alertsState.errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                color: Colors.red,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Lỗi tải dữ liệu:\n${alertsState.errorMessage}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red, fontFamily: 'Inter'),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () =>
+                    ref.read(alertsNotifierProvider.notifier).load(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
+                child: const Text(
+                  'Thử lại',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Không có cảnh báo nào',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
-              fontFamily: 'Inter',
+        ),
+      );
+    }
+
+    if (alerts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.check_circle_outline_rounded,
+              size: 72,
+              color: AppColors.onSurfaceVariant.withValues(alpha: 0.4),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Tuyệt vời! Tất cả bệnh nhân đều ở trạng thái ổn định.',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.onSurface.withValues(alpha: 0.7),
-              fontFamily: 'Inter',
+            const SizedBox(height: 20),
+            const Text(
+              'Không có cảnh báo nào',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface,
+                fontFamily: 'Inter',
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'Tất cả bệnh nhân đang ổn định.',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.onSurface.withValues(alpha: 0.6),
+                fontFamily: 'Inter',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async => ref.read(alertsNotifierProvider.notifier).load(),
+      color: AppColors.primary,
+      child: ListView.separated(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          MediaQuery.of(context).padding.bottom + 20,
+        ),
+        itemCount: alerts.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        itemBuilder: (context, index) => _AlertCard(alert: alerts[index]),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Alert card — hiển thị alert mới nhất của 1 bệnh nhân
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Alert Card — thiet ke nho gon, toi uu dien tich, hien thi truc tiep gia tri
+// -----------------------------------------------------------------------------
 
-class _AlertCard extends StatelessWidget {
+class _AlertCard extends ConsumerWidget {
   const _AlertCard({required this.alert});
 
   final AlertModel alert;
 
+  String _formatTime(DateTime? dateTime) {
+    if (dateTime == null) return 'Chưa ghi nhận';
+    final vnTime = dateTime.toUtc().add(const Duration(hours: 7));
+    return DateFormat('HH:mm • dd/MM/yyyy').format(vnTime);
+  }
+
+  String _formatRoom(String? rawRoom) {
+    if (rawRoom == null || rawRoom.isEmpty) return 'Chưa xếp phòng';
+    return rawRoom.replaceAll('Buồng ', 'P.').replaceAll('Giường ', 'G.');
+  }
+
   @override
-  Widget build(BuildContext context) {
-    final isCritical = alert.alertType.toUpperCase() == 'RED';
-    final cardColor = isCritical
-        ? const Color(0xFFFEF2F2)
-        : const Color(0xFFFFFBEB);
-    final borderColor = isCritical
-        ? const Color(0xFFFECACA)
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isRed = alert.alertType.toUpperCase() == 'RED';
+
+    final cardBg = isRed ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB);
+    final borderColor = isRed
+        ? const Color(0xFFFCA5A5)
         : const Color(0xFFFDE68A);
-    final iconColor = isCritical
+    final accentColor = isRed
         ? const Color(0xFFDC2626)
         : const Color(0xFFD97706);
-    final badgeColor = isCritical
-        ? const Color(0xFFEF4444)
-        : const Color(0xFFF59E0B);
-    final badgeText = isCritical ? 'NGUY KỊCH' : 'CẦN CHÚ Ý';
+    final iconBg = isRed ? const Color(0xFFDC2626) : const Color(0xFFD97706);
+    final chipBg = isRed ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7);
+
+    final patient = ref.watch(patientByIdProvider(alert.caseId));
+    final displayName = patient?.name ?? alert.caseId;
+    final roomLocation = _formatRoom(patient?.room);
+    final operationType =
+        (patient?.operationTypeName != null &&
+            patient!.operationTypeName!.isNotEmpty)
+        ? patient.operationTypeName!
+        : ((patient?.surgeryType != null && patient!.surgeryType!.isNotEmpty)
+              ? patient.surgeryType!
+              : 'Chưa cập nhật');
+    final dietLevelStr = 'Mức ${patient?.dietLevel ?? 0}';
+    final triggeredTimeStr = _formatTime(alert.triggeredAt);
 
     return GestureDetector(
       onTap: () => context.push(AppRoutes.nursePatientDetailPath(alert.caseId)),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor, width: 1.5),
+          color: cardBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor, width: 1.2),
           boxShadow: const [
             BoxShadow(
               color: Color(0x08000000),
-              blurRadius: 8,
-              offset: Offset(0, 4),
+              blurRadius: 6,
+              offset: Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ── Header ───────────────────────────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x10000000),
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
+            // Status Icon Circle
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+              child: Icon(
+                isRed ? Icons.emergency_rounded : Icons.warning_amber_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Middle Main Info Column
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Line 1: Patient Name & Room Location Badge
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: accentColor,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: chipBg,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.meeting_room_outlined,
+                              size: 12,
+                              color: accentColor,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              roomLocation,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: accentColor,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  child: Icon(
-                    Icons.warning_amber_rounded,
-                    color: iconColor,
-                    size: 28,
+
+                  const SizedBox(height: 4),
+
+                  // Line 2: Surgery Type
+                  Text(
+                    operationType,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF334155),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                  const SizedBox(height: 6),
+
+                  // Line 3: Diet Level & Triggered Time
+                  Row(
                     children: [
+                      // Diet level chip
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFCBD5E1)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.restaurant_outlined,
+                              size: 11,
+                              color: Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              dietLevelStr,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF475569),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      // Triggered Time
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: Text(
-                              'Bệnh nhân: ${alert.caseId}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.onSurface,
-                                fontFamily: 'Inter',
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                          const Icon(
+                            Icons.access_time_rounded,
+                            size: 12,
+                            color: Color(0xFF64748B),
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: badgeColor,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              badgeText,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                fontFamily: 'Inter',
-                              ),
+                          const SizedBox(width: 3),
+                          Text(
+                            triggeredTimeStr,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11.5,
+                              color: Color(0xFF64748B),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _formatDate(alert.triggeredAt),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.onSurfaceVariant.withValues(
-                            alpha: 0.8,
-                          ),
-                          fontFamily: 'Inter',
-                        ),
-                      ),
                     ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-            // Status and Details
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  _StatusDot(status: alert.status),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Trạng thái: ${_statusLabel(alert.status)}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onSurface,
-                            fontFamily: 'Inter',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.onSurfaceVariant,
                   ),
                 ],
               ),
             ),
+
+            const SizedBox(width: 6),
+
+            // Right Chevron
+            Icon(
+              Icons.chevron_right_rounded,
+              color: accentColor.withValues(alpha: 0.5),
+              size: 22,
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Không rõ thời gian';
-    // Server trả về UTC — convert sang giờ Việt Nam (UTC+7).
-    final vn = date.toUtc().add(const Duration(hours: 7));
-    return DateFormat('HH:mm - dd/MM/yyyy').format(vn);
-  }
-
-  String _statusLabel(String status) => switch (status) {
-    'Pending' => 'Chờ xử lý',
-    'Acknowledged' => 'Đã nhận',
-    'Closed' => 'Đã đóng',
-    _ => status,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Status dot indicator
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.status});
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (status) {
-      'Pending' => Colors.orange,
-      'Acknowledged' => Colors.blue,
-      'Closed' => Colors.green,
-      _ => Colors.grey,
-    };
-    return Container(
-      width: 12,
-      height: 12,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
