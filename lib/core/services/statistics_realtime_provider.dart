@@ -5,6 +5,7 @@ import 'package:poms/core/services/socket_service.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/nurse/data/models/patient_response.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/assessment_provider.dart'
     as nurse_assessment;
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
@@ -163,6 +164,7 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
   socket.on('createPatient', (payload) {
     applyPatientPayload(payload);
     ref.invalidate(priorityPatientsProvider);
+    ref.invalidate(complianceOverviewProvider);
   });
 
   socket.on('updatePatient', (payload) {
@@ -173,16 +175,21 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
   socket.on('deletePatient', (payload) {
     removePatientPayload(payload);
     ref.invalidate(priorityPatientsProvider);
+    ref.invalidate(complianceOverviewProvider);
   });
 
   socket.on('submitSurvey', (payload) {
     applySurveyPayload(payload);
     ref.invalidate(priorityPatientsProvider);
+    // Invalidate compliance overview so Dashboard updates the donut chart live.
+    ref.invalidate(complianceOverviewProvider);
   });
 
   socket.on('assessment.submitted', (payload) {
     applySurveyPayload(payload);
     ref.invalidate(priorityPatientsProvider);
+    // Invalidate compliance overview so Dashboard updates the donut chart live.
+    ref.invalidate(complianceOverviewProvider);
   });
 
   final currentAuth = ref.read(authStateProvider);

@@ -7,6 +7,7 @@ import 'package:poms/features/nurse/data/datasources/alert_remote_datasource.dar
 import 'package:poms/features/nurse/data/repositories/alert_repository_impl.dart';
 import 'package:poms/features/nurse/domain/models/alert_model.dart';
 import 'package:poms/features/nurse/domain/repositories/alert_repository.dart';
+import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:poms/main.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:poms/core/services/socket_service.dart';
@@ -254,11 +255,19 @@ final alertRealtimeProvider = Provider<void>((ref) {
     final alert = parseAlert(payload);
     if (alert == null) return;
     ref.read(alertsNotifierProvider.notifier).upsertAlert(alert);
+    // Reload bệnh nhân để Dashboard "Nhóm cần ưu tiên" cập nhật trạng thái alert live.
+    ref.read(patientNotifierProvider.notifier).loadPatients(limit: 100);
   }
 
   socket.on('alert.created', handleAlert);
   socket.on('alert.updated', handleAlert);
-  socket.on('alert.closed', handleAlert);
+  socket.on('alert.closed', (dynamic payload) {
+    final alert = parseAlert(payload);
+    if (alert == null) return;
+    ref.read(alertsNotifierProvider.notifier).upsertAlert(alert);
+    // Khi alert đóng, reload danh sách bệnh nhân để xoá dấu đỏ.
+    ref.read(patientNotifierProvider.notifier).loadPatients(limit: 100);
+  });
 
   // Connect/disconnect following auth state.
   final currentAuth = ref.read(authStateProvider);

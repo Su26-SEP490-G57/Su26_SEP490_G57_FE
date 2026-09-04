@@ -11,6 +11,7 @@ import 'package:poms/core/services/version_check_service.dart';
 import 'package:poms/core/theme/app_theme.dart';
 import 'package:poms/features/auth/domain/models/user_model.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/nurse/presentation/providers/alert_provider.dart';
 
 class App extends ConsumerStatefulWidget {
   const App({super.key});
@@ -165,6 +166,7 @@ class _AppState extends ConsumerState<App> {
   @override
   Widget build(BuildContext context) {
     ref.watch(statisticsRealtimeProvider);
+    ref.watch(alertRealtimeProvider); // Global alert real-time socket
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(

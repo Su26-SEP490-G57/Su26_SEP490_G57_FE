@@ -14,8 +14,7 @@ class NurseAlertsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(alertRealtimeProvider);
-
+    // alertRealtimeProvider được kích hoạt toàn cục từ app.dart — không cần watch lại ở đây.
     final alertsState = ref.watch(alertsNotifierProvider);
     // Chi hien thi cac canh bao dang pending, cu nhat (overdue) len dau.
     final alerts = ref.watch(pendingAlertsProvider);

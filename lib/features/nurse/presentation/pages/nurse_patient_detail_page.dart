@@ -115,27 +115,39 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
         confirmLabel: 'Tiếp tục',
       );
       if (!confirmed) return;
-      await _runCareAction(
-        () => ref
+      await _runCareAction(() async {
+        await ref
             .read(patientRemoteDatasourceProvider)
-            .setPodLock(caseId: widget.patientId, isLocked: false),
-        'Đã tiếp tục mức ăn',
-      );
+            .setPodLock(caseId: widget.patientId, isLocked: false);
+        // Tự động ghi nhận log vào tab Ghi chú
+        await ref
+            .read(assessmentNotifierProvider(widget.patientId).notifier)
+            .submitReassessment(
+              nurseNote: '▶️ Cho phép tiếp tục tiến trình ăn cho người bệnh',
+              source: 'NOTE',
+            );
+      }, 'Đã tiếp tục mức ăn');
       return;
     }
 
     final reason = await _requestHoldReason();
     if (reason == null) return;
-    await _runCareAction(
-      () => ref
+    await _runCareAction(() async {
+      await ref
           .read(patientRemoteDatasourceProvider)
           .setPodLock(
             caseId: widget.patientId,
             isLocked: true,
             holdReason: reason,
-          ),
-      'Đã tạm dừng mức ăn',
-    );
+          );
+      // Tự động ghi nhận log vào tab Ghi chú
+      await ref
+          .read(assessmentNotifierProvider(widget.patientId).notifier)
+          .submitReassessment(
+            nurseNote: '⏸ Tạm dừng mức ăn. Lý do: $reason',
+            source: 'NOTE',
+          );
+    }, 'Đã tạm dừng mức ăn');
   }
 
   Future<void> _rollbackDietLevel(PatientSummary patient) async {
@@ -148,12 +160,19 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     );
     if (!confirmed) return;
 
-    await _runCareAction(
-      () => ref
+    await _runCareAction(() async {
+      await ref
           .read(patientRemoteDatasourceProvider)
-          .updateDietLevel(caseId: widget.patientId, dietLevel: nextLevel),
-      'Đã lùi mức ăn về mức $nextLevel',
-    );
+          .updateDietLevel(caseId: widget.patientId, dietLevel: nextLevel);
+      // Tự động ghi nhận log vào tab Ghi chú
+      await ref
+          .read(assessmentNotifierProvider(widget.patientId).notifier)
+          .submitReassessment(
+            nurseNote:
+                '⏪ Lùi chế độ ăn từ mức ${patient.dietLevel} về mức $nextLevel',
+            source: 'NOTE',
+          );
+    }, 'Đã lùi mức ăn về mức $nextLevel');
   }
 
   Future<void> _acknowledgeAlert(AlertModel alert) async {
@@ -177,6 +196,18 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
             nurseAction: nurseAction.isNotEmpty ? nurseAction : null,
             nursingNote: nursingNote.isNotEmpty ? nursingNote : null,
           );
+      // Tự động tạo bản ghi ghi chú lâm sàng hiển thị trong tab Ghi chú
+      final parts = <String>[];
+      if (nurseAction.isNotEmpty) parts.add('Hành động: $nurseAction');
+      if (nursingNote.isNotEmpty) parts.add('Ghi chú: $nursingNote');
+      final noteContent = parts.isNotEmpty
+          ? '✅ Đã xử trí cảnh báo ${alert.alertType == 'RED' ? 'ĐỎ' : 'VÀNG'}. ${parts.join('. ')}'
+          : '✅ Đã xử trí cảnh báo ${alert.alertType == 'RED' ? 'ĐỎ' : 'VÀNG'}';
+
+      await ref
+          .read(assessmentNotifierProvider(widget.patientId).notifier)
+          .submitReassessment(nurseNote: noteContent, source: 'NOTE');
+
       // Cập nhật trạng thái trong-bộ-nhớ + reload danh sách
       ref.read(alertsNotifierProvider.notifier).markHandled(alert.alertId);
       ref.invalidate(activeAlertForPatientProvider(widget.patientId));
