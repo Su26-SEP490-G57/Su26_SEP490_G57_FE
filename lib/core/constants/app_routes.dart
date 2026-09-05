@@ -15,6 +15,12 @@ abstract final class AppRoutes {
   static const String nurseNotifications = '/nurse/notifications';
   static const String nurseProfile = '/nurse/profile';
 
+  // Doctor routes
+  static const String doctorDashboard = '/doctor/dashboard';
+  static const String doctorPatients = '/doctor/patients';
+  static const String doctorPatientDetail = '/doctor/patients/:id';
+  static const String doctorProfile = '/doctor/profile';
+
   // Patient routes
   static const String patientDashboard = '/patient/dashboard';
   static const String patientNotifications = '/patient/notifications';
@@ -29,4 +35,5 @@ abstract final class AppRoutes {
 
   // Helpers for parameterized routes
   static String nursePatientDetailPath(String id) => '/nurse/patients/$id';
+  static String doctorPatientDetailPath(String id) => '/doctor/patients/$id';
 }

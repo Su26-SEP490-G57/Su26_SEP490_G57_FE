@@ -6,6 +6,11 @@ import 'package:poms/features/auth/domain/models/user_model.dart';
 import 'package:poms/features/auth/presentation/pages/login_page.dart';
 import 'package:poms/features/auth/presentation/pages/splash_page.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/doctor/presentation/layouts/doctor_shell.dart';
+import 'package:poms/features/doctor/presentation/pages/doctor_dashboard_page.dart';
+import 'package:poms/features/doctor/presentation/pages/doctor_patient_detail_page.dart';
+import 'package:poms/features/doctor/presentation/pages/doctor_patients_page.dart';
+import 'package:poms/features/doctor/presentation/pages/doctor_profile_page.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 import 'package:poms/features/nurse/presentation/layouts/nurse_shell.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_alerts_page.dart';
@@ -29,6 +34,7 @@ import 'package:poms/features/patient/presentation/pages/patient_profile_page.da
 import 'package:poms/core/services/notification_service.dart';
 import 'package:poms/core/services/version_check_service.dart';
 import 'package:poms/core/constants/app_routes.dart';
+
 
 // Module-level (not local to routerProvider) so any code outside the routed
 // widget tree — e.g. _AppState, which sits above MaterialApp.router and has
@@ -103,17 +109,34 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isSplash || isLogin) return _dashboardForRole(role);
 
-      // Role guard
+      // Role guard — nurse/admin/headNurse/doctor không được vào /patient
+      if ((role == UserRole.nurse ||
+              role == UserRole.headNurse ||
+              role == UserRole.admin ||
+              role == UserRole.doctor) &&
+          state.matchedLocation.startsWith('/patient')) {
+        return _dashboardForRole(role);
+      }
+
+      // Role guard — patient không được vào /nurse hay /doctor
+      if (role == UserRole.patient &&
+          (state.matchedLocation.startsWith('/nurse') ||
+              state.matchedLocation.startsWith('/doctor'))) {
+        return AppRoutes.patientDashboard;
+      }
+
+      // Role guard — nurse/admin/headNurse không được vào /doctor
       if ((role == UserRole.nurse ||
               role == UserRole.headNurse ||
               role == UserRole.admin) &&
-          state.matchedLocation.startsWith('/patient')) {
+          state.matchedLocation.startsWith('/doctor')) {
         return AppRoutes.nurseDashboard;
       }
 
-      if (role == UserRole.patient &&
+      // Role guard — doctor không được vào /nurse
+      if (role == UserRole.doctor &&
           state.matchedLocation.startsWith('/nurse')) {
-        return AppRoutes.patientDashboard;
+        return AppRoutes.doctorDashboard;
       }
 
       return null;
@@ -170,6 +193,36 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.nurseProfile,
             builder: (context, state) => const NurseProfilePage(),
+          ),
+        ],
+      ),
+
+      // ── Doctor routes — bottom nav ───────────────────────────────────
+      ShellRoute(
+        builder: (context, state, child) => DoctorShell(child: child),
+        routes: [
+          GoRoute(
+            path: AppRoutes.doctorDashboard,
+            builder: (context, state) => const DoctorDashboardPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorPatients,
+            builder: (context, state) => const DoctorPatientsPage(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) => DoctorPatientDetailPage(
+                  patientId: state.pathParameters['id'] ?? '',
+                  patient: state.extra is PatientSummary
+                      ? state.extra as PatientSummary
+                      : null,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: AppRoutes.doctorProfile,
+            builder: (context, state) => const DoctorProfilePage(),
           ),
         ],
       ),
@@ -252,6 +305,7 @@ String _dashboardForRole(UserRole? role) {
     UserRole.admin => AppRoutes.nurseDashboard,
     UserRole.headNurse => AppRoutes.nurseDashboard,
     UserRole.nurse => AppRoutes.nurseDashboard,
+    UserRole.doctor => AppRoutes.doctorDashboard,
     UserRole.patient => AppRoutes.patientDashboard,
     null => AppRoutes.login,
   };
