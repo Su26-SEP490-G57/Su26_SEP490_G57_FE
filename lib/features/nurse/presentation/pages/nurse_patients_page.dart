@@ -97,6 +97,43 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     });
   }
 
+  Widget _buildUnassignedState() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 48, horizontal: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.meeting_room_outlined,
+            size: 56,
+            color: Color(0xFF727687),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Chưa được phân phòng',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF191B24),
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Bạn hiện chưa được phân công phòng bệnh nào.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              color: Color(0xFF727687),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final patientState = ref.watch(patientNotifierProvider);

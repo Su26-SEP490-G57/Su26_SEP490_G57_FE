@@ -184,40 +184,15 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
   }
 
   Future<void> _acknowledgeAlert(AlertModel alert) async {
-    final result = await showDialog<Map<String, String>>(
-      context: context,
-      builder: (dialogContext) => _ConfirmHandledDialog(
-        alertType: alert.alertType,
-      ),
-    );
-
-    if (result == null || !mounted) return;
-
-    final nurseAction = result['nurseAction'] ?? '';
-    final nursingNote = result['nursingNote'] ?? '';
-
+    if (!mounted) return;
     setState(() => _isHandlingAlert = true);
     try {
       await ref
           .read(alertRemoteDataSourceProvider)
           .acknowledgeAlert(
             alertId: alert.alertId,
-            nurseAction: nurseAction.isNotEmpty ? nurseAction : null,
-            nursingNote: nursingNote.isNotEmpty ? nursingNote : null,
-          );
-      // Tự động tạo bản ghi ghi chú lâm sàng hiển thị trong tab Ghi chú
-      final parts = <String>[];
-      if (nurseAction.isNotEmpty) parts.add('Hành động: $nurseAction');
-      if (nursingNote.isNotEmpty) parts.add('Ghi chú: $nursingNote');
-      final noteContent = parts.isNotEmpty
-          ? '✅ Đã xử trí cảnh báo ${alert.alertType == 'RED' ? 'ĐỎ' : 'VÀNG'}. ${parts.join('. ')}'
-          : '✅ Đã xử trí cảnh báo ${alert.alertType == 'RED' ? 'ĐỎ' : 'VÀNG'}';
-
-      await ref
-          .read(assessmentNotifierProvider(widget.patientId).notifier)
-          .submitReassessment(
-            nurseNote: noteContent,
-            source: 'NOTE',
+            nurseAction: null,
+            nursingNote: null,
           );
 
       // Cập nhật trạng thái trong-bộ-nhớ + reload danh sách
@@ -610,100 +585,6 @@ class _HoldReasonDialogState extends State<_HoldReasonDialog> {
             Navigator.of(context).pop(value);
           },
           child: const Text('Tạm dừng'),
-        ),
-      ],
-    );
-  }
-}
-
-class _ConfirmHandledDialog extends StatefulWidget {
-  const _ConfirmHandledDialog({required this.alertType});
-
-  final String alertType;
-
-  @override
-  State<_ConfirmHandledDialog> createState() => _ConfirmHandledDialogState();
-}
-
-class _ConfirmHandledDialogState extends State<_ConfirmHandledDialog> {
-  late final TextEditingController _actionController;
-  late final TextEditingController _noteController;
-
-  @override
-  void initState() {
-    super.initState();
-    _actionController = TextEditingController();
-    _noteController = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _actionController.dispose();
-    _noteController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isRed = widget.alertType.toUpperCase() == 'RED';
-    final levelLabel = isRed ? '🔴 Mức ĐỎ' : '🟡 Mức VÀNG';
-
-    return AlertDialog(
-      title: const Text('Xác nhận đã xử trí'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Bệnh nhân $levelLabel — Xác nhận đã can thiệp và hoàn thành xử trí?',
-              style: const TextStyle(fontSize: 14, height: 1.5),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _actionController,
-              decoration: const InputDecoration(
-                labelText: 'Hành động đã thực hiện (tùy chọn)',
-                hintText:
-                    'VD: Báo bác sĩ, điều chỉnh mức ăn, xử trí theo phác đồ...',
-                border: OutlineInputBorder(),
-              ),
-              minLines: 2,
-              maxLines: 3,
-              maxLength: 300,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _noteController,
-              decoration: const InputDecoration(
-                labelText: 'Ghi chú điều dưỡng (tùy chọn)',
-                hintText: 'Ghi chú thêm nếu cần...',
-                border: OutlineInputBorder(),
-              ),
-              minLines: 2,
-              maxLines: 4,
-              maxLength: 500,
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Hủy'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF006E2F),
-            foregroundColor: Colors.white,
-          ),
-          onPressed: () {
-            Navigator.of(context).pop({
-              'nurseAction': _actionController.text.trim(),
-              'nursingNote': _noteController.text.trim(),
-            });
-          },
-          child: const Text('Xác nhận đã xử trí'),
         ),
       ],
     );

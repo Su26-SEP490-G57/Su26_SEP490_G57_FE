@@ -5,7 +5,6 @@ import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
 /// Trang chi tiết bệnh nhân cho bác sĩ.
-/// TODO: Nhóm sẽ bổ sung các chức năng cụ thể của bác sĩ khi có task.
 class DoctorPatientDetailPage extends StatelessWidget {
   const DoctorPatientDetailPage({
     required this.patientId,
