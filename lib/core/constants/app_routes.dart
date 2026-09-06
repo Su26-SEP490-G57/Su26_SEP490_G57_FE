@@ -17,6 +17,7 @@ abstract final class AppRoutes {
 
   // Doctor routes
   static const String doctorDashboard = '/doctor/dashboard';
+  static const String doctorAlerts = '/doctor/alerts';
   static const String doctorPatients = '/doctor/patients';
   static const String doctorPatientDetail = '/doctor/patients/:id';
   static const String doctorProfile = '/doctor/profile';

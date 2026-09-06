@@ -7,6 +7,7 @@ import 'package:poms/features/auth/presentation/pages/login_page.dart';
 import 'package:poms/features/auth/presentation/pages/splash_page.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/doctor/presentation/layouts/doctor_shell.dart';
+import 'package:poms/features/doctor/presentation/pages/doctor_alerts_page.dart';
 import 'package:poms/features/doctor/presentation/pages/doctor_dashboard_page.dart';
 import 'package:poms/features/doctor/presentation/pages/doctor_patient_detail_page.dart';
 import 'package:poms/features/doctor/presentation/pages/doctor_patients_page.dart';
@@ -204,6 +205,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.doctorDashboard,
             builder: (context, state) => const DoctorDashboardPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.doctorAlerts,
+            builder: (context, state) => const DoctorAlertsPage(),
           ),
           GoRoute(
             path: AppRoutes.doctorPatients,

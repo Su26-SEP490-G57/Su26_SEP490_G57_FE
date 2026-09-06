@@ -1,21 +1,45 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/auth/domain/models/user_model.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/nurse/domain/models/compliance_overview.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
-import 'package:poms/features/doctor/presentation/providers/doctor_patient_provider.dart';
+import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
+import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 
-class DoctorDashboardPage extends ConsumerWidget {
+class DoctorDashboardPage extends ConsumerStatefulWidget {
   const DoctorDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DoctorDashboardPage> createState() =>
+      _DoctorDashboardPageState();
+}
+
+class _DoctorDashboardPageState extends ConsumerState<DoctorDashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final justLoggedIn = ref.read(authNotifierProvider).justLoggedIn;
+      if (justLoggedIn) {
+        ref.read(authNotifierProvider.notifier).clearLoginToast();
+        context.showTopToast('Đăng nhập thành công!', isSuccess: true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final patientState = ref.watch(patientNotifierProvider);
     final user = ref.watch(authNotifierProvider).user;
-    final doctorState = ref.watch(doctorPatientsNotifierProvider);
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
     return Column(
@@ -24,30 +48,38 @@ class DoctorDashboardPage extends ConsumerWidget {
         Expanded(
           child: RefreshIndicator(
             color: AppColors.primary,
-            onRefresh: () =>
-                ref.read(doctorPatientsNotifierProvider.notifier).loadPatients(),
+            onRefresh: () => ref
+                .read(patientNotifierProvider.notifier)
+                .loadPatients(limit: 100),
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(20, 0, 20, bottomPad + 36),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _DoctorDateRow(),
+                  // ── Date row ──────────────────────────────────────────────
+                  const _DateRow(),
                   const SizedBox(height: 24),
 
-                  // ── Tổng quan toàn viện ────────────────────────────────
+                  // ── Tổng quan toàn viện ────────────────────────────────────
                   const _SectionLabel(label: 'TỔNG QUAN TOÀN VIỆN'),
                   const SizedBox(height: 10),
-                  _WardOverviewGrid(patients: doctorState.patients),
+                  _WardOverviewGrid(patients: patientState.patients),
                   const SizedBox(height: 24),
 
-                  // ── Bệnh nhân cần ưu tiên ──────────────────────────────
+                  // ── Nhóm cần ưu tiên ───────────────────────────────────────
                   _SectionHeader(
-                    label: 'BỆNH NHÂN CẦN THEO DÕI',
+                    label: 'NHÓM CẦN ƯU TIÊN',
                     onViewAll: () => context.go(AppRoutes.doctorPatients),
                   ),
                   const SizedBox(height: 10),
-                  _PriorityList(patients: doctorState.patients),
+                  _PriorityPatientList(patients: patientState.patients),
+                  const SizedBox(height: 24),
+
+                  // ── Tỷ lệ tuân thủ ─────────────────────────────────────────
+                  const _SectionLabel(label: 'TỶ LỆ TUÂN THỦ TOÀN VIỆN'),
+                  const SizedBox(height: 10),
+                  const _ComplianceOverviewCard(),
                   const SizedBox(height: 8),
                 ],
               ),
@@ -113,7 +145,7 @@ class _DoctorTopAppBar extends StatelessWidget {
                     ),
                   ),
                   const Text(
-                    'BÁC SĨ',
+                    'BÁC SĨ ĐIỀU TRỊ',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 10,
@@ -135,6 +167,15 @@ class _DoctorTopAppBar extends StatelessWidget {
                   letterSpacing: 2,
                 ),
               ),
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: () => context.go(AppRoutes.doctorAlerts),
+                child: const Icon(
+                  Icons.notifications_outlined,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
             ],
           ),
         ),
@@ -147,15 +188,20 @@ class _DoctorTopAppBar extends StatelessWidget {
 // Date row
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _DoctorDateRow extends StatelessWidget {
-  const _DoctorDateRow();
+class _DateRow extends StatelessWidget {
+  const _DateRow();
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     const weekdays = [
-      'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm',
-      'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật',
+      'Thứ Hai',
+      'Thứ Ba',
+      'Thứ Tư',
+      'Thứ Năm',
+      'Thứ Sáu',
+      'Thứ Bảy',
+      'Chủ Nhật',
     ];
     final weekday = weekdays[now.weekday - 1];
     final dateStr =
@@ -163,15 +209,25 @@ class _DoctorDateRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(top: 16),
-      child: Text(
-        dateStr,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-          color: Color(0xFF424656),
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            dateStr,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: Color(0xFF424656),
+            ),
+          ),
+          const Icon(
+            Icons.calendar_today_outlined,
+            color: AppColors.primary,
+            size: 20,
+          ),
+        ],
       ),
     );
   }
@@ -238,27 +294,32 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Ward overview grid
+// Ward overview — 4-column grid
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _WardOverviewGrid extends StatelessWidget {
   const _WardOverviewGrid({required this.patients});
+
   final List<PatientSummary> patients;
 
   @override
   Widget build(BuildContext context) {
     final total = patients.length;
-    final green = patients.where((p) => p.status == PatientStatus.green).length;
-    final yellow = patients.where((p) => p.status == PatientStatus.yellow).length;
-    final red = patients.where((p) => p.status == PatientStatus.red).length;
 
-    String pct(int count) =>
-        total == 0 ? '(0%)' : '(${(count / total * 100).toStringAsFixed(1)}%)';
+    final green = patients.where((e) => e.status == PatientStatus.green).length;
+    final yellow =
+        patients.where((e) => e.status == PatientStatus.yellow).length;
+    final red = patients.where((e) => e.status == PatientStatus.red).length;
+
+    String percent(int count) {
+      if (total == 0) return '(0%)';
+      return '(${(count / total * 100).toStringAsFixed(1)}%)';
+    }
 
     return Row(
       children: [
         Expanded(
-          child: _StatCard(
+          child: _WardStatCard(
             label: 'TỔNG BN',
             value: '$total',
             valueColor: AppColors.primary,
@@ -267,31 +328,31 @@ class _WardOverviewGrid extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Expanded(
-          child: _StatCard(
+          child: _WardStatCard(
             label: 'GREEN',
             labelColor: const Color(0xFF2E7D32),
             value: '$green',
-            sub: pct(green),
+            sub: percent(green),
             leftBorderColor: const Color(0xFF4CAF50),
           ),
         ),
         const SizedBox(width: 6),
         Expanded(
-          child: _StatCard(
+          child: _WardStatCard(
             label: 'YELLOW',
             labelColor: const Color(0xFFF57F17),
             value: '$yellow',
-            sub: pct(yellow),
+            sub: percent(yellow),
             leftBorderColor: const Color(0xFFFFC107),
           ),
         ),
         const SizedBox(width: 6),
         Expanded(
-          child: _StatCard(
+          child: _WardStatCard(
             label: 'RED',
             labelColor: AppColors.error,
             value: '$red',
-            sub: pct(red),
+            sub: percent(red),
             leftBorderColor: AppColors.error,
           ),
         ),
@@ -300,8 +361,8 @@ class _WardOverviewGrid extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
+class _WardStatCard extends StatelessWidget {
+  const _WardStatCard({
     required this.label,
     required this.value,
     required this.leftBorderColor,
@@ -325,7 +386,11 @@ class _StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE5E5E0)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       clipBehavior: Clip.hardEdge,
@@ -336,7 +401,10 @@ class _StatCard extends StatelessWidget {
               Container(width: 4, color: leftBorderColor),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -382,33 +450,39 @@ class _StatCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Priority patient list (RED + YELLOW, up to 5)
+// Priority patient list
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PriorityList extends StatelessWidget {
-  const _PriorityList({required this.patients});
+class _PriorityPatientList extends StatelessWidget {
+  const _PriorityPatientList({required this.patients});
+
   final List<PatientSummary> patients;
 
   @override
   Widget build(BuildContext context) {
-    final sorted = [...patients]..sort((a, b) {
-        const order = {
-          PatientStatus.red: 0,
-          PatientStatus.yellow: 1,
-          PatientStatus.green: 2,
-        };
-        final cmp = order[a.status]!.compareTo(order[b.status]!);
-        return cmp != 0 ? cmp : a.pod.compareTo(b.pod);
-      });
+    final priorityPatients = [...patients];
 
-    final display = sorted
+    priorityPatients.sort((a, b) {
+      final priority = {
+        PatientStatus.red: 0,
+        PatientStatus.yellow: 1,
+        PatientStatus.green: 2,
+      };
+
+      final compare = priority[a.status]!.compareTo(priority[b.status]!);
+      if (compare != 0) return compare;
+      return a.pod.compareTo(b.pod);
+    });
+
+    final displayPatients = priorityPatients
         .where((p) =>
             p.status == PatientStatus.red || p.status == PatientStatus.yellow)
-        .take(5)
+        .take(3)
         .toList();
 
-    if (display.isEmpty) {
+    if (displayPatients.isEmpty) {
       return Container(
+        width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -429,11 +503,11 @@ class _PriorityList extends StatelessWidget {
     }
 
     return Column(
-      children: display
+      children: displayPatients
           .map(
             (patient) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _PatientCard(
+              child: _PriorityPatientCard(
                 patient: patient,
                 onTap: () => context.push(
                   AppRoutes.doctorPatientDetailPath(patient.code),
@@ -447,14 +521,26 @@ class _PriorityList extends StatelessWidget {
   }
 }
 
-class _PatientCard extends StatelessWidget {
-  const _PatientCard({required this.patient, required this.onTap});
+class _PriorityPatientCard extends StatelessWidget {
+  const _PriorityPatientCard({required this.patient, required this.onTap});
+
   final PatientSummary patient;
   final VoidCallback onTap;
 
-  Color get _statusColor => patient.status.badgeText;
-  Color get _statusBg => patient.status.badgeBg;
-  String get _statusLabel => patient.status.label;
+  PatientStatus get status => patient.status;
+  String get name => patient.name;
+  String get pod {
+    if (patient.pod.startsWith('POD')) {
+      return patient.pod;
+    }
+    return 'POD ${patient.pod}';
+  }
+
+  String get room => _roomLabel(patient.room);
+
+  Color get _statusColor => status.badgeText;
+  Color get _statusBg => status.badgeBg;
+  String get _statusLabel => status.label;
 
   @override
   Widget build(BuildContext context) {
@@ -519,7 +605,7 @@ class _PatientCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            patient.name,
+                            name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -534,7 +620,7 @@ class _PatientCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${patient.room} • ${patient.pod}',
+                      '$room • $pod',
                       style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
@@ -544,6 +630,7 @@ class _PatientCard extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               const Icon(
                 Icons.chevron_right_rounded,
                 color: Color(0xFFC2C6D8),
@@ -555,4 +642,230 @@ class _PatientCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _roomLabel(String raw) {
+  final match = RegExp(r'P?(\d+)').firstMatch(raw);
+  if (match == null) return raw;
+  return 'Phòng ${match.group(1)}';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Compliance overview — donut chart Tuân thủ / Không tuân thủ
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ComplianceOverviewCard extends ConsumerWidget {
+  const _ComplianceOverviewCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overview = ref.watch(complianceOverviewProvider);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E5E0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: overview.when(
+        loading: () => const SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (_, _) => _ComplianceInlineMessage(
+          message: 'Không thể tải dữ liệu tuân thủ',
+          onRetry: () => ref.invalidate(complianceOverviewProvider),
+        ),
+        data: (overview) {
+          if (overview.total == 0) {
+            return const _ComplianceInlineMessage(
+              message: 'Chưa có dữ liệu tuân thủ',
+            );
+          }
+          final percent = (overview.complianceRate * 100).round();
+
+          return Row(
+            children: [
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: _ComplianceDonut(overview: overview, percent: percent),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  children: [
+                    _ComplianceLegendRow(
+                      color: AppColors.statusNormal,
+                      label: 'Tuân thủ',
+                      count: overview.compliant,
+                    ),
+                    const SizedBox(height: 8),
+                    _ComplianceLegendRow(
+                      color: AppColors.error,
+                      label: 'Không tuân thủ',
+                      count: overview.nonCompliant,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ComplianceInlineMessage extends StatelessWidget {
+  const _ComplianceInlineMessage({required this.message, this.onRetry});
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 100,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: Color(0xFF727687),
+              ),
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 4),
+              TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComplianceLegendRow extends StatelessWidget {
+  const _ComplianceLegendRow({
+    required this.color,
+    required this.label,
+    required this.count,
+  });
+  final Color color;
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: Color(0xFF424656),
+            ),
+          ),
+        ),
+        Text(
+          '$count',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF191B24),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ComplianceDonut extends StatelessWidget {
+  const _ComplianceDonut({required this.overview, required this.percent});
+  final ComplianceOverview overview;
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _ComplianceDonutPainter(overview: overview),
+      child: Center(
+        child: Text(
+          '$percent%',
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF191B24),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComplianceDonutPainter extends CustomPainter {
+  _ComplianceDonutPainter({required this.overview});
+  final ComplianceOverview overview;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = overview.total;
+    if (total == 0) return;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 6;
+    const strokeWidth = 14.0;
+
+    final segments = [
+      (overview.compliant, AppColors.statusNormal),
+      (overview.nonCompliant, AppColors.error),
+    ];
+
+    var startAngle = -math.pi / 2;
+    for (final (count, color) in segments) {
+      if (count == 0) continue;
+      final sweep = (count / total) * 2 * math.pi;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweep,
+        false,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.butt,
+      );
+      startAngle += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ComplianceDonutPainter old) => old.overview != overview;
 }

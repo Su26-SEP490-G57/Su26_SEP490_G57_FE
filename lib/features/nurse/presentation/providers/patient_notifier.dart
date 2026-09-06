@@ -74,18 +74,20 @@ class PatientNotifier extends StateNotifier<PatientState> {
       (item) => item.code == patient.code,
     );
 
+    List<PatientSummary> patients;
     if (index < 0) {
+      patients = [patient, ...state.patients];
       state = state.copyWith(
-        patients: [patient, ...state.patients],
+        patients: _sortedByPriority(patients),
         total: state.total + 1,
       );
       return;
     }
 
-    final patients = [...state.patients];
+    patients = [...state.patients];
     patients[index] = patient;
 
-    state = state.copyWith(patients: patients);
+    state = state.copyWith(patients: _sortedByPriority(patients));
   }
 
   void patchPatient(
@@ -146,7 +148,9 @@ class PatientNotifier extends StateNotifier<PatientState> {
       );
     }).toList();
 
-    state = state.copyWith(patients: patients);
+    // Re-sort so priority order (ĐỎ → VÀNG → XANH) stays correct after
+    // a WebSocket reassessment event changes a patient's triage status.
+    state = state.copyWith(patients: _sortedByPriority(patients));
   }
 
   void removePatient(String caseId) {
@@ -161,5 +165,17 @@ class PatientNotifier extends StateNotifier<PatientState> {
       patients: patients,
       total: state.total > 0 ? state.total - 1 : 0,
     );
+  }
+
+  /// Sort patients ĐỎ → VÀNG → XANH, preserving relative order within each group.
+  static List<PatientSummary> _sortedByPriority(List<PatientSummary> list) {
+    const rank = {
+      PatientStatus.red: 0,
+      PatientStatus.yellow: 1,
+      PatientStatus.green: 2,
+    };
+    return [...list]..sort(
+        (a, b) => (rank[a.status] ?? 2).compareTo(rank[b.status] ?? 2),
+      );
   }
 }

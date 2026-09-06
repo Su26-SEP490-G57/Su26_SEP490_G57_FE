@@ -28,7 +28,7 @@ class DoctorProfilePage extends ConsumerWidget {
               child: const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Hồ sơ',
+                  'Tài khoản',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 20,
