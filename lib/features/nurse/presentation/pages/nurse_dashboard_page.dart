@@ -70,9 +70,16 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
                 const SizedBox(height: 24),
 
                 // ── Tỷ lệ tuân thủ ────────────────────────────────────
-                const _SectionLabel(label: 'TỶ LỆ TUÂN THỦ'),
+                _SectionHeader(
+                  label: 'TỶ LỆ TUÂN THỦ',
+                  onViewAll: () =>
+                      context.push(AppRoutes.nurseNonCompliantPatients),
+                ),
                 const SizedBox(height: 10),
-                const _ComplianceOverviewCard(),
+                _ComplianceOverviewCard(
+                  onTap: () =>
+                      context.push(AppRoutes.nurseNonCompliantPatients),
+                ),
                 const SizedBox(height: 8),
               ],
             ),
@@ -800,72 +807,85 @@ String roomLabel(String raw) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ComplianceOverviewCard extends ConsumerWidget {
-  const _ComplianceOverviewCard();
+  const _ComplianceOverviewCard({this.onTap});
+
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final overview = ref.watch(complianceOverviewProvider);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E5E0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: overview.when(
-        loading: () => const SizedBox(
-          height: 120,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-        error: (_, _) => _ComplianceInlineMessage(
-          message: 'Không thể tải dữ liệu tuân thủ',
-          onRetry: () => ref.invalidate(complianceOverviewProvider),
-        ),
-        data: (overview) {
-          if (overview.total == 0) {
-            return const _ComplianceInlineMessage(
-              message: 'Chưa có dữ liệu tuân thủ',
-            );
-          }
-          final percent = (overview.complianceRate * 100).round();
-
-          return Row(
-            children: [
-              SizedBox(
-                width: 100,
-                height: 100,
-                child: _ComplianceDonut(overview: overview, percent: percent),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  children: [
-                    _ComplianceLegendRow(
-                      color: AppColors.statusNormal,
-                      label: 'Tuân thủ',
-                      count: overview.compliant,
-                    ),
-                    const SizedBox(height: 8),
-                    _ComplianceLegendRow(
-                      color: AppColors.error,
-                      label: 'Không tuân thủ',
-                      count: overview.nonCompliant,
-                    ),
-                  ],
-                ),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5E5E0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A000000),
+                blurRadius: 8,
+                offset: Offset(0, 2),
               ),
             ],
-          );
-        },
+          ),
+          child: overview.when(
+            loading: () => const SizedBox(
+              height: 120,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (_, _) => _ComplianceInlineMessage(
+              message: 'Không thể tải dữ liệu tuân thủ',
+              onRetry: () => ref.invalidate(complianceOverviewProvider),
+            ),
+            data: (overview) {
+              if (overview.total == 0) {
+                return const _ComplianceInlineMessage(
+                  message: 'Chưa có dữ liệu tuân thủ',
+                );
+              }
+              final percent = (overview.complianceRate * 100).round();
+
+              return Row(
+                children: [
+                  SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: _ComplianceDonut(
+                      overview: overview,
+                      percent: percent,
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _ComplianceLegendRow(
+                          color: AppColors.statusNormal,
+                          label: 'Tuân thủ',
+                          count: overview.compliant,
+                        ),
+                        const SizedBox(height: 8),
+                        _ComplianceLegendRow(
+                          color: AppColors.error,
+                          label: 'Không tuân thủ',
+                          count: overview.nonCompliant,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }

@@ -11,6 +11,7 @@ import 'package:poms/features/nurse/presentation/layouts/nurse_shell.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_alerts_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_dashboard_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_patient_detail_page.dart';
+import 'package:poms/features/nurse/presentation/pages/nurse_non_compliant_patients_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_patients_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_priority_patients_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_profile_page.dart';
@@ -154,6 +155,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.nursePriorityPatients,
             builder: (context, state) => const NursePriorityPatientsPage(),
+          ),
+          GoRoute(
+            path: AppRoutes.nurseNonCompliantPatients,
+            builder: (context, state) => const NurseNonCompliantPatientsPage(),
           ),
           GoRoute(
             path: AppRoutes.nurseAlerts,
