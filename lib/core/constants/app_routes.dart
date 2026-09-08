@@ -8,6 +8,8 @@ abstract final class AppRoutes {
   static const String nurseDashboard = '/nurse/dashboard';
   static const String nursePatients = '/nurse/patients';
   static const String nursePriorityPatients = '/nurse/priority-patients';
+  static const String nurseNonCompliantPatients =
+      '/nurse/non-compliant-patients';
   static const String nursePatientDetail = '/nurse/patients/:id';
   static const String nurseAlerts = '/nurse/alerts';
   static const String nurseReports = '/nurse/reports';
