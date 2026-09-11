@@ -7,6 +7,8 @@ class AssessmentDetail {
     required this.totalScore,
     required this.triageColor,
     required this.details,
+    this.source = 'SURVEY',
+    this.nurseNote,
   });
 
   final int assessmentId;
@@ -16,6 +18,8 @@ class AssessmentDetail {
   final int totalScore;
   final String triageColor;
   final List<AssessmentDetailItem> details;
+  final String source;
+  final String? nurseNote;
 }
 
 class AssessmentDetailItem {

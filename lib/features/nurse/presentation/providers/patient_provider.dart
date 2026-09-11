@@ -9,6 +9,7 @@ import 'package:poms/features/nurse/data/repositories/patient_repository_impl.da
 
 import 'package:poms/features/nurse/domain/repositories/patient_repository.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
+import 'package:poms/features/nurse/domain/models/patient_pod_status.dart';
 
 import 'package:poms/features/nurse/presentation/providers/patient_notifier.dart';
 import 'package:poms/features/nurse/presentation/providers/patient_state.dart';
@@ -35,6 +36,11 @@ final patientRepositoryProvider = Provider<PatientRepository>((ref) {
 final patientNotifierProvider =
     StateNotifierProvider<PatientNotifier, PatientState>((ref) {
       return PatientNotifier(ref.watch(patientRepositoryProvider));
+    });
+
+final patientPodStatusProvider = FutureProvider.autoDispose
+    .family<PatientPodStatus, String>((ref, caseId) async {
+      return ref.watch(patientRemoteDatasourceProvider).getPodStatus(caseId);
     });
 
 final patientByIdProvider = Provider.family<PatientSummary?, String>((
@@ -76,6 +82,7 @@ final patientByIdProvider = Provider.family<PatientSummary?, String>((
         assessmentTotal: patient.assessmentTotal,
         lastAssessmentTime: patient.lastAssessmentTime,
         needsIntervention: patient.needsIntervention,
+        dietLevel: patient.dietLevel,
       );
     }),
   );
@@ -108,5 +115,6 @@ final patientByIdProvider = Provider.family<PatientSummary?, String>((
     assessmentTotal: snapshot.assessmentTotal,
     lastAssessmentTime: snapshot.lastAssessmentTime,
     needsIntervention: snapshot.needsIntervention,
+    dietLevel: snapshot.dietLevel,
   );
 });

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:poms/features/nurse/data/models/patient_response.dart';
+import 'package:poms/features/nurse/domain/models/patient_pod_status.dart';
 
 import 'package:poms/core/constants/app_constants.dart';
 import 'package:poms/core/errors/app_exception.dart';
@@ -58,8 +59,55 @@ class PatientRemoteDataSource {
         return list.map((e) => e.toString()).toList();
       }
       return [];
-    } catch (_) {
-      return [];
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
+  }
+
+  Future<PatientPodStatus> getPodStatus(String caseId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '${AppConstants.endpointPatients}/$caseId/current-pod',
+      );
+      final data = response.data;
+      if (data == null) {
+        throw const ServerException(statusCode: 500, message: 'Response body is null');
+      }
+      return PatientPodStatus.fromJson(data);
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
+  }
+
+  Future<void> setPodLock({
+    required String caseId,
+    required bool isLocked,
+    String? holdReason,
+  }) async {
+    try {
+      await _dio.patch<void>(
+        '${AppConstants.endpointPatients}/$caseId/pod-lock',
+        data: {
+          'isLocked': isLocked,
+          if (holdReason != null && holdReason.isNotEmpty) 'holdReason': holdReason,
+        },
+      );
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
+  }
+
+  Future<void> updateDietLevel({
+    required String caseId,
+    required int dietLevel,
+  }) async {
+    try {
+      await _dio.patch<void>(
+        '${AppConstants.endpointPatients}/$caseId/diet-level',
+        data: {'dietLevel': dietLevel},
+      );
+    } on DioException catch (e) {
+      _handleDioError(e);
     }
   }
 

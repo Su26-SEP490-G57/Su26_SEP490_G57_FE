@@ -121,6 +121,7 @@ class PatientRepositoryImpl implements PatientRepository {
       name: patient.account.fullName,
       room: patient.roomBed ?? 'Chưa cập nhật',
       pod: 'POD ${patient.currentPod}',
+      dietLevel: patient.currentDietLevel,
       status: _mapStatus(patient.level),
       age: patient.age,
       gender: patient.gender,

@@ -36,4 +36,21 @@ class AssessmentRepositoryImpl implements AssessmentRepository {
 
     return response.data.map((e) => e.toDomain()).toList();
   }
+
+  @override
+  Future<AssessmentDetail> submitReassessment(
+    String caseId, {
+    String? triageColor,
+    String? nurseNote,
+    String source = 'REASSESSMENT',
+  }) async {
+    final response = await _dataSource.submitReassessment(
+      caseId,
+      triageColor: triageColor,
+      nurseNote: nurseNote,
+      source: source,
+    );
+
+    return response.toDomain();
+  }
 }

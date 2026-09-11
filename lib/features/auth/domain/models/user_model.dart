@@ -1,18 +1,20 @@
 import 'package:equatable/equatable.dart';
 
-enum UserRole { admin, headNurse, nurse, patient }
+enum UserRole { admin, headNurse, nurse, doctor, patient }
 
 extension UserRoleX on UserRole {
   String get displayName => switch (this) {
     UserRole.admin => 'Quản trị viên',
     UserRole.headNurse => 'Điều dưỡng trưởng',
     UserRole.nurse => 'Điều dưỡng',
+    UserRole.doctor => 'Bác sĩ',
     UserRole.patient => 'Bệnh nhân',
   };
 
   bool get isAdmin => this == UserRole.admin;
   bool get isHeadNurse => this == UserRole.headNurse;
   bool get isNurse => this == UserRole.nurse;
+  bool get isDoctor => this == UserRole.doctor;
   bool get isPatient => this == UserRole.patient;
 
   static UserRole fromString(String value) {
@@ -20,6 +22,7 @@ extension UserRoleX on UserRole {
       'Admin' => UserRole.admin,
       'Head_Nurse' => UserRole.headNurse,
       'Nurse' => UserRole.nurse,
+      'Doctor' => UserRole.doctor,
       'Patient' => UserRole.patient,
       _ => throw ArgumentError('Unknown role: $value'),
     };
@@ -29,6 +32,7 @@ extension UserRoleX on UserRole {
     UserRole.admin => 'Admin',
     UserRole.headNurse => 'Head_Nurse',
     UserRole.nurse => 'Nurse',
+    UserRole.doctor => 'Doctor',
     UserRole.patient => 'Patient',
   };
 }

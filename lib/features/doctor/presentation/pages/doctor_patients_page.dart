@@ -1,35 +1,31 @@
-import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'dart:math';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
-//import 'package:poms/features/nurse/domain/models/operation_type.dart';
+import 'package:poms/features/doctor/presentation/providers/doctor_patient_provider.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
-import 'package:poms/features/nurse/presentation/providers/patient_state.dart';
-//import 'package:poms/features/nurse/presentation/providers/operation_type_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/patient_pagination.dart';
 
-import 'package:poms/features/nurse/presentation/providers/assigned_rooms_provider.dart';
-
-class NursePatientsPage extends ConsumerStatefulWidget {
-  const NursePatientsPage({super.key});
+/// Danh sách toàn bộ người bệnh trong khoa dành cho bác sĩ.
+class DoctorPatientsPage extends ConsumerStatefulWidget {
+  const DoctorPatientsPage({super.key});
 
   @override
-  ConsumerState<NursePatientsPage> createState() => _NursePatientsPageState();
+  ConsumerState<DoctorPatientsPage> createState() => _DoctorPatientsPageState();
 }
 
-class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
+class _DoctorPatientsPageState extends ConsumerState<DoctorPatientsPage> {
   final _searchController = TextEditingController();
   int _currentPage = 1;
   static const int _pageSize = 5;
 
   String _searchQuery = '';
 
-  // Filter state — null = "Tất cả"
+  // Filter state — Mặc định chọn tất cả
   final Set<PatientStatus> _selectedStatuses = {
     PatientStatus.red,
     PatientStatus.yellow,
@@ -97,63 +93,18 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     });
   }
 
-  Widget _buildUnassignedState() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 48, horizontal: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.meeting_room_outlined,
-            size: 56,
-            color: Color(0xFF727687),
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Chưa được phân phòng',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF191B24),
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Bạn hiện chưa được phân công phòng bệnh nào.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              color: Color(0xFF727687),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final patientState = ref.watch(patientNotifierProvider);
-    final assignedRoomsAsync = ref.watch(assignedRoomsProvider);
+    final patientState = ref.watch(doctorPatientsNotifierProvider);
 
-    if (patientState.isLoading || assignedRoomsAsync.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+    if (patientState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (patientState.status == PatientStatusState.error) {
-      return Center(child: Text(patientState.errorMessage ?? 'Có lỗi xảy ra'));
-    }
-
-    if (assignedRoomsAsync.hasError) {
-      return const Center(
-        child: Text('Không thể tải phòng bệnh được phân công'),
+    if (patientState.errorMessage != null) {
+      return Scaffold(
+        body: Center(child: Text(patientState.errorMessage ?? 'Có lỗi xảy ra')),
       );
     }
-
-    final assignedRooms = assignedRoomsAsync.value ?? [];
-    final isUnassigned = assignedRooms.isEmpty;
 
     final filteredPatients = _filtered(patientState.patients);
     final totalPages = max(1, (filteredPatients.length / _pageSize).ceil());
@@ -169,7 +120,7 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     return Column(
       children: [
         // ── Top App Bar ──────────────────────────────────────────────
-        _TopAppBar(assignedRooms: assignedRooms),
+        _DoctorPatientsTopAppBar(totalPatients: patientState.patients.length),
 
         // ── Body ─────────────────────────────────────────────────────
         Expanded(
@@ -189,142 +140,133 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
               children: [
                 // ── Search bar ───────────────────────────────────────
-                if (isUnassigned)
-                  _buildUnassignedState()
-                else ...[
-                  _SearchBar(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                        _currentPage = 1;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
+                _SearchBar(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                      _currentPage = 1;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
 
-                  // Filter chips row
-                  _FilterChipsRow(
-                    selectedStatuses: _selectedStatuses,
-                    onStatusTap: _toggleStatus,
-                  ),
-                  const SizedBox(height: 10),
+                // Filter chips row
+                _FilterChipsRow(
+                  selectedStatuses: _selectedStatuses,
+                  onStatusTap: _toggleStatus,
+                ),
+                const SizedBox(height: 10),
 
-                  // Count + sort row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Tổng: ${filteredPatients.length} người bệnh',
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
+                // Count + sort row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Tổng: ${filteredPatients.length} người bệnh',
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: Color(0xFF727687),
+                        ),
+                      ),
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.sort_rounded,
+                            size: 14,
                             color: Color(0xFF727687),
                           ),
-                        ),
-                        GestureDetector(
-                          onTap: () {},
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.sort_rounded,
-                                size: 14,
-                                color: Color(0xFF727687),
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Sắp xếp',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.6,
-                                  color: Color(0xFF727687),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── Animated patient list ─────────────────────────────
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 280),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, animation) {
-                      final isIncoming =
-                          child.key == ValueKey<int>(currentPage);
-                      final position = isIncoming
-                          ? Tween<Offset>(
-                              begin: Offset(_swipeDirection.toDouble(), 0),
-                              end: Offset.zero,
-                            ).animate(animation)
-                          : Tween<Offset>(
-                              begin: Offset.zero,
-                              end: Offset(-_swipeDirection.toDouble(), 0),
-                            ).animate(ReverseAnimation(animation));
-                      return SlideTransition(
-                        position: position,
-                        child: FadeTransition(opacity: animation, child: child),
-                      );
-                    },
-                    child: Column(
-                      key: ValueKey<int>(currentPage),
-                      children: [
-                        if (pagedPatients.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 32),
-                            child: Center(
-                              child: Text(
-                                'Không có bệnh nhân nào',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 15,
-                                  color: Color(0xFF9CA3AF),
-                                ),
-                              ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Ưu tiên: Đỏ → Vàng → Xanh',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF727687),
                             ),
-                          )
-                        else
-                          ...pagedPatients.map(
-                            (p) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _PatientCard(
-                                data: p,
-                                onTap: () => context.push(
-                                  AppRoutes.nursePatientDetailPath(p.code),
-                                  extra: p,
-                                ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // ── Animated patient list ─────────────────────────────
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) {
+                    final isIncoming = child.key == ValueKey<int>(currentPage);
+                    final position = isIncoming
+                        ? Tween<Offset>(
+                            begin: Offset(_swipeDirection.toDouble(), 0),
+                            end: Offset.zero,
+                          ).animate(animation)
+                        : Tween<Offset>(
+                            begin: Offset.zero,
+                            end: Offset(-_swipeDirection.toDouble(), 0),
+                          ).animate(ReverseAnimation(animation));
+                    return SlideTransition(
+                      position: position,
+                      child: FadeTransition(opacity: animation, child: child),
+                    );
+                  },
+                  child: Column(
+                    key: ValueKey<int>(currentPage),
+                    children: [
+                      if (pagedPatients.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Center(
+                            child: Text(
+                              'Không có bệnh nhân nào phù hợp',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 15,
+                                color: Color(0xFF9CA3AF),
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        )
+                      else
+                        ...pagedPatients.map(
+                          (p) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _DoctorPatientCard(
+                              data: p,
+                              onTap: () => context.push(
+                                AppRoutes.doctorPatientDetailPath(p.code),
+                                extra: p,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
+                ),
 
-                  const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-                  // ── Pagination bar ────────────────────────────────────
-                  PatientPagination(
-                    currentPage: currentPage,
-                    totalPages: totalPages,
-                    startIndex: startIndex,
-                    endIndex: endIndex,
-                    total: filteredPatients.length,
-                    onPrevious: _goPrev,
-                    onNext: () => _goNext(totalPages),
-                  ),
+                // ── Pagination bar ────────────────────────────────────
+                PatientPagination(
+                  currentPage: currentPage,
+                  totalPages: totalPages,
+                  startIndex: startIndex,
+                  endIndex: endIndex,
+                  total: filteredPatients.length,
+                  onPrevious: _goPrev,
+                  onNext: () => _goNext(totalPages),
+                ),
 
-                  const SizedBox(height: 8),
-                ],
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -338,17 +280,13 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
 // Top App Bar
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TopAppBar extends StatelessWidget {
-  const _TopAppBar({required this.assignedRooms});
+class _DoctorPatientsTopAppBar extends StatelessWidget {
+  const _DoctorPatientsTopAppBar({required this.totalPatients});
 
-  final List<String> assignedRooms;
+  final int totalPatients;
 
   @override
   Widget build(BuildContext context) {
-    final roomsText = assignedRooms.isEmpty
-        ? 'Chưa phân phòng'
-        : assignedRooms.join(', ');
-
     return Container(
       color: AppColors.primary,
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -358,10 +296,12 @@ class _TopAppBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.menu_rounded, color: Colors.white),
-                onPressed: () {},
+              const Icon(
+                Icons.people_alt_rounded,
+                color: Colors.white,
+                size: 24,
               ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -377,7 +317,7 @@ class _TopAppBar extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      roomsText,
+                      'Toàn khoa • $totalPatients bệnh nhân',
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,
@@ -430,7 +370,7 @@ class _SearchBar extends StatelessWidget {
           color: Color(0xFF191B24),
         ),
         decoration: const InputDecoration(
-          hintText: 'Tìm kiếm người bệnh...',
+          hintText: 'Tìm kiếm người bệnh, mã, phòng...',
           hintStyle: TextStyle(
             fontFamily: 'Inter',
             fontSize: 14,
@@ -544,64 +484,12 @@ class _StatusFilterChip extends StatelessWidget {
   }
 }
 
-// ignore: unused_element
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.primary.withValues(alpha: 0.08)
-              : const Color(0xFFE6E7F4),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: isActive ? AppColors.primary : const Color(0xFFC2C6D8),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isActive ? AppColors.primary : const Color(0xFF424656),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.expand_more_rounded,
-              size: 16,
-              color: isActive ? AppColors.primary : const Color(0xFF424656),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Patient card — updated style matching new HTML
+// Patient card — matches Nurse style
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _PatientCard extends StatelessWidget {
-  const _PatientCard({required this.data, required this.onTap});
+class _DoctorPatientCard extends StatelessWidget {
+  const _DoctorPatientCard({required this.data, required this.onTap});
 
   final PatientSummary data;
   final VoidCallback onTap;
@@ -755,145 +643,6 @@ class _StatusPill extends StatelessWidget {
           fontWeight: FontWeight.w700,
           letterSpacing: 0.6,
           color: _text,
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Filter bottom sheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ignore: unused_element
-class _FilterSheet extends StatelessWidget {
-  const _FilterSheet({
-    required this.selectedPod,
-    required this.selectedAiLevel,
-    required this.onApply,
-    required this.onReset,
-  });
-
-  final String? selectedPod;
-  final String? selectedAiLevel;
-  final void Function(String? pod, String? aiLevel) onApply;
-  final VoidCallback onReset;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFFAF8FF),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFC2C6D8),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Bộ lọc',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF191B24),
-                ),
-              ),
-              TextButton(
-                onPressed: onReset,
-                child: const Text(
-                  'Xóa tất cả',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => onApply(selectedPod, selectedAiLevel),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text(
-                'Áp dụng',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ignore: unused_element
-class _PickerItem extends StatelessWidget {
-  const _PickerItem({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected
-                      ? AppColors.primary
-                      : const Color(0xFF191B24),
-                ),
-              ),
-            ),
-            if (isSelected)
-              const Icon(
-                Icons.check_rounded,
-                color: AppColors.primary,
-                size: 20,
-              ),
-          ],
         ),
       ),
     );

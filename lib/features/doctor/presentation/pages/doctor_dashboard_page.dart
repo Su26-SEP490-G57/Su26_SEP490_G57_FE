@@ -9,19 +9,20 @@ import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/auth/domain/models/user_model.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/doctor/presentation/providers/doctor_patient_provider.dart';
 import 'package:poms/features/nurse/domain/models/compliance_overview.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
-import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 
-class NurseDashboardPage extends ConsumerStatefulWidget {
-  const NurseDashboardPage({super.key});
+class DoctorDashboardPage extends ConsumerStatefulWidget {
+  const DoctorDashboardPage({super.key});
 
   @override
-  ConsumerState<NurseDashboardPage> createState() => _NurseDashboardPageState();
+  ConsumerState<DoctorDashboardPage> createState() =>
+      _DoctorDashboardPageState();
 }
 
-class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
+class _DoctorDashboardPageState extends ConsumerState<DoctorDashboardPage> {
   @override
   void initState() {
     super.initState();
@@ -37,54 +38,51 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final patientState = ref.watch(patientNotifierProvider);
+    final patientState = ref.watch(doctorPatientsNotifierProvider);
     final user = ref.watch(authNotifierProvider).user;
-    // Chỉnh padding bottom để bù cho floating glass nav bar ở NurseShell.
-    // MediaQuery.padding.bottom đã được NurseShell inject thêm 78px (chiều cao nav).
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
     return Column(
       children: [
-        _TopAppBar(user: user),
+        _DoctorTopAppBar(user: user),
         Expanded(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, bottomPad + 36),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Date row ──────────────────────────────────────────────────
-                const _DateRow(),
-                const SizedBox(height: 24),
+          child: RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () => ref
+                .read(doctorPatientsNotifierProvider.notifier)
+                .loadPatients(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(20, 0, 20, bottomPad + 36),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Date row ──────────────────────────────────────────────
+                  const _DateRow(),
+                  const SizedBox(height: 24),
 
-                // ── Tổng quan toàn khoa ─────────────────────────────────────
-                const _SectionLabel(label: 'TỔNG QUAN'),
-                const SizedBox(height: 10),
-                _WardOverviewGrid(patients: patientState.patients),
-                const SizedBox(height: 24),
+                  // ── Tổng quan toàn khoa ────────────────────────────────────
+                  const _SectionLabel(label: 'TỔNG QUAN TOÀN KHOA'),
+                  const SizedBox(height: 10),
+                  _WardOverviewGrid(patients: patientState.patients),
+                  const SizedBox(height: 24),
 
-                // ── Nhóm cần ưu tiên ─────────────────────────────────────
-                _SectionHeader(
-                  label: 'NHÓM CẦN ƯU TIÊN',
-                  onViewAll: () =>
-                      context.push(AppRoutes.nursePriorityPatients),
-                ),
-                const SizedBox(height: 10),
-                _PriorityPatientList(patients: patientState.patients),
-                const SizedBox(height: 24),
+                  // ── Nhóm cần ưu tiên ───────────────────────────────────────
+                  _SectionHeader(
+                    label: 'NHÓM CẦN ƯU TIÊN',
+                    onViewAll: () => context.go(AppRoutes.doctorPatients),
+                  ),
+                  const SizedBox(height: 10),
+                  _PriorityPatientList(patients: patientState.patients),
+                  const SizedBox(height: 24),
 
-                // ── Tỷ lệ tuân thủ ────────────────────────────────────
-                _SectionHeader(
-                  label: 'TỶ LỆ TUÂN THỦ',
-                  onViewAll: () =>
-                      context.push(AppRoutes.nurseNonCompliantPatients),
-                ),
-                const SizedBox(height: 10),
-                _ComplianceOverviewCard(
-                  onTap: () =>
-                      context.push(AppRoutes.nurseNonCompliantPatients),
-                ),
-                const SizedBox(height: 8),
-              ],
+                  // ── Tỷ lệ tuân thủ ─────────────────────────────────────────
+                  const _SectionLabel(label: 'TỶ LỆ TUÂN THỦ TOÀN KHOA'),
+                  const SizedBox(height: 10),
+                  const _ComplianceOverviewCard(),
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
           ),
         ),
@@ -94,26 +92,16 @@ class _NurseDashboardPageState extends ConsumerState<NurseDashboardPage> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Top App Bar — primary blue, fixed
+// Top App Bar
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TopAppBar extends StatelessWidget {
-  const _TopAppBar({required this.user});
+class _DoctorTopAppBar extends StatelessWidget {
+  const _DoctorTopAppBar({required this.user});
   final UserModel? user;
 
   @override
   Widget build(BuildContext context) {
-    final displayName = user?.displayName ?? 'Người dùng';
-    final role = user?.primaryRole;
-
-    final rolePrefix = switch (role) {
-      UserRole.headNurse => 'ĐĐT.',
-      UserRole.admin => 'QTV.',
-      UserRole.patient => 'BN.',
-      _ => 'ĐD.',
-    };
-
-    final roleLabel = role?.displayName.toUpperCase() ?? 'ĐIỀU DƯỠNG';
+    final displayName = user?.displayName ?? 'Bác sĩ';
 
     return Container(
       color: AppColors.primary,
@@ -124,7 +112,6 @@ class _TopAppBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              // Avatar + name
               Container(
                 width: 40,
                 height: 40,
@@ -137,7 +124,7 @@ class _TopAppBar extends StatelessWidget {
                   color: AppColors.primaryContainer,
                 ),
                 child: const Icon(
-                  Icons.person_rounded,
+                  Icons.medical_services_rounded,
                   color: AppColors.primary,
                   size: 22,
                 ),
@@ -148,7 +135,7 @@ class _TopAppBar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '$rolePrefix $displayName',
+                    'BS. $displayName',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,
@@ -157,9 +144,9 @@ class _TopAppBar extends StatelessWidget {
                       height: 1.2,
                     ),
                   ),
-                  Text(
-                    roleLabel,
-                    style: const TextStyle(
+                  const Text(
+                    'BÁC SĨ ĐIỀU TRỊ',
+                    style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -170,7 +157,6 @@ class _TopAppBar extends StatelessWidget {
                 ],
               ),
               const Spacer(),
-              // POMS title
               const Text(
                 'POMS',
                 style: TextStyle(
@@ -182,9 +168,8 @@ class _TopAppBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              // Notification bell
               GestureDetector(
-                onTap: () {},
+                onTap: () => context.go(AppRoutes.doctorAlerts),
                 child: const Icon(
                   Icons.notifications_outlined,
                   color: Colors.white,
@@ -209,7 +194,7 @@ class _DateRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final weekdays = [
+    const weekdays = [
       'Thứ Hai',
       'Thứ Ba',
       'Thứ Tư',
@@ -221,6 +206,7 @@ class _DateRow extends StatelessWidget {
     final weekday = weekdays[now.weekday - 1];
     final dateStr =
         '$weekday, ${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Row(
@@ -236,13 +222,10 @@ class _DateRow extends StatelessWidget {
               color: Color(0xFF424656),
             ),
           ),
-          GestureDetector(
-            onTap: () {},
-            child: const Icon(
-              Icons.calendar_today_outlined,
-              color: AppColors.primary,
-              size: 20,
-            ),
+          const Icon(
+            Icons.calendar_today_outlined,
+            color: AppColors.primary,
+            size: 20,
           ),
         ],
       ),
@@ -475,6 +458,7 @@ class _PriorityPatientList extends StatelessWidget {
   const _PriorityPatientList({required this.patients});
 
   final List<PatientSummary> patients;
+
   @override
   Widget build(BuildContext context) {
     final priorityPatients = [...patients];
@@ -487,18 +471,39 @@ class _PriorityPatientList extends StatelessWidget {
       };
 
       final compare = priority[a.status]!.compareTo(priority[b.status]!);
-
-      if (compare != 0) {
-        return compare;
-      }
-
+      if (compare != 0) return compare;
       return a.pod.compareTo(b.pod);
     });
 
     final displayPatients = priorityPatients
-        .where((p) => p.status == PatientStatus.red)
+        .where(
+          (p) =>
+              p.status == PatientStatus.red || p.status == PatientStatus.yellow,
+        )
         .take(3)
         .toList();
+
+    if (displayPatients.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E5E0)),
+        ),
+        child: const Center(
+          child: Text(
+            'Không có bệnh nhân cần theo dõi đặc biệt',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              color: Color(0xFF727687),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Column(
       children: displayPatients
@@ -508,7 +513,7 @@ class _PriorityPatientList extends StatelessWidget {
               child: _PriorityPatientCard(
                 patient: patient,
                 onTap: () => context.push(
-                  AppRoutes.nursePatientDetailPath(patient.code),
+                  AppRoutes.doctorPatientDetailPath(patient.code),
                   extra: patient,
                 ),
               ),
@@ -526,7 +531,6 @@ class _PriorityPatientCard extends StatelessWidget {
   final VoidCallback onTap;
 
   PatientStatus get status => patient.status;
-  String get code => patient.code;
   String get name => patient.name;
   String get pod {
     if (patient.pod.startsWith('POD')) {
@@ -535,17 +539,7 @@ class _PriorityPatientCard extends StatelessWidget {
     return 'POD ${patient.pod}';
   }
 
-  String get room => roomLabel(patient.room);
-  String get symptom {
-    switch (patient.status) {
-      case PatientStatus.red:
-        return 'Cần theo dõi sát';
-      case PatientStatus.yellow:
-        return 'Cần theo dõi';
-      case PatientStatus.green:
-        return 'Đang hồi phục tốt';
-    }
-  }
+  String get room => _roomLabel(patient.room);
 
   Color get _statusColor => status.badgeText;
   Color get _statusBg => status.badgeBg;
@@ -553,292 +547,12 @@ class _PriorityPatientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 1.0,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5E5E0)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0A000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                // Avatar
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFECEDFA),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                _StatusBadge(
-                                  label: _statusLabel,
-                                  color: _statusColor,
-                                  bg: _statusBg,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF191B24),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$room • $pod',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 12,
-                          color: Color(0xFF424656),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        symptom,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          fontStyle: FontStyle.italic,
-                          color: _statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFFC2C6D8),
-                  size: 22,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({
-    required this.label,
-    required this.color,
-    required this.bg,
-  });
-  final String label;
-  final Color color;
-  final Color bg;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Alert summary — 2 cards
-// ─────────────────────────────────────────────────────────────────────────────
-/*
-class _AlertSummaryRow extends StatelessWidget {
-  const _AlertSummaryRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(
-          child: _AlertSummaryCard(
-            icon: Icons.notifications_active_rounded,
-            iconColor: AppColors.error,
-            iconBg: AppColors.errorContainer,
-            count: '2',
-            countColor: AppColors.error,
-            label: 'CẦN XỬ LÝ',
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _AlertSummaryCard(
-            icon: Icons.schedule_rounded,
-            iconColor: AppColors.primary,
-            iconBg: Color(0x1A0050CB),
-            count: '1',
-            countColor: AppColors.primary,
-            label: 'ĐANG XỬ LÝ',
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AlertSummaryCard extends StatelessWidget {
-  const _AlertSummaryCard({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.count,
-    required this.countColor,
-    required this.label,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String count;
-  final Color countColor;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E5E0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                count,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: countColor,
-                ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: Color(0xFF424656),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-*/
-String roomLabel(String raw) {
-  final match = RegExp(r'P?(\d+)').firstMatch(raw);
-
-  if (match == null) {
-    return raw;
-  }
-
-  return 'Phòng ${match.group(1)}';
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Compliance overview — donut chart Tuân thủ / Không tuân thủ
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ComplianceOverviewCard extends ConsumerWidget {
-  const _ComplianceOverviewCard({this.onTap});
-
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final overview = ref.watch(complianceOverviewProvider);
-
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
+      color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
         child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -851,56 +565,167 @@ class _ComplianceOverviewCard extends ConsumerWidget {
               ),
             ],
           ),
-          child: overview.when(
-            loading: () => const SizedBox(
-              height: 120,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (_, _) => _ComplianceInlineMessage(
-              message: 'Không thể tải dữ liệu tuân thủ',
-              onRetry: () => ref.invalidate(complianceOverviewProvider),
-            ),
-            data: (overview) {
-              if (overview.total == 0) {
-                return const _ComplianceInlineMessage(
-                  message: 'Chưa có dữ liệu tuân thủ',
-                );
-              }
-              final percent = (overview.complianceRate * 100).round();
-
-              return Row(
-                children: [
-                  SizedBox(
-                    width: 100,
-                    height: 100,
-                    child: _ComplianceDonut(
-                      overview: overview,
-                      percent: percent,
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFECEDFA),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: AppColors.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        _ComplianceLegendRow(
-                          color: AppColors.statusNormal,
-                          label: 'Tuân thủ',
-                          count: overview.compliant,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _statusBg,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            _statusLabel,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: _statusColor,
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        _ComplianceLegendRow(
-                          color: AppColors.error,
-                          label: 'Không tuân thủ',
-                          count: overview.nonCompliant,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF191B24),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              );
-            },
+                    const SizedBox(height: 4),
+                    Text(
+                      '$room • $pod',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: Color(0xFF424656),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFFC2C6D8),
+                size: 22,
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+String _roomLabel(String raw) {
+  final match = RegExp(r'P?(\d+)').firstMatch(raw);
+  if (match == null) return raw;
+  return 'Phòng ${match.group(1)}';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Compliance overview — donut chart Tuân thủ / Không tuân thủ
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ComplianceOverviewCard extends ConsumerWidget {
+  const _ComplianceOverviewCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overview = ref.watch(complianceOverviewProvider);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E5E0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: overview.when(
+        loading: () => const SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (_, _) => _ComplianceInlineMessage(
+          message: 'Không thể tải dữ liệu tuân thủ',
+          onRetry: () => ref.invalidate(complianceOverviewProvider),
+        ),
+        data: (overview) {
+          if (overview.total == 0) {
+            return const _ComplianceInlineMessage(
+              message: 'Chưa có dữ liệu tuân thủ',
+            );
+          }
+          final percent = (overview.complianceRate * 100).round();
+
+          return Row(
+            children: [
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: _ComplianceDonut(overview: overview, percent: percent),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  children: [
+                    _ComplianceLegendRow(
+                      color: AppColors.statusNormal,
+                      label: 'Tuân thủ',
+                      count: overview.compliant,
+                    ),
+                    const SizedBox(height: 8),
+                    _ComplianceLegendRow(
+                      color: AppColors.error,
+                      label: 'Không tuân thủ',
+                      count: overview.nonCompliant,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

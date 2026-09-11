@@ -11,4 +11,11 @@ abstract interface class AssessmentRepository {
     int page = 1,
     int limit = 10,
   });
+
+  Future<AssessmentDetail> submitReassessment(
+    String caseId, {
+    String? triageColor,
+    String? nurseNote,
+    String source = 'REASSESSMENT',
+  });
 }

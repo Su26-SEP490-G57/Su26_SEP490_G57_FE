@@ -10,6 +10,7 @@ class AlertModel extends Equatable {
     this.surveyScore,
     this.isAutoProgression,
     this.triggeredAt,
+    this.handledAt,
     this.nurseAction,
     this.nursingNote,
     this.closedAt,
@@ -27,6 +28,9 @@ class AlertModel extends Equatable {
       triggeredAt: json['triggeredAt'] != null
           ? DateTime.tryParse(json['triggeredAt'] as String)
           : null,
+      handledAt: json['handledAt'] != null
+          ? DateTime.tryParse(json['handledAt'] as String)
+          : null,
       nurseAction: json['nurseAction'] as String?,
       nursingNote: json['nursingNote'] as String?,
       closedAt: json['closedAt'] != null
@@ -43,6 +47,7 @@ class AlertModel extends Equatable {
   final String status; // e.g., 'Pending', 'Acknowledged', 'Closed'
   final bool? isAutoProgression;
   final DateTime? triggeredAt;
+  final DateTime? handledAt;
   final String? nurseAction;
   final String? nursingNote;
   final DateTime? closedAt;
@@ -56,6 +61,7 @@ class AlertModel extends Equatable {
     'status': status,
     'isAutoProgression': isAutoProgression,
     'triggeredAt': triggeredAt?.toIso8601String(),
+    'handledAt': handledAt?.toIso8601String(),
     'nurseAction': nurseAction,
     'nursingNote': nursingNote,
     'closedAt': closedAt?.toIso8601String(),
@@ -71,6 +77,7 @@ class AlertModel extends Equatable {
     status,
     isAutoProgression,
     triggeredAt,
+    handledAt,
     nurseAction,
     nursingNote,
     closedAt,
