@@ -9,10 +9,10 @@ import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/auth/domain/models/user_model.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/doctor/presentation/providers/doctor_patient_provider.dart';
 import 'package:poms/features/nurse/domain/models/compliance_overview.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
-import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 
 class DoctorDashboardPage extends ConsumerStatefulWidget {
   const DoctorDashboardPage({super.key});
@@ -38,7 +38,7 @@ class _DoctorDashboardPageState extends ConsumerState<DoctorDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final patientState = ref.watch(patientNotifierProvider);
+    final patientState = ref.watch(doctorPatientsNotifierProvider);
     final user = ref.watch(authNotifierProvider).user;
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
@@ -49,8 +49,8 @@ class _DoctorDashboardPageState extends ConsumerState<DoctorDashboardPage> {
           child: RefreshIndicator(
             color: AppColors.primary,
             onRefresh: () => ref
-                .read(patientNotifierProvider.notifier)
-                .loadPatients(limit: 100),
+                .read(doctorPatientsNotifierProvider.notifier)
+                .loadPatients(),
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.fromLTRB(20, 0, 20, bottomPad + 36),
@@ -61,8 +61,8 @@ class _DoctorDashboardPageState extends ConsumerState<DoctorDashboardPage> {
                   const _DateRow(),
                   const SizedBox(height: 24),
 
-                  // ── Tổng quan toàn viện ────────────────────────────────────
-                  const _SectionLabel(label: 'TỔNG QUAN TOÀN VIỆN'),
+                  // ── Tổng quan toàn khoa ────────────────────────────────────
+                  const _SectionLabel(label: 'TỔNG QUAN TOÀN KHOA'),
                   const SizedBox(height: 10),
                   _WardOverviewGrid(patients: patientState.patients),
                   const SizedBox(height: 24),
@@ -77,7 +77,7 @@ class _DoctorDashboardPageState extends ConsumerState<DoctorDashboardPage> {
                   const SizedBox(height: 24),
 
                   // ── Tỷ lệ tuân thủ ─────────────────────────────────────────
-                  const _SectionLabel(label: 'TỶ LỆ TUÂN THỦ TOÀN VIỆN'),
+                  const _SectionLabel(label: 'TỶ LỆ TUÂN THỦ TOÀN KHOA'),
                   const SizedBox(height: 10),
                   const _ComplianceOverviewCard(),
                   const SizedBox(height: 8),
@@ -307,8 +307,9 @@ class _WardOverviewGrid extends StatelessWidget {
     final total = patients.length;
 
     final green = patients.where((e) => e.status == PatientStatus.green).length;
-    final yellow =
-        patients.where((e) => e.status == PatientStatus.yellow).length;
+    final yellow = patients
+        .where((e) => e.status == PatientStatus.yellow)
+        .length;
     final red = patients.where((e) => e.status == PatientStatus.red).length;
 
     String percent(int count) {
@@ -475,8 +476,10 @@ class _PriorityPatientList extends StatelessWidget {
     });
 
     final displayPatients = priorityPatients
-        .where((p) =>
-            p.status == PatientStatus.red || p.status == PatientStatus.yellow)
+        .where(
+          (p) =>
+              p.status == PatientStatus.red || p.status == PatientStatus.yellow,
+        )
         .take(3)
         .toList();
 
@@ -587,7 +590,9 @@ class _PriorityPatientCard extends StatelessWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: _statusBg,
                             borderRadius: BorderRadius.circular(999),

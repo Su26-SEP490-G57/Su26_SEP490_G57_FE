@@ -6,12 +6,11 @@ import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/doctor/presentation/providers/doctor_patient_provider.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
-import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
-import 'package:poms/features/nurse/presentation/providers/patient_state.dart';
 import 'package:poms/features/nurse/presentation/widgets/patient_pagination.dart';
 
-/// Danh sách toàn bộ người bệnh trong viện dành cho Bác sĩ (không giới hạn phòng).
+/// Danh sách toàn bộ người bệnh trong khoa dành cho bác sĩ.
 class DoctorPatientsPage extends ConsumerStatefulWidget {
   const DoctorPatientsPage({super.key});
 
@@ -46,7 +45,8 @@ class _DoctorPatientsPageState extends ConsumerState<DoctorPatientsPage> {
     return patients.where((p) {
       final q = _searchQuery.toLowerCase();
 
-      final matchSearch = q.isEmpty ||
+      final matchSearch =
+          q.isEmpty ||
           p.name.toLowerCase().contains(q) ||
           p.code.toLowerCase().contains(q) ||
           p.room.toLowerCase().contains(q);
@@ -95,18 +95,14 @@ class _DoctorPatientsPageState extends ConsumerState<DoctorPatientsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final patientState = ref.watch(patientNotifierProvider);
+    final patientState = ref.watch(doctorPatientsNotifierProvider);
 
     if (patientState.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (patientState.status == PatientStatusState.error) {
+    if (patientState.errorMessage != null) {
       return Scaffold(
-        body: Center(
-          child: Text(patientState.errorMessage ?? 'Có lỗi xảy ra'),
-        ),
+        body: Center(child: Text(patientState.errorMessage ?? 'Có lỗi xảy ra')),
       );
     }
 
@@ -300,7 +296,11 @@ class _DoctorPatientsTopAppBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              const Icon(Icons.people_alt_rounded, color: Colors.white, size: 24),
+              const Icon(
+                Icons.people_alt_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -317,7 +317,7 @@ class _DoctorPatientsTopAppBar extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Toàn viện • $totalPatients bệnh nhân',
+                      'Toàn khoa • $totalPatients bệnh nhân',
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 12,

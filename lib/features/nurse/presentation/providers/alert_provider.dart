@@ -153,6 +153,7 @@ class AlertsNotifier extends StateNotifier<AlertsState> {
           surveyScore: a.surveyScore,
           isAutoProgression: a.isAutoProgression,
           triggeredAt: a.triggeredAt,
+          handledAt: DateTime.now(),
           nurseAction: a.nurseAction,
           nursingNote: a.nursingNote,
           closedAt: a.closedAt,

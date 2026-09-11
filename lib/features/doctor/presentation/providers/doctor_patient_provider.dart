@@ -13,7 +13,9 @@ final doctorPatientRemoteDatasourceProvider =
       return DoctorPatientRemoteDataSource(ref.watch(appDioProvider));
     });
 
-final doctorPatientRepositoryProvider = Provider<DoctorPatientRepository>((ref) {
+final doctorPatientRepositoryProvider = Provider<DoctorPatientRepository>((
+  ref,
+) {
   return DoctorPatientRepositoryImpl(
     ref.watch(doctorPatientRemoteDatasourceProvider),
   );
@@ -52,7 +54,8 @@ class DoctorPatientsState {
 // ── Notifier ────────────────────────────────────────────────────────────────
 
 class DoctorPatientsNotifier extends StateNotifier<DoctorPatientsState> {
-  DoctorPatientsNotifier(this._repository) : super(const DoctorPatientsState()) {
+  DoctorPatientsNotifier(this._repository)
+    : super(const DoctorPatientsState()) {
     loadPatients();
   }
 
@@ -64,7 +67,9 @@ class DoctorPatientsNotifier extends StateNotifier<DoctorPatientsState> {
     try {
       final patients = await _repository.getAllPatients(
         search: search,
-        limit: 100,
+        // A doctor sees the complete ward roster. UI pagination is handled
+        // locally, so fetch the full in-scope list instead of a partial page.
+        limit: 1000,
       );
       if (!mounted) return;
       state = state.copyWith(isLoading: false, patients: patients);
@@ -93,13 +98,14 @@ final doctorPatientsNotifierProvider =
     });
 
 /// Convenience: look up a single patient by caseId from the doctor cache.
-final doctorPatientByIdProvider = Provider.family<PatientSummary?, String>(
-  (ref, caseId) {
-    return ref
-        .watch(doctorPatientsNotifierProvider)
-        .patients
-        .where((p) => p.code == caseId)
-        .cast<PatientSummary?>()
-        .firstOrNull;
-  },
-);
+final doctorPatientByIdProvider = Provider.family<PatientSummary?, String>((
+  ref,
+  caseId,
+) {
+  return ref
+      .watch(doctorPatientsNotifierProvider)
+      .patients
+      .where((p) => p.code == caseId)
+      .cast<PatientSummary?>()
+      .firstOrNull;
+});

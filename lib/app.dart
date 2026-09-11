@@ -155,6 +155,12 @@ class _AppState extends ConsumerState<App> {
       return;
     }
 
+    // ===== Doctor =====
+    if (role == UserRole.doctor) {
+      router.go(AppRoutes.doctorAlerts);
+      return;
+    }
+
     // fallback
     if (role == UserRole.patient) {
       router.go(AppRoutes.patientDashboard);
