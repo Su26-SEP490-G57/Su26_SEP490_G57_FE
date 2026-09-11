@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:poms/core/constants/app_constants.dart';
 import 'package:poms/core/errors/app_exception.dart';
 import 'package:poms/features/nurse/data/models/analytics_response.dart';
+import 'package:poms/features/nurse/data/models/patient_compliance_list_response.dart';
 
 class AnalyticsRemoteDataSource {
   AnalyticsRemoteDataSource(this._dio);
@@ -30,6 +31,46 @@ class AnalyticsRemoteDataSource {
       final data = response.data;
       if (data == null) throw const ServerException(statusCode: 500);
       return PatientComplianceResponse.fromJson(data);
+    } on DioException catch (e) {
+      _handleError(e);
+    }
+  }
+
+  Future<PatientComplianceListResponse> getComplianceList({
+    String? search,
+    int? level,
+    String? operationTypeId,
+    String? room,
+    String overallStatus = 'ALL',
+    bool? dietaryNotViewed,
+    bool? healthEducationNotViewed,
+    bool? missedMorning,
+    bool? missedAfternoon,
+    bool? missedBoth,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        AppConstants.endpointComplianceList,
+        queryParameters: {
+          if (search != null && search.isNotEmpty) 'search': search,
+          'level': ?level,
+          'operationTypeId': ?operationTypeId,
+          'room': ?room,
+          'overallStatus': overallStatus,
+          'dietaryNotViewed': ?dietaryNotViewed,
+          'healthEducationNotViewed': ?healthEducationNotViewed,
+          'missedMorning': ?missedMorning,
+          'missedAfternoon': ?missedAfternoon,
+          'missedBoth': ?missedBoth,
+          'page': page,
+          'limit': limit,
+        },
+      );
+      final data = response.data;
+      if (data == null) throw const ServerException(statusCode: 500);
+      return PatientComplianceListResponse.fromJson(data);
     } on DioException catch (e) {
       _handleError(e);
     }

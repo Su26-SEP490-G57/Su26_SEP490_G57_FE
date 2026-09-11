@@ -17,6 +17,8 @@ abstract final class AppConstants {
   static const endpointPatients = '/patients';
   static const String endpointAnalyticsOverview =
       '/patients/analytics/overview';
+  static const String endpointComplianceList =
+      '/patients/analytics/compliance-list';
   static String endpointPatientCompliance(String caseId) =>
       '/patients/$caseId/compliance';
   static String endpointAssessmentMatrix(String caseId) =>

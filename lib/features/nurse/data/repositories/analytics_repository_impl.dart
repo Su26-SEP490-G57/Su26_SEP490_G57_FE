@@ -3,6 +3,8 @@ import 'package:poms/features/nurse/data/datasources/analytics_remote_datasource
 import 'package:poms/features/nurse/domain/models/assessment_matrix.dart';
 import 'package:poms/features/nurse/domain/models/compliance_overview.dart';
 import 'package:poms/features/nurse/domain/models/patient_compliance.dart';
+import 'package:poms/features/nurse/domain/models/patient_compliance_list_page.dart';
+import 'package:poms/features/nurse/domain/models/patient_compliance_summary.dart';
 import 'package:poms/features/nurse/domain/repositories/analytics_repository.dart';
 
 class AnalyticsRepositoryImpl implements AnalyticsRepository {
@@ -70,6 +72,69 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
               ),
             )
             .toList(),
+      );
+    } catch (e) {
+      throw mapException(e);
+    }
+  }
+
+  @override
+  Future<PatientComplianceListPage> getComplianceList({
+    String? search,
+    int? level,
+    String? operationTypeId,
+    String? room,
+    String overallStatus = 'ALL',
+    bool? dietaryNotViewed,
+    bool? healthEducationNotViewed,
+    bool? missedMorning,
+    bool? missedAfternoon,
+    bool? missedBoth,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      final response = await _dataSource.getComplianceList(
+        search: search,
+        level: level,
+        operationTypeId: operationTypeId,
+        room: room,
+        overallStatus: overallStatus,
+        dietaryNotViewed: dietaryNotViewed,
+        healthEducationNotViewed: healthEducationNotViewed,
+        missedMorning: missedMorning,
+        missedAfternoon: missedAfternoon,
+        missedBoth: missedBoth,
+        page: page,
+        limit: limit,
+      );
+      return PatientComplianceListPage(
+        items: response.data
+            .map(
+              (item) => PatientComplianceSummary(
+                caseId: item.caseId,
+                fullName: item.fullName,
+                roomBed: item.roomBed,
+                currentPod: item.currentPod,
+                level: item.level,
+                levelName: item.levelName,
+                viewedGuidance: item.viewedGuidance,
+                viewedEducation: item.viewedEducation,
+                morningAssessmentStatus: ScheduledAssessmentStatus.fromApi(
+                  item.morningAssessmentStatus,
+                ),
+                afternoonAssessmentStatus: ScheduledAssessmentStatus.fromApi(
+                  item.afternoonAssessmentStatus,
+                ),
+                complianceRate: item.complianceRate,
+                isCompliant: item.isCompliant,
+                isDailyCompliant: item.isDailyCompliant,
+              ),
+            )
+            .toList(),
+        total: response.total,
+        page: response.page,
+        limit: response.limit,
       );
     } catch (e) {
       throw mapException(e);
