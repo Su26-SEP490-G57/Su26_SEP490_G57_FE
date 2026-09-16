@@ -4,8 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/auth/domain/models/user_model.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/nurse/domain/models/patient_compliance.dart';
 import 'package:poms/features/nurse/domain/models/patient_compliance_summary.dart';
+import 'package:poms/features/nurse/presentation/providers/assigned_rooms_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/noncompliant_patients_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/patient_pagination.dart';
 
@@ -137,115 +140,182 @@ class _NurseNonCompliantPatientsPageState
     _resetPage();
   }
 
+  Widget _buildUnassignedState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF7E6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.meeting_room_outlined,
+                size: 56,
+                color: Color(0xFFF59E0B),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Bạn chưa được phân công phụ trách phòng bệnh nào.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF191B24),
+                fontFamily: 'Inter',
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Vui lòng liên hệ Điều dưỡng trưởng để được phân công phòng bệnh.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF727687),
+                fontFamily: 'Inter',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final listAsync = ref.watch(complianceListProvider);
     final filters = ref.watch(nonCompliantFiltersProvider);
     final page = ref.watch(nonCompliantPageProvider);
+
+    // Backend only auto-scopes the compliance list to the caller's assigned
+    // rooms for the plain Nurse role (Head Nurse/Admin keep the full
+    // department view) — mirror that here so their room assignment (usually
+    // empty) never blocks them from seeing the list.
+    final isPlainNurse =
+        ref.watch(authNotifierProvider).user?.primaryRole == UserRole.nurse;
+    final assignedRoomsAsync = isPlainNurse
+        ? ref.watch(assignedRoomsProvider)
+        : null;
+    final assignedRooms = assignedRoomsAsync?.value ?? [];
+    final isUnassigned =
+        isPlainNurse &&
+        (assignedRoomsAsync?.hasValue ?? false) &&
+        assignedRooms.isEmpty;
+
+    Widget body;
+    if (isPlainNurse && (assignedRoomsAsync?.isLoading ?? false)) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (isUnassigned) {
+      body = _buildUnassignedState();
+    } else {
+      final listAsync = ref.watch(complianceListProvider);
+      body = ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        children: [
+          _SearchBar(
+            controller: _searchController,
+            onChanged: (v) {
+              ref.read(nonCompliantSearchQueryProvider.notifier).state = v;
+              _resetPage();
+            },
+          ),
+          const SizedBox(height: 12),
+          _FilterChipsRow(
+            filters: filters,
+            onOverallStatusTap: _showOverallStatusPicker,
+            onAssessmentSlotTap: _showAssessmentSlotPicker,
+            onDietaryToggle: _toggleDietaryNotViewed,
+            onHealthEducationToggle: _toggleHealthEducationNotViewed,
+          ),
+          const SizedBox(height: 12),
+          listAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (err, _) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Center(child: Text('Lỗi: $err')),
+            ),
+            data: (result) {
+              if (result.items.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Text('Không có người bệnh phù hợp bộ lọc.'),
+                  ),
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'Tổng: ${result.total} người bệnh',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: Color(0xFF727687),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...result.items.map(
+                    (p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _PatientComplianceCard(
+                        data: p,
+                        onTap: () => context.push(
+                          AppRoutes.nursePatientDetailPath(p.caseId),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  PatientPagination(
+                    currentPage: page,
+                    totalPages: result.totalPages,
+                    startIndex: result.total == 0
+                        ? 0
+                        : (page - 1) * result.limit + 1,
+                    endIndex: (page * result.limit).clamp(0, result.total),
+                    total: result.total,
+                    onPrevious: () {
+                      if (page <= 1) return;
+                      ref.read(nonCompliantPageProvider.notifier).state =
+                          page - 1;
+                    },
+                    onNext: () {
+                      if (page >= result.totalPages) return;
+                      ref.read(nonCompliantPageProvider.notifier).state =
+                          page + 1;
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      );
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF8FF),
       body: Column(
         children: [
-          _TopAppBar(onBack: () => context.pop()),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              children: [
-                _SearchBar(
-                  controller: _searchController,
-                  onChanged: (v) {
-                    ref.read(nonCompliantSearchQueryProvider.notifier).state =
-                        v;
-                    _resetPage();
-                  },
-                ),
-                const SizedBox(height: 12),
-                _FilterChipsRow(
-                  filters: filters,
-                  onOverallStatusTap: _showOverallStatusPicker,
-                  onAssessmentSlotTap: _showAssessmentSlotPicker,
-                  onDietaryToggle: _toggleDietaryNotViewed,
-                  onHealthEducationToggle: _toggleHealthEducationNotViewed,
-                ),
-                const SizedBox(height: 12),
-                listAsync.when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (err, _) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 48),
-                    child: Center(child: Text('Lỗi: $err')),
-                  ),
-                  data: (result) {
-                    if (result.items.isEmpty) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(32.0),
-                          child: Text('Không có người bệnh phù hợp bộ lọc.'),
-                        ),
-                      );
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            'Tổng: ${result.total} người bệnh',
-                            style: const TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
-                              color: Color(0xFF727687),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ...result.items.map(
-                          (p) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _PatientComplianceCard(
-                              data: p,
-                              onTap: () => context.push(
-                                AppRoutes.nursePatientDetailPath(p.caseId),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        PatientPagination(
-                          currentPage: page,
-                          totalPages: result.totalPages,
-                          startIndex: result.total == 0
-                              ? 0
-                              : (page - 1) * result.limit + 1,
-                          endIndex: (page * result.limit).clamp(
-                            0,
-                            result.total,
-                          ),
-                          total: result.total,
-                          onPrevious: () {
-                            if (page <= 1) return;
-                            ref.read(nonCompliantPageProvider.notifier).state =
-                                page - 1;
-                          },
-                          onNext: () {
-                            if (page >= result.totalPages) return;
-                            ref.read(nonCompliantPageProvider.notifier).state =
-                                page + 1;
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
+          _TopAppBar(
+            onBack: () => context.pop(),
+            assignedRooms: isPlainNurse ? assignedRooms : null,
           ),
+          Expanded(child: body),
         ],
       ),
     );
@@ -257,12 +327,20 @@ class _NurseNonCompliantPatientsPageState
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TopAppBar extends StatelessWidget {
-  const _TopAppBar({required this.onBack});
+  const _TopAppBar({required this.onBack, required this.assignedRooms});
 
   final VoidCallback onBack;
 
+  /// Null for Head Nurse/Admin (department-wide view, no subtitle shown).
+  final List<String>? assignedRooms;
+
   @override
   Widget build(BuildContext context) {
+    final rooms = assignedRooms;
+    final roomsText = rooms == null
+        ? null
+        : (rooms.isEmpty ? 'Chưa phân phòng' : 'Phòng: ${rooms.join(", ")}');
+
     return Container(
       color: AppColors.primary,
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -276,15 +354,30 @@ class _TopAppBar extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                 onPressed: onBack,
               ),
-              const Expanded(
-                child: Text(
-                  'Người bệnh không tuân thủ',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Người bệnh không tuân thủ',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (roomsText != null)
+                      Text(
+                        roomsText,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
