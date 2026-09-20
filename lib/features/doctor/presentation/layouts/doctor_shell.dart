@@ -1,25 +1,17 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_routes.dart';
-import 'package:poms/features/nurse/presentation/providers/alert_provider.dart';
 
-/// Single Scaffold cho toàn bộ nurse feature.
-/// Bottom nav sử dụng hiệu ứng Liquid Glass / Glassmorphism.
-///
-/// `extendBody: true` cho phép body vẽ xuyên qua nav bar (hiệu ứng kính).
-/// Để các trang con không bị nội dung cuối khuất sau nav bar, ta override
-/// `MediaQuery.padding.bottom` để inject đúng chiều cao floating nav bar.
-class NurseShell extends StatelessWidget {
-  const NurseShell({required this.child, super.key});
+/// Scaffold for the doctor feature — mirrors the Nurse glass nav bar design.
+class DoctorShell extends StatelessWidget {
+  const DoctorShell({required this.child, super.key});
 
   final Widget child;
 
-  /// Chiều cao hiệu dụng của floating nav bar tính từ safe-area bottom:
-  ///   66px (container height) + 12px (khoảng cách dưới khi không có safe area)
+  /// Height of the floating glass nav bar (same as NurseShell).
   static const double _navBarInset = 66.0 + 12.0;
 
   @override
@@ -30,9 +22,6 @@ class NurseShell extends StatelessWidget {
       body: Builder(
         builder: (ctx) {
           final mq = MediaQuery.of(ctx);
-          // Cộng thêm chiều cao nav bar vào padding.bottom hiện có.
-          // Như vậy tất cả ListView / CustomScrollView / SafeArea trong trang con
-          // đều tự động có đủ khoảng trống phía dưới — không cần sửa từng trang.
           return MediaQuery(
             data: mq.copyWith(
               padding: mq.padding.copyWith(
@@ -43,24 +32,22 @@ class NurseShell extends StatelessWidget {
           );
         },
       ),
-      bottomNavigationBar: const _GlassBottomNav(),
+      bottomNavigationBar: const _DoctorGlassBottomNav(),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Glass Bottom Navigation Bar
+// Glass Bottom Navigation
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _GlassBottomNav extends ConsumerWidget {
-  const _GlassBottomNav();
+class _DoctorGlassBottomNav extends StatelessWidget {
+  const _DoctorGlassBottomNav();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final pendingAlerts = ref.watch(pendingAlertsProvider);
-    final hasPendingAlerts = pendingAlerts.isNotEmpty;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -76,7 +63,6 @@ class _GlassBottomNav extends ConsumerWidget {
           child: Container(
             height: 66,
             decoration: BoxDecoration(
-              // Nền kính: gradient trắng trong suốt tạo hiệu ứng frosted glass
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -86,12 +72,10 @@ class _GlassBottomNav extends ConsumerWidget {
                 ],
               ),
               borderRadius: BorderRadius.circular(28),
-              // Viền highlight trắng tạo cảm giác kính có độ dày
               border: Border.all(
                 color: Colors.white.withValues(alpha: 0.50),
                 width: 1.0,
               ),
-              // Shadow bên dưới để thanh "nổi"
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFF00459A).withValues(alpha: 0.10),
@@ -109,34 +93,33 @@ class _GlassBottomNav extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _GlassNavItem(
+                _DoctorNavItem(
                   icon: Icons.dashboard_outlined,
                   iconFilled: Icons.dashboard_rounded,
                   label: 'Tổng quan',
-                  isActive: location == AppRoutes.nurseDashboard,
-                  onTap: () => context.go(AppRoutes.nurseDashboard),
+                  isActive: location == AppRoutes.doctorDashboard,
+                  onTap: () => context.go(AppRoutes.doctorDashboard),
                 ),
-                _GlassNavItem(
+                _DoctorNavItem(
                   icon: Icons.notifications_outlined,
                   iconFilled: Icons.notifications_rounded,
-                  label: 'Cảnh báo',
-                  isActive: location == AppRoutes.nurseAlerts,
-                  onTap: () => context.go(AppRoutes.nurseAlerts),
-                  badge: hasPendingAlerts,
+                  label: 'Thông báo',
+                  isActive: location == AppRoutes.doctorAlerts,
+                  onTap: () => context.go(AppRoutes.doctorAlerts),
                 ),
-                _GlassNavItem(
+                _DoctorNavItem(
                   icon: Icons.people_outline_rounded,
                   iconFilled: Icons.people_rounded,
                   label: 'Danh sách',
-                  isActive: location.startsWith(AppRoutes.nursePatients),
-                  onTap: () => context.go(AppRoutes.nursePatients),
+                  isActive: location.startsWith(AppRoutes.doctorPatients),
+                  onTap: () => context.go(AppRoutes.doctorPatients),
                 ),
-                _GlassNavItem(
+                _DoctorNavItem(
                   icon: Icons.account_circle_outlined,
                   iconFilled: Icons.account_circle_rounded,
-                  label: 'Hồ sơ',
-                  isActive: location == AppRoutes.nurseProfile,
-                  onTap: () => context.go(AppRoutes.nurseProfile),
+                  label: 'Tài khoản',
+                  isActive: location == AppRoutes.doctorProfile,
+                  onTap: () => context.go(AppRoutes.doctorProfile),
                 ),
               ],
             ),
@@ -148,17 +131,16 @@ class _GlassBottomNav extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Individual Glass Nav Item
+// Individual Nav Item (mirrors _GlassNavItem from NurseShell)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _GlassNavItem extends StatelessWidget {
-  const _GlassNavItem({
+class _DoctorNavItem extends StatelessWidget {
+  const _DoctorNavItem({
     required this.icon,
     required this.iconFilled,
     required this.label,
     required this.isActive,
     required this.onTap,
-    this.badge = false,
   });
 
   final IconData icon;
@@ -166,7 +148,6 @@ class _GlassNavItem extends StatelessWidget {
   final String label;
   final bool isActive;
   final VoidCallback onTap;
-  final bool badge;
 
   static const _activeIconColor = Colors.white;
   static const _inactiveColor = Color(0xFF424656);
@@ -183,12 +164,10 @@ class _GlassNavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Active Pill Container + Icon + Badge ─────────────
             Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
-                // Active Capsule Pill Background
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
@@ -214,8 +193,6 @@ class _GlassNavItem extends StatelessWidget {
                         : null,
                   ),
                 ),
-
-                // Animated Icon
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   transitionBuilder: (child, animation) {
@@ -234,29 +211,9 @@ class _GlassNavItem extends StatelessWidget {
                     size: 20,
                   ),
                 ),
-
-                // Badge Notification Red Dot
-                if (badge)
-                  Positioned(
-                    top: isActive ? -1 : -2,
-                    right: isActive ? 4 : 2,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFBA1A1A),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.2),
-                      ),
-                    ),
-                  ),
               ],
             ),
-
             const SizedBox(height: 2.5),
-
-            // ── Label ──────────────────────────────────────────────
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
