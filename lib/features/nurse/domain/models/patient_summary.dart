@@ -63,6 +63,7 @@ class PatientSummary {
     this.assessmentTotal = 0,
     this.lastAssessmentTime,
     this.needsIntervention = false,
+    this.dietLevel = 0,
   });
 
   // ── List fields ──────────────────────────────────────────────────
@@ -91,6 +92,7 @@ class PatientSummary {
   final int assessmentTotal;
   final String? lastAssessmentTime;
   final bool needsIntervention;
+  final int dietLevel;
 
   /// POD number chỉ (vd: "POD 2" → "2")
   String get podNumber => pod.replaceAll(RegExp(r'[^0-9]'), '');
@@ -119,6 +121,7 @@ class PatientSummary {
     int? assessmentTotal,
     String? lastAssessmentTime,
     bool? needsIntervention,
+    int? dietLevel,
   }) {
     return PatientSummary(
       code: code ?? this.code,
@@ -144,6 +147,7 @@ class PatientSummary {
       assessmentTotal: assessmentTotal ?? this.assessmentTotal,
       lastAssessmentTime: lastAssessmentTime ?? this.lastAssessmentTime,
       needsIntervention: needsIntervention ?? this.needsIntervention,
+      dietLevel: dietLevel ?? this.dietLevel,
     );
   }
 }

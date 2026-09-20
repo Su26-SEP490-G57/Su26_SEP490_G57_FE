@@ -45,6 +45,7 @@ class PatientResponse extends Equatable {
     required this.diagnosis,
     required this.roomBed,
     required this.currentPod,
+    required this.currentDietLevel,
     required this.bmi,
     required this.surgeryDate,
     required this.account,
@@ -64,6 +65,7 @@ class PatientResponse extends Equatable {
       hasGiAnastomosis: json['hasGiAnastomosis'] as bool?,
       roomBed: json['roomBed'] as String?,
       currentPod: json['currentPod'] as int? ?? 0,
+      currentDietLevel: json['currentDietLevel'] as int? ?? 0,
       bmi: (json['bmi'] as num?)?.toDouble(),
       surgeryDate: json['surgeryDate'] as String?,
       account: AccountResponse.fromJson(
@@ -86,6 +88,7 @@ class PatientResponse extends Equatable {
   final bool? hasGiAnastomosis;
   final String? roomBed;
   final int currentPod;
+  final int currentDietLevel;
   final double? bmi;
   final String? surgeryDate;
 
@@ -104,6 +107,7 @@ class PatientResponse extends Equatable {
       'hasGiAnastomosis': hasGiAnastomosis,
       'roomBed': roomBed,
       'currentPod': currentPod,
+      'currentDietLevel': currentDietLevel,
       'bmi': bmi,
       'surgeryDate': surgeryDate,
       'account': account.toJson(),
@@ -122,6 +126,7 @@ class PatientResponse extends Equatable {
     hasGiAnastomosis,
     roomBed,
     currentPod,
+    currentDietLevel,
     bmi,
     surgeryDate,
     account,
