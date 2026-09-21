@@ -47,12 +47,14 @@ class _VitalSignsTabState extends ConsumerState<VitalSignsTab> {
 
   // ── Validators (thông báo tiếng Việt, khớp ngưỡng với backend) ────────────
 
+  // `min`/`max` để trống → không giới hạn khoảng giá trị, chỉ còn bắt buộc
+  // nhập + phải là số nguyên (áp dụng cho huyết áp và nhịp thở theo yêu cầu).
   String? _validateInt(
     String? value, {
     required String label,
-    required int min,
-    required int max,
-    required String unit,
+    int? min,
+    int? max,
+    String unit = '',
   }) {
     if (value == null || value.trim().isEmpty) {
       return 'Vui lòng nhập $label';
@@ -63,7 +65,7 @@ class _VitalSignsTabState extends ConsumerState<VitalSignsTab> {
       return '$label phải là số nguyên';
     }
 
-    if (parsed < min || parsed > max) {
+    if (min != null && max != null && (parsed < min || parsed > max)) {
       return '$label phải trong khoảng $min–$max $unit';
     }
 
@@ -75,26 +77,26 @@ class _VitalSignsTabState extends ConsumerState<VitalSignsTab> {
       return 'Vui lòng nhập nhiệt độ';
     }
 
-    final parsed = double.tryParse(value.trim().replaceAll(',', '.'));
+    final normalized = value.trim().replaceAll(',', '.');
+    final parsed = double.tryParse(normalized);
     if (parsed == null) {
       return 'Nhiệt độ phải là số';
     }
 
     if (parsed < 30.0 || parsed > 43.0) {
-      return 'Nhiệt độ phải trong khoảng 30.0–43.0 °C';
+      return 'Nhiệt độ phải trong khoảng 30.00–43.00 °C';
+    }
+
+    final dotIndex = normalized.indexOf('.');
+    if (dotIndex != -1 && normalized.length - dotIndex - 1 > 2) {
+      return 'Nhiệt độ tối đa 2 chữ số thập phân';
     }
 
     return null;
   }
 
   String? _validateDiastolic(String? value) {
-    final base = _validateInt(
-      value,
-      label: 'Huyết áp tâm trương',
-      min: 30,
-      max: 150,
-      unit: 'mmHg',
-    );
+    final base = _validateInt(value, label: 'Huyết áp tâm trương');
     if (base != null) return base;
 
     final systolic = int.tryParse(_systolicController.text.trim());
@@ -222,19 +224,14 @@ class _VitalSignsTabState extends ConsumerState<VitalSignsTab> {
                       child: AppTextField(
                         controller: _systolicController,
                         label: 'HA tâm thu (mmHg)',
-                        hint: '60 – 250',
+                        hint: 'mmHg',
                         keyboardType: TextInputType.number,
                         textInputAction: TextInputAction.next,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
-                        validator: (value) => _validateInt(
-                          value,
-                          label: 'Huyết áp tâm thu',
-                          min: 60,
-                          max: 250,
-                          unit: 'mmHg',
-                        ),
+                        validator: (value) =>
+                            _validateInt(value, label: 'Huyết áp tâm thu'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -242,7 +239,7 @@ class _VitalSignsTabState extends ConsumerState<VitalSignsTab> {
                       child: AppTextField(
                         controller: _diastolicController,
                         label: 'HA tâm trương (mmHg)',
-                        hint: '30 – 150',
+                        hint: 'mmHg',
                         keyboardType: TextInputType.number,
                         textInputAction: TextInputAction.next,
                         inputFormatters: [
@@ -257,7 +254,7 @@ class _VitalSignsTabState extends ConsumerState<VitalSignsTab> {
                 AppTextField(
                   controller: _temperatureController,
                   label: 'Nhiệt độ (°C)',
-                  hint: '30.0 – 43.0',
+                  hint: '30.00 – 43.00',
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -271,17 +268,11 @@ class _VitalSignsTabState extends ConsumerState<VitalSignsTab> {
                 AppTextField(
                   controller: _respiratoryController,
                   label: 'Nhịp thở (lần/phút)',
-                  hint: '4 – 60',
+                  hint: 'lần/phút',
                   keyboardType: TextInputType.number,
                   textInputAction: TextInputAction.next,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (value) => _validateInt(
-                    value,
-                    label: 'Nhịp thở',
-                    min: 4,
-                    max: 60,
-                    unit: 'lần/phút',
-                  ),
+                  validator: (value) => _validateInt(value, label: 'Nhịp thở'),
                 ),
                 const SizedBox(height: 12),
                 AppTextField(
@@ -464,7 +455,7 @@ class _VitalSignsHistoryCard extends StatelessWidget {
               ),
               _VitalChip(
                 label: 'Nhiệt độ',
-                value: '${record.temperatureCelsius.toStringAsFixed(1)} °C',
+                value: '${record.temperatureCelsius.toStringAsFixed(2)} °C',
               ),
               _VitalChip(
                 label: 'Nhịp thở',
