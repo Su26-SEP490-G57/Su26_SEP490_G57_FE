@@ -53,6 +53,8 @@ class PatientResponse extends Equatable {
     required this.level,
     required this.method,
     required this.hasGiAnastomosis,
+    this.activeCareLevel,
+    this.activeTreatmentOrderId,
   });
 
   factory PatientResponse.fromJson(Map<String, dynamic> json) {
@@ -77,6 +79,8 @@ class PatientResponse extends Equatable {
               json['operationType'] as Map<String, dynamic>,
             ),
       level: json['level'],
+      activeCareLevel: json['activeCareLevel'] as String?,
+      activeTreatmentOrderId: (json['activeTreatmentOrderId'] as num?)?.toInt(),
     );
   }
 
@@ -97,6 +101,10 @@ class PatientResponse extends Equatable {
 
   final dynamic level;
 
+  /// `LEVEL_1` | `LEVEL_2` | `LEVEL_3` | null — mức chăm sóc đang hiệu lực.
+  final String? activeCareLevel;
+  final int? activeTreatmentOrderId;
+
   Map<String, dynamic> toJson() {
     return {
       'caseId': caseId,
@@ -113,6 +121,8 @@ class PatientResponse extends Equatable {
       'account': account.toJson(),
       'operationType': operationType?.toJson(),
       'level': level,
+      'activeCareLevel': activeCareLevel,
+      'activeTreatmentOrderId': activeTreatmentOrderId,
     };
   }
 
@@ -132,6 +142,8 @@ class PatientResponse extends Equatable {
     account,
     operationType,
     level,
+    activeCareLevel,
+    activeTreatmentOrderId,
   ];
 }
 

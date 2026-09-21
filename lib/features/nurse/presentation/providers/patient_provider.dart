@@ -83,6 +83,7 @@ final patientByIdProvider = Provider.family<PatientSummary?, String>((
         lastAssessmentTime: patient.lastAssessmentTime,
         needsIntervention: patient.needsIntervention,
         dietLevel: patient.dietLevel,
+        careLevel: patient.careLevel,
       );
     }),
   );
@@ -116,5 +117,6 @@ final patientByIdProvider = Provider.family<PatientSummary?, String>((
     lastAssessmentTime: snapshot.lastAssessmentTime,
     needsIntervention: snapshot.needsIntervention,
     dietLevel: snapshot.dietLevel,
+    careLevel: snapshot.careLevel,
   );
 });

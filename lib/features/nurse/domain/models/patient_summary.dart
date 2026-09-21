@@ -64,6 +64,7 @@ class PatientSummary {
     this.lastAssessmentTime,
     this.needsIntervention = false,
     this.dietLevel = 0,
+    this.careLevel,
   });
 
   // ── List fields ──────────────────────────────────────────────────
@@ -94,6 +95,10 @@ class PatientSummary {
   final bool needsIntervention;
   final int dietLevel;
 
+  /// Mức chăm sóc bác sĩ chỉ định (1/2/3), null khi chưa chỉ định.
+  /// Hoàn toàn tách biệt với [status] (phân loại ĐỎ/VÀNG/XANH).
+  final int? careLevel;
+
   /// POD number chỉ (vd: "POD 2" → "2")
   String get podNumber => pod.replaceAll(RegExp(r'[^0-9]'), '');
 
@@ -122,6 +127,7 @@ class PatientSummary {
     String? lastAssessmentTime,
     bool? needsIntervention,
     int? dietLevel,
+    int? careLevel,
   }) {
     return PatientSummary(
       code: code ?? this.code,
@@ -148,6 +154,7 @@ class PatientSummary {
       lastAssessmentTime: lastAssessmentTime ?? this.lastAssessmentTime,
       needsIntervention: needsIntervention ?? this.needsIntervention,
       dietLevel: dietLevel ?? this.dietLevel,
+      careLevel: careLevel ?? this.careLevel,
     );
   }
 }

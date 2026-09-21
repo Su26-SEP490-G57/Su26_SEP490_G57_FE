@@ -24,6 +24,26 @@ abstract final class AppConstants {
   static String endpointAssessmentMatrix(String caseId) =>
       '/patients/$caseId/assessment-matrix';
 
+  // API endpoints — chỉ số sinh tồn
+  static const String endpointVitalSigns = '/vital-signs';
+  static String endpointVitalSignsByPatient(String caseId) =>
+      '/vital-signs/patient/$caseId';
+
+  // API endpoints — chỉ định điều trị
+  static const String endpointTreatmentOrders = '/treatment-orders';
+  static String endpointTreatmentOrdersByPatient(String caseId) =>
+      '/treatment-orders/patient/$caseId';
+
+  // API endpoints — phiếu theo dõi chăm sóc
+  static const String endpointCareObservationMyTasks =
+      '/care-observation/tasks/mine';
+  static String endpointCareObservationTaskByPatient(String caseId) =>
+      '/care-observation/tasks/patient/$caseId';
+  static String endpointCareObservationTask(int taskId) =>
+      '/care-observation/tasks/$taskId';
+  static String endpointCareObservationTaskEntries(int taskId) =>
+      '/care-observation/tasks/$taskId/entries';
+
   // API
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 30);

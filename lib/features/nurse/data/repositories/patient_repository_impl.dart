@@ -5,6 +5,7 @@ import 'package:poms/features/nurse/data/datasources/patient_socket_datasource.d
 import 'package:poms/features/nurse/data/models/patient_response.dart';
 import 'package:poms/features/nurse/domain/models/patient_page.dart';
 import 'package:poms/features/nurse/domain/repositories/patient_repository.dart';
+import 'package:poms/features/nurse/domain/models/care_level.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
 class PatientRepositoryImpl implements PatientRepository {
@@ -133,6 +134,7 @@ class PatientRepositoryImpl implements PatientRepository {
       operationTypeName: patient.operationType?.name,
       operationMethod: patient.method,
       hasGiAnastomosis: patient.hasGiAnastomosis,
+      careLevel: CareLevelX.fromBackend(patient.activeCareLevel)?.value,
     );
   }
 }
