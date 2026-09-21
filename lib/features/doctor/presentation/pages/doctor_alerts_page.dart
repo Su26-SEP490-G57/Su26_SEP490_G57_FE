@@ -5,10 +5,10 @@ import 'package:intl/intl.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/doctor/domain/models/doctor_notification.dart';
 import 'package:poms/features/doctor/presentation/providers/doctor_notification_provider.dart';
-import 'package:poms/features/nurse/domain/models/alert_model.dart';
 
-/// Thông báo cho bác sĩ khi điều dưỡng hoàn thành xử trí một cảnh báo.
+/// Thông báo cho bác sĩ khi điều dưỡng chủ động tạm dừng mức ăn.
 class DoctorAlertsPage extends ConsumerWidget {
   const DoctorAlertsPage({super.key});
 
@@ -17,7 +17,7 @@ class DoctorAlertsPage extends ConsumerWidget {
     // The initial HTTP request remains the source of truth if the socket is
     // temporarily unavailable.
     ref.watch(doctorNotificationsRealtimeProvider);
-    final notifications = ref.watch(doctorHandledAlertsProvider);
+    final notifications = ref.watch(doctorNotificationsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF8FF),
@@ -38,29 +38,29 @@ class DoctorAlertsPage extends ConsumerWidget {
       body: notifications.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _LoadError(
-          onRetry: () => ref.invalidate(doctorHandledAlertsProvider),
+          onRetry: () => ref.invalidate(doctorNotificationsProvider),
         ),
         data: (alerts) {
           if (alerts.isEmpty) return const _EmptyNotifications();
 
           return RefreshIndicator(
             onRefresh: () async {
-              ref.invalidate(doctorHandledAlertsProvider);
-              await ref.read(doctorHandledAlertsProvider.future);
+              ref.invalidate(doctorNotificationsProvider);
+              await ref.read(doctorNotificationsProvider.future);
             },
             child: ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
               itemCount: alerts.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 if (index == 0) return const _NotificationsHeader();
 
-                final alert = alerts[index - 1];
-                return _HandledAlertCard(
-                  alert: alert,
+                final notification = alerts[index - 1];
+                return _DoctorNotificationCard(
+                  notification: notification,
                   onTap: () => context.push(
-                    AppRoutes.doctorPatientDetailPath(alert.caseId),
+                    AppRoutes.doctorPatientDetailPath(notification.caseId),
                   ),
                 );
               },
@@ -78,9 +78,9 @@ class _NotificationsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.fromLTRB(4, 2, 4, 6),
+      padding: EdgeInsets.fromLTRB(4, 0, 4, 2),
       child: Text(
-        'Cập nhật xử trí từ điều dưỡng',
+        'Tạm dừng mức ăn từ điều dưỡng',
         style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 13,
@@ -93,28 +93,31 @@ class _NotificationsHeader extends StatelessWidget {
   }
 }
 
-class _HandledAlertCard extends StatelessWidget {
-  const _HandledAlertCard({required this.alert, required this.onTap});
+class _DoctorNotificationCard extends StatelessWidget {
+  const _DoctorNotificationCard({
+    required this.notification,
+    required this.onTap,
+  });
 
-  final AlertModel alert;
+  final DoctorNotification notification;
   final VoidCallback onTap;
 
-  Color get _severityColor => alert.alertType == 'RED'
-      ? const Color(0xFFBA1A1A)
-      : const Color(0xFFA33200);
-
-  String get _severityLabel => alert.alertType == 'RED' ? 'MỨC ĐỎ' : 'MỨC VÀNG';
-
-  String get _handledTime {
-    final time = alert.handledAt ?? alert.triggeredAt;
+  String get _notificationTime {
+    final time = notification.createdAt;
     if (time == null) return 'Vừa cập nhật';
     return DateFormat('HH:mm · dd/MM/yyyy').format(time.toLocal());
   }
 
   @override
   Widget build(BuildContext context) {
-    final action = alert.nurseAction?.trim();
-    final note = alert.nursingNote?.trim();
+    final reason = notification.reason?.trim();
+    final actorName = notification.actorName?.trim();
+    final patientName = notification.patientName?.trim();
+    final roomBed = notification.roomBed?.trim();
+    final displayName = patientName == null || patientName.isEmpty
+        ? notification.caseId
+        : patientName;
+    const iconColor = Color(0xFFA33200);
 
     return Material(
       color: Colors.white,
@@ -123,7 +126,7 @@ class _HandledAlertCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFC2C6D8)),
@@ -141,78 +144,99 @@ class _HandledAlertCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2E7D32).withValues(alpha: 0.12),
+                      color: iconColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
-                      Icons.check_circle_rounded,
-                      color: Color(0xFF2E7D32),
-                      size: 22,
+                      Icons.pause_circle_rounded,
+                      color: iconColor,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   const Expanded(
                     child: Text(
-                      'Điều dưỡng đã hoàn thành xử trí',
+                      'Điều dưỡng tạm dừng mức ăn',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF191B24),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _SeverityBadge(label: _severityLabel, color: _severityColor),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Hồ sơ: ${alert.caseId}',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF424656),
-                ),
-              ),
-              if (action != null && action.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _DetailLine(label: 'Xử trí', content: action),
-              ],
-              if (note != null && note.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                _DetailLine(label: 'Ghi chú', content: note),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.schedule_rounded,
-                    size: 16,
-                    color: Color(0xFF727687),
-                  ),
-                  const SizedBox(width: 6),
                   Text(
-                    _handledTime,
+                    _notificationTime,
                     style: const TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: Color(0xFF727687),
                     ),
                   ),
-                  const Spacer(),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF727687),
-                    size: 20,
-                  ),
                 ],
               ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.person_outline_rounded,
+                    size: 16,
+                    color: Color(0xFF424656),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF191B24),
+                      ),
+                    ),
+                  ),
+                  if (roomBed != null && roomBed.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    _RoomBadge(roomBed: roomBed),
+                  ],
+                ],
+              ),
+              if (reason != null && reason.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Lý do: $reason',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    height: 1.35,
+                    color: Color(0xFF424656),
+                  ),
+                ),
+              ],
+              if (actorName != null && actorName.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Điều dưỡng: $actorName',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: Color(0xFF727687),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -221,58 +245,29 @@ class _HandledAlertCard extends StatelessWidget {
   }
 }
 
-class _SeverityBadge extends StatelessWidget {
-  const _SeverityBadge({required this.label, required this.color});
+class _RoomBadge extends StatelessWidget {
+  const _RoomBadge({required this.roomBed});
 
-  final String label;
-  final Color color;
+  final String roomBed;
 
   @override
   Widget build(BuildContext context) {
+    const color = Color(0xFFA33200);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Text(
-        label,
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailLine extends StatelessWidget {
-  const _DetailLine({required this.label, required this.content});
-
-  final String label;
-  final String content;
-
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
+        roomBed,
         style: const TextStyle(
           fontFamily: 'Inter',
-          fontSize: 13,
-          height: 1.45,
-          color: Color(0xFF424656),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
         ),
-        children: [
-          TextSpan(
-            text: '$label: ',
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          TextSpan(text: content),
-        ],
       ),
     );
   }
@@ -315,7 +310,7 @@ class _EmptyNotifications extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Các cập nhật khi điều dưỡng hoàn thành xử trí sẽ hiển thị tại đây.',
+              'Thông báo khi điều dưỡng tạm dừng mức ăn sẽ hiển thị tại đây.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Inter',

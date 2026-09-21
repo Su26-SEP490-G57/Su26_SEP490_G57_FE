@@ -170,38 +170,52 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     }, 'Đã tạm dừng mức ăn');
   }
 
-  Future<void> _changeDietLevel(PatientSummary patient, int nextLevel) async {
+  Future<void> _changeDietLevel(
+    PatientSummary patient,
+    int nextLevel,
+    String reason,
+  ) async {
     if (nextLevel == patient.dietLevel) return;
     final actionLabel = nextLevel > patient.dietLevel
         ? 'Tăng mức ăn'
         : 'Lùi mức ăn';
+    final noteText =
+        '$actionLabel: từ mức ${patient.dietLevel} sang mức $nextLevel. Lý do: $reason';
     await _runCareAction(() async {
       await ref
           .read(patientRemoteDatasourceProvider)
-          .updateDietLevel(caseId: widget.patientId, dietLevel: nextLevel);
+          .updateDietLevel(
+            caseId: widget.patientId,
+            dietLevel: nextLevel,
+            reason: reason,
+          );
       await ref
           .read(assessmentNotifierProvider(widget.patientId).notifier)
-          .submitReassessment(
-            nurseNote:
-                '$actionLabel: từ mức ${patient.dietLevel} sang mức $nextLevel.',
-            source: 'NOTE',
-          );
+          .submitReassessment(nurseNote: noteText, source: 'NOTE');
     }, 'Đã cập nhật mức ăn: mức $nextLevel');
   }
 
-  Future<void> _rollbackDietLevel(PatientSummary patient) {
-    return _changeDietLevel(patient, patient.dietLevel - 1);
+  Future<void> _rollbackDietLevel(PatientSummary patient) async {
+    final result = await showDialog<({int level, String reason})>(
+      context: context,
+      builder: (ctx) => _DietLevelEditorDialog(
+        initialLevel: patient.dietLevel,
+        forceLevel: patient.dietLevel - 1,
+      ),
+    );
+    if (result == null || !mounted) return;
+    await _changeDietLevel(patient, result.level, result.reason);
   }
 
   Future<void> _showDietManagement(PatientSummary patient) async {
-    final selectedLevel = await showDialog<int>(
+    final result = await showDialog<({int level, String reason})>(
       context: context,
       builder: (dialogContext) =>
           _DietLevelEditorDialog(initialLevel: patient.dietLevel),
     );
 
-    if (selectedLevel == null || !mounted) return;
-    await _changeDietLevel(patient, selectedLevel);
+    if (result == null || !mounted) return;
+    await _changeDietLevel(patient, result.level, result.reason);
   }
 
   Future<void> _acknowledgeAlert(AlertModel alert) async {
@@ -3186,43 +3200,54 @@ class _SummaryCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _DietLevelEditorDialog extends StatefulWidget {
-  const _DietLevelEditorDialog({required this.initialLevel});
+  const _DietLevelEditorDialog({required this.initialLevel, this.forceLevel});
 
   final int initialLevel;
+
+  /// When non-null the level selector is locked to this value (used for rollback).
+  final int? forceLevel;
 
   @override
   State<_DietLevelEditorDialog> createState() => _DietLevelEditorDialogState();
 }
 
 class _DietLevelEditorDialogState extends State<_DietLevelEditorDialog> {
-  late final TextEditingController _controller;
+  late final TextEditingController _levelController;
+  late final TextEditingController _reasonController;
   int? _selectedLevel;
+
+  bool get _isForced => widget.forceLevel != null;
 
   @override
   void initState() {
     super.initState();
-    _selectedLevel = widget.initialLevel;
-    _controller = TextEditingController(text: widget.initialLevel.toString());
+    _selectedLevel = widget.forceLevel ?? widget.initialLevel;
+    _levelController = TextEditingController(text: _selectedLevel.toString());
+    _reasonController = TextEditingController();
+    _reasonController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _levelController.dispose();
+    _reasonController.dispose();
     super.dispose();
   }
 
   void _setLevel(int level) {
+    if (_isForced) return;
     if (level < 0 || level > 4) return;
     setState(() {
       _selectedLevel = level;
-      _controller.text = level.toString();
-      _controller.selection = TextSelection.collapsed(
-        offset: _controller.text.length,
+      _levelController.text = level.toString();
+      _levelController.selection = TextSelection.collapsed(
+        offset: _levelController.text.length,
       );
     });
   }
 
-  void _onChanged(String value) {
+  void _onLevelChanged(String value) {
+    if (_isForced) return;
     final level = int.tryParse(value);
     setState(() {
       _selectedLevel = level != null && level >= 0 && level <= 4 ? level : null;
@@ -3232,82 +3257,125 @@ class _DietLevelEditorDialogState extends State<_DietLevelEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final selectedLevel = _selectedLevel;
+    final hasReason = _reasonController.text.trim().isNotEmpty;
     final canSave =
-        selectedLevel != null && selectedLevel != widget.initialLevel;
+        selectedLevel != null &&
+        selectedLevel != widget.initialLevel &&
+        hasReason;
+    final titleText = _isForced ? 'Lùi mức ăn' : 'Điều chỉnh mức ăn';
 
     return AlertDialog(
-      title: const Text(
-        'Điều chỉnh mức ăn',
-        style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700),
+      title: Text(
+        titleText,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontWeight: FontWeight.w700,
+        ),
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Chọn mức ăn từ 0 đến 4 hoặc nhập trực tiếp mức mong muốn.',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 13,
-              height: 1.45,
-              color: Color(0xFF424656),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton.filledTonal(
-                onPressed: selectedLevel != null && selectedLevel > 0
-                    ? () => _setLevel(selectedLevel - 1)
-                    : null,
-                icon: const Icon(Icons.remove_rounded),
-                tooltip: 'Giảm 1 mức',
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _isForced
+                  ? 'Xác nhận lùi từ mức ${widget.initialLevel} về mức ${widget.forceLevel}.'
+                  : 'Chọn mức ăn từ 0 đến 4 hoặc nhập trực tiếp mức mong muốn.',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                height: 1.45,
+                color: Color(0xFF424656),
               ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 74,
-                child: TextField(
-                  controller: _controller,
-                  onChanged: _onChanged,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
+            ),
+            const SizedBox(height: 20),
+            // Level selector — hidden/locked when forceLevel is set
+            if (!_isForced) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton.filledTonal(
+                    onPressed: selectedLevel != null && selectedLevel > 0
+                        ? () => _setLevel(selectedLevel - 1)
+                        : null,
+                    icon: const Icon(Icons.remove_rounded),
+                    tooltip: 'Giảm 1 mức',
                   ),
-                  decoration: const InputDecoration(
-                    labelText: 'Mức',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 74,
+                    child: TextField(
+                      controller: _levelController,
+                      onChanged: _onLevelChanged,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Mức',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 12),
+                  IconButton.filled(
+                    onPressed: selectedLevel != null && selectedLevel < 4
+                        ? () => _setLevel(selectedLevel + 1)
+                        : null,
+                    icon: const Icon(Icons.add_rounded),
+                    tooltip: 'Tăng 1 mức',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                selectedLevel == null
+                    ? 'Chỉ chấp nhận mức ăn từ 0 đến 4.'
+                    : 'Mức ăn mới: mức $selectedLevel',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  color: selectedLevel == null
+                      ? AppColors.error
+                      : const Color(0xFF424656),
                 ),
               ),
-              const SizedBox(width: 12),
-              IconButton.filled(
-                onPressed: selectedLevel != null && selectedLevel < 4
-                    ? () => _setLevel(selectedLevel + 1)
-                    : null,
-                icon: const Icon(Icons.add_rounded),
-                tooltip: 'Tăng 1 mức',
-              ),
+              const SizedBox(height: 16),
             ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            selectedLevel == null
-                ? 'Chỉ chấp nhận mức ăn từ 0 đến 4.'
-                : 'Mức ăn mới: mức $selectedLevel',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              color: selectedLevel == null
-                  ? AppColors.error
-                  : const Color(0xFF424656),
+            // Reason field
+            const Text(
+              'Lý do thay đổi: *',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF191B24),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            TextField(
+              controller: _reasonController,
+              autofocus: _isForced,
+              maxLines: 3,
+              maxLength: 300,
+              decoration: const InputDecoration(
+                hintText: 'Nhập lý do thay đổi mức ăn...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -3316,7 +3384,10 @@ class _DietLevelEditorDialogState extends State<_DietLevelEditorDialog> {
         ),
         ElevatedButton(
           onPressed: canSave
-              ? () => Navigator.of(context).pop(selectedLevel)
+              ? () => Navigator.of(context).pop((
+                  level: selectedLevel,
+                  reason: _reasonController.text.trim(),
+                ))
               : null,
           child: const Text('Lưu thay đổi'),
         ),
@@ -3357,15 +3428,10 @@ class _BottomActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRedAlert = activeAlert?.alertType.toUpperCase() == 'RED';
-    final safeAreaBottom = MediaQuery.of(context).viewPadding.bottom;
-    // `NurseShell` injects its nav-bar height into `padding.bottom` for
-    // scrollable content. Using it here adds an extra gap above the floating
-    // navigation. Reserve only the nav bar's actual footprint instead.
-    final navigationClearance =
-        66.0 + (safeAreaBottom > 0 ? safeAreaBottom : 12.0);
-
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, navigationClearance + 5),
+      // NurseShell already reserves the navigation footprint for this nested
+      // Scaffold. Keeping only a slim inset here prevents double spacing.
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         // decoration: BoxDecoration(

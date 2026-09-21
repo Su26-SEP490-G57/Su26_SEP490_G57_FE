@@ -6,7 +6,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import 'package:poms/core/services/socket_service.dart';
 import 'package:poms/features/doctor/data/datasources/doctor_notification_remote_datasource.dart';
-import 'package:poms/features/nurse/domain/models/alert_model.dart';
+import 'package:poms/features/doctor/domain/models/doctor_notification.dart';
 import 'package:poms/main.dart';
 
 final doctorNotificationRemoteDataSourceProvider =
@@ -14,18 +14,18 @@ final doctorNotificationRemoteDataSourceProvider =
       return DoctorNotificationRemoteDataSource(ref.watch(appDioProvider));
     });
 
-final doctorHandledAlertsProvider =
-    FutureProvider.autoDispose<List<AlertModel>>((ref) async {
+final doctorNotificationsProvider =
+    FutureProvider.autoDispose<List<DoctorNotification>>((ref) async {
       return ref
           .watch(doctorNotificationRemoteDataSourceProvider)
-          .getHandledAlerts();
+          .getNotifications();
     });
 
-/// Reload the doctor's notification list as soon as a nurse handles an alert.
+/// Reload when a nurse manually pauses a diet level.
 final doctorNotificationsRealtimeProvider = Provider.autoDispose<void>((ref) {
   final socket = SocketService(
     io.io(
-      '${appFlavorConfig.apiBaseUrl}/alerts',
+      '${appFlavorConfig.apiBaseUrl}/patients',
       io.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
@@ -33,14 +33,11 @@ final doctorNotificationsRealtimeProvider = Provider.autoDispose<void>((ref) {
     ),
   );
 
-  socket.on(
-    'alert.handled',
-    (_) => ref.invalidate(doctorHandledAlertsProvider),
-  );
+  socket.on('pod.locked', (_) => ref.invalidate(doctorNotificationsProvider));
   unawaited(socket.connect());
 
   ref.onDispose(() {
-    socket.off('alert.handled');
+    socket.off('pod.locked');
     unawaited(socket.disconnect());
     socket.dispose();
   });

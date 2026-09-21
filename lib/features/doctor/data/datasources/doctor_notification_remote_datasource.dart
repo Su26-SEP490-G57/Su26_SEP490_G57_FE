@@ -1,22 +1,24 @@
 import 'package:dio/dio.dart';
-import 'package:poms/features/nurse/domain/models/alert_model.dart';
+import 'package:poms/features/doctor/domain/models/doctor_notification.dart';
 
 class DoctorNotificationRemoteDataSource {
   const DoctorNotificationRemoteDataSource(this._dio);
 
   final Dio _dio;
 
-  Future<List<AlertModel>> getHandledAlerts({
+  Future<List<DoctorNotification>> getNotifications({
     int page = 1,
     int limit = 100,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '/alerts/doctor-notifications',
+      '/patients/nurse-pause-logs',
       queryParameters: {'page': page, 'limit': limit},
     );
     final data = response.data?['data'] as List<dynamic>? ?? const [];
     return data
-        .map((item) => AlertModel.fromJson(item as Map<String, dynamic>))
+        .whereType<Map<String, dynamic>>()
+        .where(DoctorNotification.isVisible)
+        .map(DoctorNotification.fromJson)
         .toList();
   }
 }

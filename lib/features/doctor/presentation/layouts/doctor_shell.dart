@@ -11,8 +11,9 @@ class DoctorShell extends StatelessWidget {
 
   final Widget child;
 
-  /// Height of the floating glass nav bar (same as NurseShell).
-  static const double _navBarInset = 66.0 + 12.0;
+  static const double _navBarHeight = 66.0;
+  static const double _minimumBottomGap = 12.0;
+  static const double _contentEndGap = 8.0;
 
   @override
   Widget build(BuildContext context) {
@@ -21,13 +22,12 @@ class DoctorShell extends StatelessWidget {
       extendBody: true,
       body: Builder(
         builder: (ctx) {
-          final mq = MediaQuery.of(ctx);
-          return MediaQuery(
-            data: mq.copyWith(
-              padding: mq.padding.copyWith(
-                bottom: mq.padding.bottom + _navBarInset,
-              ),
-            ),
+          final safeAreaBottom = MediaQuery.of(ctx).viewPadding.bottom;
+          final navFootprint =
+              _navBarHeight +
+              (safeAreaBottom > 0 ? safeAreaBottom : _minimumBottomGap);
+          return Padding(
+            padding: EdgeInsets.only(bottom: navFootprint + _contentEndGap),
             child: child,
           );
         },
