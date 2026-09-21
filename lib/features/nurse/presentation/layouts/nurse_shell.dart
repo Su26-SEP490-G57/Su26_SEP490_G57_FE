@@ -11,16 +11,16 @@ import 'package:poms/features/nurse/presentation/providers/alert_provider.dart';
 /// Bottom nav sử dụng hiệu ứng Liquid Glass / Glassmorphism.
 ///
 /// `extendBody: true` cho phép body vẽ xuyên qua nav bar (hiệu ứng kính).
-/// Để các trang con không bị nội dung cuối khuất sau nav bar, ta override
-/// `MediaQuery.padding.bottom` để inject đúng chiều cao floating nav bar.
+/// Body vẫn chừa đúng footprint của nav để item cuối không bị che, thay vì
+/// thu nhỏ cả trang bằng một khoảng trống lớn.
 class NurseShell extends StatelessWidget {
   const NurseShell({required this.child, super.key});
 
   final Widget child;
 
-  /// Chiều cao hiệu dụng của floating nav bar tính từ safe-area bottom:
-  ///   66px (container height) + 12px (khoảng cách dưới khi không có safe area)
-  static const double _navBarInset = 66.0 + 12.0;
+  static const double _navBarHeight = 66.0;
+  static const double _minimumBottomGap = 12.0;
+  static const double _contentEndGap = 8.0;
 
   @override
   Widget build(BuildContext context) {
@@ -29,16 +29,15 @@ class NurseShell extends StatelessWidget {
       extendBody: true,
       body: Builder(
         builder: (ctx) {
-          final mq = MediaQuery.of(ctx);
-          // Cộng thêm chiều cao nav bar vào padding.bottom hiện có.
-          // Như vậy tất cả ListView / CustomScrollView / SafeArea trong trang con
-          // đều tự động có đủ khoảng trống phía dưới — không cần sửa từng trang.
-          return MediaQuery(
-            data: mq.copyWith(
-              padding: mq.padding.copyWith(
-                bottom: mq.padding.bottom + _navBarInset,
-              ),
-            ),
+          final safeAreaBottom = MediaQuery.of(ctx).viewPadding.bottom;
+          final navFootprint =
+              _navBarHeight +
+              (safeAreaBottom > 0 ? safeAreaBottom : _minimumBottomGap);
+          // Chừa không gian thật cho mọi trang con, kể cả ListView tự đặt
+          // padding. Chỉ thêm 8px sau footprint nav để thanh kính phủ phần
+          // nền cuối trang, không đẩy nội dung chính lên cao.
+          return Padding(
+            padding: EdgeInsets.only(bottom: navFootprint + _contentEndGap),
             child: child,
           );
         },

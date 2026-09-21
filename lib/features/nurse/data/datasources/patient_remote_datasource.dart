@@ -104,11 +104,12 @@ class PatientRemoteDataSource {
   Future<void> updateDietLevel({
     required String caseId,
     required int dietLevel,
+    required String reason,
   }) async {
     try {
       await _dio.patch<void>(
         '${AppConstants.endpointPatients}/$caseId/diet-level',
-        data: {'dietLevel': dietLevel},
+        data: {'dietLevel': dietLevel, 'reason': reason},
       );
     } on DioException catch (e) {
       _handleDioError(e);
