@@ -137,15 +137,6 @@ class _GlassBottomNav extends ConsumerWidget {
                 ),
                 Expanded(
                   child: _GlassNavItem(
-                    icon: Icons.checklist_outlined,
-                    iconFilled: Icons.checklist_rounded,
-                    label: 'Nhiệm vụ',
-                    isActive: location == AppRoutes.nurseMonitoring,
-                    onTap: () => context.go(AppRoutes.nurseMonitoring),
-                  ),
-                ),
-                Expanded(
-                  child: _GlassNavItem(
                     icon: Icons.account_circle_outlined,
                     iconFilled: Icons.account_circle_rounded,
                     label: 'Hồ sơ',
