@@ -16,6 +16,7 @@ import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 import 'package:poms/features/nurse/presentation/layouts/nurse_shell.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_alerts_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_dashboard_page.dart';
+import 'package:poms/features/nurse/presentation/pages/nurse_observation_sheet_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_patient_detail_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_non_compliant_patients_page.dart';
 import 'package:poms/features/nurse/presentation/pages/nurse_patients_page.dart';
@@ -172,6 +173,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                       ? state.extra as PatientSummary
                       : null,
                 ),
+                routes: [
+                  GoRoute(
+                    path: AppRoutes.nurseObservationSheetSegment,
+                    builder: (context, state) => NurseObservationSheetPage(
+                      caseId: state.pathParameters['id'] ?? '',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

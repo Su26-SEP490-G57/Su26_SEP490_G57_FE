@@ -8,11 +8,18 @@ import 'package:poms/features/nurse/presentation/providers/alert_provider.dart';
 import 'package:poms/features/nurse/domain/models/patient_compliance.dart';
 import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/assessment_provider.dart';
+import 'package:poms/features/nurse/presentation/providers/care_observation_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/medical_records_tab.dart';
+import 'package:poms/features/nurse/presentation/widgets/treatment_order_sheet.dart';
+import 'package:poms/features/nurse/presentation/widgets/vital_signs_tab.dart';
 import 'package:intl/intl.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
+import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/features/auth/domain/models/user_model.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/nurse/domain/models/care_level.dart';
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 
@@ -44,6 +51,7 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
 
   static const _tabs = [
     'Tổng quan',
+    'Chỉ số',
     'Lịch sử đánh giá',
     'Ghi chú',
     'Bệnh án',
@@ -227,6 +235,16 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
 
   @override
   Widget build(BuildContext context) {
+    // Vai trò hiện tại — authNotifier rỗng khi phiên được khôi phục từ storage,
+    // nên fallback sang authStateProvider.
+    final currentUser =
+        ref.watch(authNotifierProvider).user ??
+        ref.watch(authStateProvider).valueOrNull;
+    final isDoctorRole = currentUser?.primaryRole == UserRole.doctor;
+    final isNurseRole =
+        currentUser?.primaryRole == UserRole.nurse ||
+        currentUser?.primaryRole == UserRole.headNurse;
+
     final livePatient = ref.watch(patientByIdProvider(widget.patientId));
     final assessmentState = ref.watch(
       assessmentNotifierProvider(widget.patientId),
@@ -276,6 +294,16 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
               ),
             ),
             actions: [
+              // Chỉ bác sĩ mới được tạo chỉ định điều trị.
+              if (isDoctorRole)
+                IconButton(
+                  icon: const Icon(
+                    Icons.medical_information_outlined,
+                    color: Colors.white,
+                  ),
+                  tooltip: 'Chỉ định điều trị',
+                  onPressed: _handleTreatmentOrder,
+                ),
               IconButton(
                 icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
                 tooltip: 'Thêm ghi chú',
@@ -334,8 +362,15 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
               patient: patient,
               assessmentState: assessmentState,
               activeAlert: activeAlert,
-              onAssessmentTap: () => _tabController.animateTo(1),
+              // Tab 'Lịch sử đánh giá' đã dịch sang index 2 sau khi chèn 'Chỉ số'.
+              onAssessmentTap: () => _tabController.animateTo(2),
+              onObservationSheetTap: isNurseRole
+                  ? () => context.push(
+                      AppRoutes.nurseObservationSheetPath(widget.patientId),
+                    )
+                  : null,
             ),
+            VitalSignsTab(caseId: widget.patientId),
             _AssessmentTab(caseId: widget.patientId),
             _NotesTab(caseId: widget.patientId),
             MedicalRecordsTab(caseId: widget.patientId),
@@ -412,7 +447,7 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     if (!mounted) return;
 
     if (newAssessment != null) {
-      _tabController.animateTo(1);
+      _tabController.animateTo(2);
       context.showTopToast(
         'Đã cập nhật đánh giá lại: $statusLabel',
         isSuccess: true,
@@ -423,6 +458,28 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
         isError: true,
       );
     }
+  }
+
+  Future<void> _handleTreatmentOrder() async {
+    final newLevel = await showTreatmentOrderSheet(
+      context,
+      caseId: widget.patientId,
+    );
+
+    if (newLevel == null || !mounted) return;
+
+    // Patch state cục bộ thay vì fetch lại — cơ chế sẵn có của codebase.
+    ref
+        .read(patientNotifierProvider.notifier)
+        .patchPatient(widget.patientId, careLevel: newLevel);
+
+    // Chỉ định mới có thể sinh phiếu theo dõi mới cho điều dưỡng.
+    ref.invalidate(careObservationNotifierProvider(widget.patientId));
+
+    context.showTopToast(
+      'Đã lưu chỉ định điều trị: mức chăm sóc cấp $newLevel',
+      isSuccess: true,
+    );
   }
 
   Future<void> _handleAddNote(PatientSummary patient) async {
@@ -804,12 +861,16 @@ class _OverviewTab extends StatelessWidget {
     required this.assessmentState,
     required this.onAssessmentTap,
     this.activeAlert,
+    this.onObservationSheetTap,
   });
 
   final PatientSummary? patient;
   final AssessmentState assessmentState;
   final VoidCallback onAssessmentTap;
   final AlertModel? activeAlert;
+
+  /// Chỉ điều dưỡng mới mở được phiếu theo dõi chăm sóc (null = ẩn nút).
+  final VoidCallback? onObservationSheetTap;
 
   @override
   Widget build(BuildContext context) {
@@ -822,6 +883,16 @@ class _OverviewTab extends StatelessWidget {
       children: [
         _InfoGrid(patient: p),
         const SizedBox(height: 16),
+
+        if (onObservationSheetTap != null)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onObservationSheetTap,
+              icon: const Icon(Icons.checklist_rounded, size: 18),
+              label: const Text('Phiếu theo dõi chăm sóc'),
+            ),
+          ),
 
         // if (p.needsIntervention || activeAlert != null) ...[
         //   _AlertBanner(patient: p, activeAlert: activeAlert),
@@ -2641,8 +2712,15 @@ class _InfoGrid extends StatelessWidget {
                 _InfoRow(
                   label: 'Ngày phẫu thuật',
                   value: '${patient.surgeryDate!} - ${patient.pod}',
-                  isLast: true,
                 ),
+
+              // Mức chăm sóc do bác sĩ chỉ định — khác hoàn toàn với phân loại
+              // ĐỎ/VÀNG/XANH ở hero/badge.
+              _InfoRow(
+                label: 'Mức chăm sóc',
+                value: CareLevelX.labelOf(patient.careLevel),
+                isLast: true,
+              ),
             ],
           ),
         ),
@@ -3014,6 +3092,16 @@ class _SummaryGrid extends StatelessWidget {
           value: patient.podNumber,
           valueColor: const Color(0xFF191B24),
           bgColor: Colors.white,
+        ),
+        // Mức chăm sóc (bác sĩ chỉ định) — tách biệt với thẻ 'MỨC ĐỘ' ở trên,
+        // vốn là phân loại ĐỎ/VÀNG/XANH của ERAS triage.
+        _SummaryCard(
+          icon: Icons.health_and_safety_outlined,
+          iconColor: AppColors.secondary,
+          label: 'MỨC CHĂM SÓC',
+          value: CareLevelX.labelOf(patient.careLevel),
+          valueColor: AppColors.secondary,
+          bgColor: AppColors.secondaryContainer,
         ),
       ],
     );
@@ -3543,30 +3631,6 @@ class _BottomActionBar extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Placeholder tab
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ignore: unused_element
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 16,
-          color: Color(0xFF424656),
         ),
       ),
     );

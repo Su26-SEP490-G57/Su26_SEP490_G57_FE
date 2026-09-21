@@ -114,6 +114,7 @@ class PatientNotifier extends StateNotifier<PatientState> {
     int? assessmentTotal,
     String? lastAssessmentTime,
     bool? needsIntervention,
+    int? careLevel,
   }) {
     if (!mounted) return;
 
@@ -145,6 +146,7 @@ class PatientNotifier extends StateNotifier<PatientState> {
         assessmentTotal: assessmentTotal,
         lastAssessmentTime: lastAssessmentTime,
         needsIntervention: needsIntervention,
+        careLevel: careLevel,
       );
     }).toList();
 

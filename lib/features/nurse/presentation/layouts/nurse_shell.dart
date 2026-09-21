@@ -107,36 +107,52 @@ class _GlassBottomNav extends ConsumerWidget {
               ],
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _GlassNavItem(
-                  icon: Icons.dashboard_outlined,
-                  iconFilled: Icons.dashboard_rounded,
-                  label: 'Tổng quan',
-                  isActive: location == AppRoutes.nurseDashboard,
-                  onTap: () => context.go(AppRoutes.nurseDashboard),
+                Expanded(
+                  child: _GlassNavItem(
+                    icon: Icons.dashboard_outlined,
+                    iconFilled: Icons.dashboard_rounded,
+                    label: 'Tổng quan',
+                    isActive: location == AppRoutes.nurseDashboard,
+                    onTap: () => context.go(AppRoutes.nurseDashboard),
+                  ),
                 ),
-                _GlassNavItem(
-                  icon: Icons.notifications_outlined,
-                  iconFilled: Icons.notifications_rounded,
-                  label: 'Cảnh báo',
-                  isActive: location == AppRoutes.nurseAlerts,
-                  onTap: () => context.go(AppRoutes.nurseAlerts),
-                  badge: hasPendingAlerts,
+                Expanded(
+                  child: _GlassNavItem(
+                    icon: Icons.notifications_outlined,
+                    iconFilled: Icons.notifications_rounded,
+                    label: 'Cảnh báo',
+                    isActive: location == AppRoutes.nurseAlerts,
+                    onTap: () => context.go(AppRoutes.nurseAlerts),
+                    badge: hasPendingAlerts,
+                  ),
                 ),
-                _GlassNavItem(
-                  icon: Icons.people_outline_rounded,
-                  iconFilled: Icons.people_rounded,
-                  label: 'Danh sách',
-                  isActive: location.startsWith(AppRoutes.nursePatients),
-                  onTap: () => context.go(AppRoutes.nursePatients),
+                Expanded(
+                  child: _GlassNavItem(
+                    icon: Icons.people_outline_rounded,
+                    iconFilled: Icons.people_rounded,
+                    label: 'Danh sách',
+                    isActive: location.startsWith(AppRoutes.nursePatients),
+                    onTap: () => context.go(AppRoutes.nursePatients),
+                  ),
                 ),
-                _GlassNavItem(
-                  icon: Icons.account_circle_outlined,
-                  iconFilled: Icons.account_circle_rounded,
-                  label: 'Hồ sơ',
-                  isActive: location == AppRoutes.nurseProfile,
-                  onTap: () => context.go(AppRoutes.nurseProfile),
+                Expanded(
+                  child: _GlassNavItem(
+                    icon: Icons.checklist_outlined,
+                    iconFilled: Icons.checklist_rounded,
+                    label: 'Nhiệm vụ',
+                    isActive: location == AppRoutes.nurseMonitoring,
+                    onTap: () => context.go(AppRoutes.nurseMonitoring),
+                  ),
+                ),
+                Expanded(
+                  child: _GlassNavItem(
+                    icon: Icons.account_circle_outlined,
+                    iconFilled: Icons.account_circle_rounded,
+                    label: 'Hồ sơ',
+                    isActive: location == AppRoutes.nurseProfile,
+                    onTap: () => context.go(AppRoutes.nurseProfile),
+                  ),
                 ),
               ],
             ),
@@ -177,8 +193,9 @@ class _GlassNavItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
+      // Không cố định chiều rộng: nav bar hiện có 5 mục, trên máy hẹp tổng
+      // chiều rộng cố định sẽ tràn. Mỗi mục được bọc trong Expanded ở Row cha.
       child: SizedBox(
-        width: 74,
         height: 66,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
