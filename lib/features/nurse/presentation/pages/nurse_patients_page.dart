@@ -135,7 +135,8 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     final patientState = ref.watch(patientNotifierProvider);
     final assignedRoomsAsync = ref.watch(assignedRoomsProvider);
 
-    if (patientState.isLoading || assignedRoomsAsync.isLoading) {
+    if (patientState.isLoading ||
+        (assignedRoomsAsync.isLoading && !assignedRoomsAsync.hasValue)) {
       return const Center(child: CircularProgressIndicator());
     }
     if (patientState.status == PatientStatusState.error) {
@@ -170,6 +171,10 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
         // ── Body ─────────────────────────────────────────────────────
         Expanded(
           child: GestureDetector(
+            // The body has a fixed Expanded footprint. Opaque hit testing keeps
+            // the paging gesture available in its empty space on a short last
+            // page, without extending it over the bottom navigation bar.
+            behavior: HitTestBehavior.opaque,
             // Swipe right-to-left → next page
             // Swipe left-to-right → prev page
             onHorizontalDragEnd: (details) {

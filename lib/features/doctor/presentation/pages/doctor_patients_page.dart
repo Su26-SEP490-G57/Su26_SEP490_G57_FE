@@ -125,6 +125,10 @@ class _DoctorPatientsPageState extends ConsumerState<DoctorPatientsPage> {
         // ── Body ─────────────────────────────────────────────────────
         Expanded(
           child: GestureDetector(
+            // The body has a fixed Expanded footprint. Opaque hit testing keeps
+            // the paging gesture available in its empty space on a short last
+            // page, without extending it over the bottom navigation bar.
+            behavior: HitTestBehavior.opaque,
             // Swipe right-to-left → next page
             // Swipe left-to-right → prev page
             onHorizontalDragEnd: (details) {
