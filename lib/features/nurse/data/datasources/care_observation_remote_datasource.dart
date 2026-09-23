@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import 'package:poms/core/constants/app_constants.dart';
 import 'package:poms/features/nurse/domain/models/care_observation_sheet.dart';
+import 'package:poms/features/nurse/domain/models/care_sheet.dart';
 
 class CareObservationRemoteDataSource {
   CareObservationRemoteDataSource(this._dio);
@@ -28,54 +29,44 @@ class CareObservationRemoteDataSource {
     return _toTasks(response.data);
   }
 
-  /// Nhiệm vụ hiện tại + bảng kiểm của một người bệnh. Trả về null nếu người
-  /// bệnh chưa được chỉ định mức chăm sóc nào.
-  Future<CareObservationTask?> getTaskForPatient(String caseId) async {
-    final response = await _dio.get<dynamic>(
-      AppConstants.endpointCareObservationTaskByPatient(caseId),
-    );
-
-    final raw = response.data;
-    if (raw is Map<String, dynamic>) {
-      final nested = raw['data'];
-      if (nested is Map<String, dynamic>) {
-        return CareObservationTask.fromJson(nested);
-      }
-      if (raw.isEmpty) return null;
-      return CareObservationTask.fromJson(raw);
-    }
-
-    return null;
-  }
-
-  Future<CareObservationTask> getTaskDetail(int taskId) async {
+  /// Phiếu theo dõi và chăm sóc của một người bệnh (lưu ở HIS), mới nhất
+  /// trước, kèm bố cục phiếu để hiển thị nội dung.
+  Future<CareSheetList> getCareSheets(String caseId) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      AppConstants.endpointCareObservationTask(taskId),
+      AppConstants.endpointCareSheetsByPatient(caseId),
     );
 
     final data = response.data;
     if (data == null) throw Exception('Empty response from server');
 
-    return CareObservationTask.fromJson(data);
+    return CareSheetList.fromJson(data);
   }
 
-  /// Máy chủ tự gán người theo dõi và thời điểm theo dõi.
-  Future<CareObservationEntry> submitEntry({
-    required int taskId,
-    required Map<String, String> findings,
-    String? note,
+  Future<CareSheetPrefill> getCareSheetPrefill(String caseId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      AppConstants.endpointCareSheetPrefill(caseId),
+    );
+
+    final data = response.data;
+    if (data == null) throw Exception('Empty response from server');
+
+    return CareSheetPrefill.fromJson(data);
+  }
+
+  /// Phần hành chính, loại phiếu, phân cấp chăm sóc và điều dưỡng do máy chủ
+  /// tự gán; phiếu được ghi sang HIS.
+  Future<CareSheet> createCareSheet({
+    required String caseId,
+    required CareSheetInput sheet,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      AppConstants.endpointCareObservationTaskEntries(taskId),
-      data: {
-        'findings': findings,
-        if (note != null && note.isNotEmpty) 'note': note,
-      },
+      AppConstants.endpointCareSheetsByPatient(caseId),
+      data: sheet.toJson(),
     );
 
     final data = response.data;
     if (data == null) throw Exception('Empty response from server');
 
-    return CareObservationEntry.fromJson(data);
+    return CareSheet.fromJson(data);
   }
 }

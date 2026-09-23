@@ -33,16 +33,18 @@ abstract final class AppConstants {
   static const String endpointTreatmentOrders = '/treatment-orders';
   static String endpointTreatmentOrdersByPatient(String caseId) =>
       '/treatment-orders/patient/$caseId';
+  static String endpointTreatmentSheetsByPatient(String caseId) =>
+      '/treatment-orders/patient/$caseId/sheets';
+  static String endpointTreatmentSheetPrefill(String caseId) =>
+      '/treatment-orders/patient/$caseId/sheet-prefill';
 
   // API endpoints — phiếu theo dõi chăm sóc
   static const String endpointCareObservationMyTasks =
       '/care-observation/tasks/mine';
-  static String endpointCareObservationTaskByPatient(String caseId) =>
-      '/care-observation/tasks/patient/$caseId';
-  static String endpointCareObservationTask(int taskId) =>
-      '/care-observation/tasks/$taskId';
-  static String endpointCareObservationTaskEntries(int taskId) =>
-      '/care-observation/tasks/$taskId/entries';
+  static String endpointCareSheetsByPatient(String caseId) =>
+      '/care-observation/patient/$caseId/sheets';
+  static String endpointCareSheetPrefill(String caseId) =>
+      '/care-observation/patient/$caseId/sheet-prefill';
 
   // API
   static const Duration connectTimeout = Duration(seconds: 15);

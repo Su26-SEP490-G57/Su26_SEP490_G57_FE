@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/nurse/data/datasources/care_observation_remote_datasource.dart';
 import 'package:poms/features/nurse/data/repositories/care_observation_repository_impl.dart';
 import 'package:poms/features/nurse/domain/models/care_observation_sheet.dart';
+import 'package:poms/features/nurse/domain/models/care_sheet.dart';
 import 'package:poms/features/nurse/domain/repositories/care_observation_repository.dart';
 
 final careObservationRemoteDatasourceProvider =
@@ -25,127 +27,90 @@ final careObservationRepositoryProvider = Provider<CareObservationRepository>((
 enum CareObservationStatusState { initial, loading, loaded, error }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Phiếu theo dõi của MỘT người bệnh (màn hình điền phiếu)
+// Phiếu theo dõi và chăm sóc (Cấp 1 / Cấp 2-3) — lưu ở HIS
 // ─────────────────────────────────────────────────────────────────────────────
 
-class CareObservationState {
-  const CareObservationState({
-    this.status = CareObservationStatusState.initial,
-    this.task,
-    this.isSubmitting = false,
-    this.errorMessage,
-  });
+/// Danh sách phiếu chăm sóc của một người bệnh, mới nhất trước. Được
+/// invalidate sau khi điều dưỡng lưu phiếu mới.
+final careSheetsProvider = FutureProvider.autoDispose
+    .family<CareSheetList, String>((ref, caseId) {
+      return ref.watch(careObservationRepositoryProvider).getCareSheets(caseId);
+    });
 
-  final CareObservationStatusState status;
-  final CareObservationTask? task;
+/// Dữ liệu tự điền cho phiếu mới — autoDispose để mỗi lần mở form đều lấy
+/// chỉ số sinh tồn / tờ số mới nhất.
+final careSheetPrefillProvider = FutureProvider.autoDispose
+    .family<CareSheetPrefill, String>((ref, caseId) {
+      return ref
+          .watch(careObservationRepositoryProvider)
+          .getCareSheetPrefill(caseId);
+    });
+
+class CareSheetSubmitState {
+  const CareSheetSubmitState({this.isSubmitting = false, this.errorMessage});
+
   final bool isSubmitting;
   final String? errorMessage;
-
-  bool get isLoading => status == CareObservationStatusState.loading;
-
-  CareObservationState copyWith({
-    CareObservationStatusState? status,
-    CareObservationTask? task,
-    bool? isSubmitting,
-    String? errorMessage,
-  }) {
-    return CareObservationState(
-      status: status ?? this.status,
-      task: task ?? this.task,
-      isSubmitting: isSubmitting ?? this.isSubmitting,
-      errorMessage: errorMessage,
-    );
-  }
 }
 
-class CareObservationNotifier extends StateNotifier<CareObservationState> {
-  CareObservationNotifier(this._repository, this._caseId)
-    : super(const CareObservationState()) {
-    unawaited(load());
-  }
+/// Lưu phiếu chăm sóc; lỗi được ghi vào `errorMessage` để form hiển thị.
+class CareSheetSubmitNotifier extends StateNotifier<CareSheetSubmitState> {
+  CareSheetSubmitNotifier(this._repository, this._caseId)
+    : super(const CareSheetSubmitState());
 
   final CareObservationRepository _repository;
   final String _caseId;
 
-  Future<void> load() async {
-    if (!mounted) return;
+  Future<CareSheet?> submit(CareSheetInput sheet) async {
+    if (!mounted) return null;
 
-    state = state.copyWith(status: CareObservationStatusState.loading);
+    state = const CareSheetSubmitState(isSubmitting: true);
 
     try {
-      final task = await _repository.getTaskForPatient(_caseId);
-
-      if (!mounted) return;
-
-      state = CareObservationState(
-        status: CareObservationStatusState.loaded,
-        task: task,
-        errorMessage: task == null
-            ? 'Người bệnh chưa được chỉ định mức chăm sóc nên chưa có phiếu theo dõi.'
-            : null,
+      final saved = await _repository.createCareSheet(
+        caseId: _caseId,
+        sheet: sheet,
       );
+      if (mounted) state = const CareSheetSubmitState();
+      return saved;
     } catch (e, st) {
       developer.log(
-        'CareObservationNotifier load error: $e',
-        name: 'CareObservationNotifier',
+        'CareSheetSubmitNotifier submit error: $e',
+        name: 'CareSheetSubmitNotifier',
         error: e,
         stackTrace: st,
       );
 
-      if (!mounted) return;
-
-      state = state.copyWith(
-        status: CareObservationStatusState.error,
-        errorMessage: 'Không thể tải phiếu theo dõi chăm sóc.',
-      );
-    }
-  }
-
-  Future<CareObservationEntry?> submitEntry({
-    required Map<String, String> findings,
-    String? note,
-  }) async {
-    final task = state.task;
-    if (task == null || !mounted) return null;
-
-    state = state.copyWith(isSubmitting: true);
-
-    try {
-      final entry = await _repository.submitEntry(
-        taskId: task.taskId,
-        findings: findings,
-        note: note,
-      );
-
-      if (!mounted) return entry;
-
-      state = state.copyWith(isSubmitting: false);
-      // Tải lại để lấy danh sách lượt ghi nhận mới nhất từ máy chủ.
-      unawaited(load());
-
-      return entry;
-    } catch (e, st) {
-      developer.log(
-        'CareObservationNotifier submitEntry error: $e',
-        name: 'CareObservationNotifier',
-        error: e,
-        stackTrace: st,
-      );
-
-      if (mounted) state = state.copyWith(isSubmitting: false);
-
+      if (mounted) {
+        state = CareSheetSubmitState(errorMessage: _submitErrorMessage(e));
+      }
       return null;
     }
   }
 }
 
-final careObservationNotifierProvider =
-    StateNotifierProvider.family<
-      CareObservationNotifier,
-      CareObservationState,
-      String
-    >((ref, caseId) {
-      return CareObservationNotifier(
+String _submitErrorMessage(Object error) {
+  if (error is DioException) {
+    switch (error.response?.statusCode) {
+      case 502:
+        return 'Không kết nối được HIS — phiếu chưa được lưu.';
+      case 409:
+        return 'Người bệnh chưa được bác sĩ chỉ định mức chăm sóc.';
+      case 400:
+        return 'Thông tin phiếu không hợp lệ. Vui lòng kiểm tra lại.';
+      case 403:
+        return 'Bạn không có quyền lập phiếu chăm sóc.';
+    }
+  }
+  return 'Không thể lưu phiếu chăm sóc. Vui lòng thử lại.';
+}
+
+final careSheetSubmitProvider = StateNotifierProvider.autoDispose
+    .family<CareSheetSubmitNotifier, CareSheetSubmitState, String>((
+      ref,
+      caseId,
+    ) {
+      return CareSheetSubmitNotifier(
         ref.watch(careObservationRepositoryProvider),
         caseId,
       );

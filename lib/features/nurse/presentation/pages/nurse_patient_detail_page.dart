@@ -8,10 +8,13 @@ import 'package:poms/features/nurse/presentation/providers/alert_provider.dart';
 import 'package:poms/features/nurse/domain/models/patient_compliance.dart';
 import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/assessment_provider.dart';
-import 'package:poms/features/nurse/presentation/providers/care_observation_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
+import 'package:poms/features/nurse/presentation/providers/care_observation_provider.dart';
+import 'package:poms/features/nurse/presentation/widgets/care_sheets_list.dart';
 import 'package:poms/features/nurse/presentation/widgets/medical_records_tab.dart';
+import 'package:poms/features/nurse/presentation/providers/treatment_order_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/treatment_order_sheet.dart';
+import 'package:poms/features/nurse/presentation/widgets/treatment_sheets_tab.dart';
 import 'package:poms/features/nurse/presentation/widgets/vital_signs_tab.dart';
 import 'package:intl/intl.dart';
 
@@ -55,6 +58,8 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     'Lịch sử đánh giá',
     'Ghi chú',
     'Bệnh án',
+    'Phiếu điều trị',
+    'Phiếu chăm sóc',
     'Tuân thủ',
   ];
 
@@ -315,7 +320,7 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
                     Icons.medical_information_outlined,
                     color: Colors.white,
                   ),
-                  tooltip: 'Chỉ định điều trị',
+                  tooltip: 'Thêm phiếu theo dõi điều trị',
                   onPressed: _handleTreatmentOrder,
                 ),
               IconButton(
@@ -388,6 +393,11 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
             _AssessmentTab(caseId: widget.patientId),
             _NotesTab(caseId: widget.patientId),
             MedicalRecordsTab(caseId: widget.patientId),
+            TreatmentSheetsTab(caseId: widget.patientId),
+            CareSheetsList(
+              caseId: widget.patientId,
+              canCreate: isNurseRole || isDoctorRole,
+            ),
             _ComplianceTab(caseId: widget.patientId),
           ],
         ),
@@ -487,11 +497,13 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
         .read(patientNotifierProvider.notifier)
         .patchPatient(widget.patientId, careLevel: newLevel);
 
-    // Chỉ định mới có thể sinh phiếu theo dõi mới cho điều dưỡng.
-    ref.invalidate(careObservationNotifierProvider(widget.patientId));
+    // Mức chăm sóc mới có thể đổi loại phiếu chăm sóc (Cấp 1 / Cấp 2-3).
+    ref.invalidate(careSheetsProvider(widget.patientId));
+    // Phiếu mới vừa ghi sang HIS → tải lại tab "Phiếu điều trị".
+    ref.invalidate(treatmentSheetsProvider(widget.patientId));
 
     context.showTopToast(
-      'Đã lưu chỉ định điều trị: mức chăm sóc cấp $newLevel',
+      'Đã lưu phiếu theo dõi điều trị: mức chăm sóc cấp $newLevel',
       isSuccess: true,
     );
   }
