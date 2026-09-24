@@ -35,6 +35,8 @@ abstract final class AppConstants {
       '/treatment-orders/patient/$caseId';
   static String endpointTreatmentSheetsByPatient(String caseId) =>
       '/treatment-orders/patient/$caseId/sheets';
+  static String endpointTreatmentSheetPdf(String caseId, int sheetId) =>
+      '/treatment-orders/patient/$caseId/sheets/$sheetId/pdf';
   static String endpointTreatmentSheetPrefill(String caseId) =>
       '/treatment-orders/patient/$caseId/sheet-prefill';
 
@@ -43,6 +45,8 @@ abstract final class AppConstants {
       '/care-observation/tasks/mine';
   static String endpointCareSheetsByPatient(String caseId) =>
       '/care-observation/patient/$caseId/sheets';
+  static String endpointCareSheetPdf(String caseId, int sheetId) =>
+      '/care-observation/patient/$caseId/sheets/$sheetId/pdf';
   static String endpointCareSheetPrefill(String caseId) =>
       '/care-observation/patient/$caseId/sheet-prefill';
 

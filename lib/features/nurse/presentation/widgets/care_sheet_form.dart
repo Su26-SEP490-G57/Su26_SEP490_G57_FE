@@ -526,15 +526,18 @@ class _CareSheetFieldInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Mọi ô đều nhiều dòng: phím Enter luôn xuống dòng (ô ngắn bắt đầu từ 1
+    // dòng rồi tự giãn), không ô nào kết thúc nhập bằng Enter.
     final input = TextField(
       controller: controller,
       enabled: enabled,
       minLines: field.multiline ? 2 : 1,
-      maxLines: field.multiline ? 6 : 1,
+      maxLines: field.multiline ? 8 : 4,
       maxLength: 2000,
       buildCounter:
           (_, {required currentLength, required isFocused, maxLength}) => null,
-      keyboardType: field.multiline ? TextInputType.multiline : null,
+      keyboardType: TextInputType.multiline,
+      textInputAction: TextInputAction.newline,
       decoration: _decoration(field.label),
     );
 

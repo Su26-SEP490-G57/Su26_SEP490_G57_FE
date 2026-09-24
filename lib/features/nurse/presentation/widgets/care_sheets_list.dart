@@ -8,6 +8,7 @@ import 'package:poms/features/nurse/domain/models/care_level.dart';
 import 'package:poms/features/nurse/domain/models/care_sheet.dart';
 import 'package:poms/features/nurse/presentation/providers/care_observation_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/care_sheet_form.dart';
+import 'package:poms/shared/widgets/sheet_pdf_button.dart';
 
 const _textDark = Color(0xFF191B24);
 const _textMuted = Color(0xFF424656);
@@ -164,6 +165,17 @@ class _CareSheetCard extends StatelessWidget {
           ),
         ),
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: SheetPdfButton(
+              fileName:
+                  'phieu-cham-soc-${sheet.patientCode}-to-${sheet.sheetNumber}.pdf',
+              load: (ref) => ref
+                  .read(careObservationRepositoryProvider)
+                  .getCareSheetPdf(sheet.patientCode, sheet.sheetId),
+            ),
+          ),
+          const SizedBox(height: 8),
           _InfoRow('Cơ sở KC, CB', sheet.facility),
           _InfoRow('Khoa', sheet.department),
           _InfoRow('Số vào viện', sheet.admissionNumber),

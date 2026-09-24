@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:poms/features/nurse/data/datasources/treatment_order_remote_datasource.dart';
 import 'package:poms/features/nurse/domain/models/care_level.dart';
 import 'package:poms/features/nurse/domain/models/treatment_order.dart';
@@ -39,4 +41,8 @@ class TreatmentOrderRepositoryImpl implements TreatmentOrderRepository {
       sheet: sheet,
     );
   }
+
+  @override
+  Future<Uint8List> getTreatmentSheetPdf(String caseId, int sheetId) =>
+      _dataSource.getTreatmentSheetPdf(caseId, sheetId);
 }
