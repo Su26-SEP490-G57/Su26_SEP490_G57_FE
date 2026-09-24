@@ -34,6 +34,8 @@ class _DoctorPatientsPageState extends ConsumerState<DoctorPatientsPage> {
 
   // Swipe direction: +1 = forward (next), -1 = backward (prev)
   int _swipeDirection = 1;
+  int _latestTotalPages = 1;
+  bool _pageCorrectionScheduled = false;
 
   @override
   void dispose() {
@@ -93,6 +95,27 @@ class _DoctorPatientsPageState extends ConsumerState<DoctorPatientsPage> {
     });
   }
 
+  /// Keeps the selected page valid when live patient data shrinks. The
+  /// correction runs after this frame because the page count is derived in
+  /// build, while the visible page is already safely clamped below.
+  void _schedulePageCorrection() {
+    if (_pageCorrectionScheduled) return;
+
+    _pageCorrectionScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pageCorrectionScheduled = false;
+      if (!mounted) return;
+
+      final correctedPage = min(_currentPage, _latestTotalPages);
+      if (correctedPage == _currentPage) return;
+
+      setState(() {
+        _currentPage = correctedPage;
+        _swipeDirection = -1;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final patientState = ref.watch(doctorPatientsNotifierProvider);
@@ -108,6 +131,11 @@ class _DoctorPatientsPageState extends ConsumerState<DoctorPatientsPage> {
 
     final filteredPatients = _filtered(patientState.patients);
     final totalPages = max(1, (filteredPatients.length / _pageSize).ceil());
+    _latestTotalPages = totalPages;
+    final needsPageCorrection = _currentPage > totalPages;
+    if (needsPageCorrection) {
+      _schedulePageCorrection();
+    }
     final currentPage = min(_currentPage, totalPages);
     final pagedPatients = _paginate(filteredPatients, currentPage);
 
@@ -125,6 +153,10 @@ class _DoctorPatientsPageState extends ConsumerState<DoctorPatientsPage> {
         // ── Body ─────────────────────────────────────────────────────
         Expanded(
           child: GestureDetector(
+            // The body has a fixed Expanded footprint. Opaque hit testing keeps
+            // the paging gesture available in its empty space on a short last
+            // page, without extending it over the bottom navigation bar.
+            behavior: HitTestBehavior.opaque,
             // Swipe right-to-left → next page
             // Swipe left-to-right → prev page
             onHorizontalDragEnd: (details) {
@@ -204,6 +236,12 @@ class _DoctorPatientsPageState extends ConsumerState<DoctorPatientsPage> {
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   transitionBuilder: (child, animation) {
+                    // A page that vanished because live data changed is not a
+                    // user swipe. Fade it to the nearest valid page instead of
+                    // implying a left/right action that did not happen.
+                    if (needsPageCorrection) {
+                      return FadeTransition(opacity: animation, child: child);
+                    }
                     final isIncoming = child.key == ValueKey<int>(currentPage);
                     final position = isIncoming
                         ? Tween<Offset>(

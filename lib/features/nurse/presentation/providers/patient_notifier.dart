@@ -13,6 +13,7 @@ class PatientNotifier extends StateNotifier<PatientState> {
   final PatientRepository _repository;
 
   bool _initialized = false;
+  int _loadRequestId = 0;
 
   Future<void> _initialize() async {
     if (_initialized) return;
@@ -32,10 +33,14 @@ class PatientNotifier extends StateNotifier<PatientState> {
     String? sortOrder,
     int page = 1,
     int limit = 10,
+    bool showLoading = true,
   }) async {
     if (!mounted) return;
+    final requestId = ++_loadRequestId;
 
-    state = state.copyWith(status: PatientStatusState.loading);
+    if (showLoading) {
+      state = state.copyWith(status: PatientStatusState.loading);
+    }
 
     try {
       final result = await _repository.getPatients(
@@ -48,7 +53,7 @@ class PatientNotifier extends StateNotifier<PatientState> {
         limit: limit,
       );
 
-      if (!mounted) return;
+      if (!mounted || requestId != _loadRequestId) return;
 
       state = state.copyWith(
         status: PatientStatusState.success,
@@ -58,13 +63,19 @@ class PatientNotifier extends StateNotifier<PatientState> {
         limit: result.limit,
       );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestId != _loadRequestId) return;
 
       state = state.copyWith(
         status: PatientStatusState.error,
         errorMessage: e.toString(),
       );
     }
+  }
+
+  /// Refreshes the assigned-room snapshot in the background so a room
+  /// reassignment does not replace the current list with a loading spinner.
+  Future<void> refreshAssignedPatients() {
+    return loadPatients(limit: 100, showLoading: false);
   }
 
   void upsertPatient(PatientSummary patient) {
