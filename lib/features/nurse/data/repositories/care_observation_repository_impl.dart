@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:poms/features/nurse/data/datasources/care_observation_remote_datasource.dart';
 import 'package:poms/features/nurse/domain/models/care_observation_sheet.dart';
 import 'package:poms/features/nurse/domain/models/care_sheet.dart';
@@ -26,4 +28,8 @@ class CareObservationRepositoryImpl implements CareObservationRepository {
   }) {
     return _dataSource.createCareSheet(caseId: caseId, sheet: sheet);
   }
+
+  @override
+  Future<Uint8List> getCareSheetPdf(String caseId, int sheetId) =>
+      _dataSource.getCareSheetPdf(caseId, sheetId);
 }

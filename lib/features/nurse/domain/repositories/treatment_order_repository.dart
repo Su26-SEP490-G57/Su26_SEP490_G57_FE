@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:poms/features/nurse/domain/models/care_level.dart';
 import 'package:poms/features/nurse/domain/models/treatment_order.dart';
 import 'package:poms/features/nurse/domain/models/treatment_sheet.dart';
@@ -16,4 +18,6 @@ abstract interface class TreatmentOrderRepository {
     required String instructions,
     required TreatmentSheetInput sheet,
   });
+
+  Future<Uint8List> getTreatmentSheetPdf(String caseId, int sheetId);
 }

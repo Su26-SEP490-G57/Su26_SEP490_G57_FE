@@ -6,6 +6,7 @@ import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/features/nurse/domain/models/care_level.dart';
 import 'package:poms/features/nurse/domain/models/treatment_sheet.dart';
 import 'package:poms/features/nurse/presentation/providers/treatment_order_provider.dart';
+import 'package:poms/shared/widgets/sheet_pdf_button.dart';
 
 const _textDark = Color(0xFF191B24);
 const _textMuted = Color(0xFF424656);
@@ -127,6 +128,17 @@ class _SheetCard extends StatelessWidget {
           ),
         ),
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: SheetPdfButton(
+              fileName:
+                  'phieu-dieu-tri-${sheet.patientCode}-to-${sheet.sheetNumber}.pdf',
+              load: (ref) => ref
+                  .read(treatmentOrderRepositoryProvider)
+                  .getTreatmentSheetPdf(sheet.patientCode, sheet.sheetId),
+            ),
+          ),
+          const SizedBox(height: 8),
           _InfoRow('Cơ sở KC, CB', sheet.facility),
           _InfoRow('Khoa', sheet.department),
           _InfoRow('Họ và tên', sheet.patientName),

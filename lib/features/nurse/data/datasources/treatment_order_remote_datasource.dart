@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import 'package:poms/core/constants/app_constants.dart';
@@ -74,5 +76,16 @@ class TreatmentOrderRemoteDataSource {
     if (data == null) throw Exception('Empty response from server');
 
     return TreatmentOrder.fromJson(data);
+  }
+
+  /// File PDF của 1 phiếu (máy chủ dựng theo mẫu giấy).
+  Future<Uint8List> getTreatmentSheetPdf(String caseId, int sheetId) async {
+    final response = await _dio.get<List<int>>(
+      AppConstants.endpointTreatmentSheetPdf(caseId, sheetId),
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final data = response.data;
+    if (data == null) throw Exception('Empty response from server');
+    return Uint8List.fromList(data);
   }
 }
