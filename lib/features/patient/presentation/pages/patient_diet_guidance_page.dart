@@ -50,6 +50,7 @@ class _PatientDietGuidancePageState
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBody: true,
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
@@ -60,7 +61,7 @@ class _PatientDietGuidancePageState
                   return _buildEmptyState(context);
                 }
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 100.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -594,13 +595,15 @@ class _DietGuidanceContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: Color(0xFFDC2626),
-                  fontFamily: 'Inter',
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: Color(0xFFDC2626),
+                    fontFamily: 'Inter',
+                  ),
                 ),
               ),
             ],

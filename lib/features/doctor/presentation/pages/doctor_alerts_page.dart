@@ -37,9 +37,7 @@ class DoctorAlertsPage extends ConsumerWidget {
       ),
       body: notifications.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _LoadError(
-          onRetry: () => ref.invalidate(doctorNotificationsProvider),
-        ),
+        error: (_, _) => const _EmptyNotifications(),
         data: (alerts) {
           if (alerts.isEmpty) return const _EmptyNotifications();
 
@@ -50,7 +48,7 @@ class DoctorAlertsPage extends ConsumerWidget {
             },
             child: ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
               itemCount: alerts.length + 1,
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
@@ -273,95 +271,66 @@ class _RoomBadge extends StatelessWidget {
   }
 }
 
-class _EmptyNotifications extends StatelessWidget {
+class _EmptyNotifications extends ConsumerWidget {
   const _EmptyNotifications();
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.notifications_none_rounded,
-                size: 44,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Không có thông báo',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF191B24),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Thông báo khi điều dưỡng tạm dừng mức ăn sẽ hiển thị tại đây.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                height: 1.5,
-                color: Color(0xFF727687),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadError extends StatelessWidget {
-  const _LoadError({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: Color(0xFFBA1A1A),
-              size: 42,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Chưa thể tải thông báo',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF191B24),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(doctorNotificationsProvider);
+        await ref.read(doctorNotificationsProvider.future);
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.22),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.notifications_none_rounded,
+                      size: 40,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Không có thông báo',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF191B24),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Thông báo khi điều dưỡng tạm dừng mức ăn sẽ hiển thị tại đây.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      height: 1.45,
+                      color: Color(0xFF727687),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

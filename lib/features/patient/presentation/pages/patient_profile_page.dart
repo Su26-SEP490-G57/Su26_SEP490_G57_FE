@@ -19,6 +19,7 @@ class PatientProfilePage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBody: true,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
@@ -86,7 +87,7 @@ class PatientProfilePage extends ConsumerWidget {
               'Đại trực tràng';
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

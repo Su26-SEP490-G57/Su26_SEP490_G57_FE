@@ -466,20 +466,25 @@ class _OptionsList extends StatelessWidget {
   final int? selectedOptionId;
   final ValueChanged<int> onSelect;
 
+  static const _labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: options.map((opt) {
+      children: List.generate(options.length, (index) {
+        final opt = options[index];
+        final label = index < _labels.length ? _labels[index] : '${index + 1}';
         final isSelected = selectedOptionId == opt.optionId;
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: _OptionCard(
             option: opt,
+            label: label,
             isSelected: isSelected,
             onTap: () => onSelect(opt.optionId),
           ),
         );
-      }).toList(),
+      }),
     );
   }
 }
@@ -487,11 +492,13 @@ class _OptionsList extends StatelessWidget {
 class _OptionCard extends StatefulWidget {
   const _OptionCard({
     required this.option,
+    required this.label,
     required this.isSelected,
     required this.onTap,
   });
 
   final SurveyOption option;
+  final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -501,26 +508,6 @@ class _OptionCard extends StatefulWidget {
 
 class _OptionCardState extends State<_OptionCard> {
   bool _pressed = false;
-
-  // Màu icon theo score_value
-  Color get _iconBg => switch (widget.option.scoreValue) {
-    0 => const Color(0xFF6BFF8F),
-    1 => const Color(0xFFFFE083),
-    _ => const Color(0xFFFFDAD6),
-  };
-
-  Color get _iconColor => switch (widget.option.scoreValue) {
-    0 => const Color(0xFF005321),
-    1 => const Color(0xFF574500),
-    _ => AppColors.error,
-  };
-
-  IconData get _icon => switch (widget.option.scoreValue) {
-    0 => Icons.sentiment_very_satisfied_rounded,
-    1 => Icons.sentiment_neutral_rounded,
-    2 => Icons.sentiment_dissatisfied_rounded,
-    _ => Icons.sentiment_very_dissatisfied_rounded,
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -538,17 +525,19 @@ class _OptionCardState extends State<_OptionCard> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: widget.isSelected
-                ? const Color(0xFFEEEFFF)
-                : const Color(0xFFF3F3FE),
-            borderRadius: BorderRadius.circular(12),
+                ? const Color(0xFFF0F5FF)
+                : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.isSelected ? AppColors.primary : Colors.transparent,
-              width: 2,
+              color: widget.isSelected
+                  ? AppColors.primary
+                  : const Color(0xFFE2E8F0),
+              width: widget.isSelected ? 2 : 1,
             ),
             boxShadow: widget.isSelected
                 ? [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.1),
+                      color: AppColors.primary.withValues(alpha: 0.12),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -557,40 +546,48 @@ class _OptionCardState extends State<_OptionCard> {
           ),
           child: Row(
             children: [
-              Container(
-                width: 56,
-                height: 56,
+              // Neutral A/B/C Label Circle Badge
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: _iconBg,
+                  color: widget.isSelected
+                      ? AppColors.primary
+                      : const Color(0xFFE2E8F0),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(_icon, color: _iconColor, size: 30),
+                child: Center(
+                  child: Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: widget.isSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.option.optionText,
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.onSurface,
-                      ),
-                    ),
-                    // Text(
-                    //   '(${widget.option.scoreValue} điểm)',
-                    //   style: const TextStyle(
-                    //     fontFamily: 'Inter',
-                    //     fontSize: 14,
-                    //     color: AppColors.onSurfaceVariant,
-                    //   ),
-                    // ),
-                  ],
+                child: Text(
+                  widget.option.optionText,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 16,
+                    fontWeight: widget.isSelected
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                    color: AppColors.onSurface,
+                    height: 1.35,
+                  ),
                 ),
               ),
+              const SizedBox(width: 12),
+              // Selection Indicator (Radio / Checkmark)
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: widget.isSelected
@@ -598,13 +595,13 @@ class _OptionCardState extends State<_OptionCard> {
                         Icons.check_circle_rounded,
                         key: ValueKey('checked'),
                         color: AppColors.primary,
-                        size: 26,
+                        size: 24,
                       )
                     : const Icon(
                         Icons.radio_button_unchecked_rounded,
                         key: ValueKey('unchecked'),
-                        color: Color(0xFFC3C6D7),
-                        size: 26,
+                        color: Color(0xFF94A3B8),
+                        size: 24,
                       ),
               ),
             ],

@@ -21,6 +21,7 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBody: true,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
@@ -63,6 +64,7 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -80,11 +82,11 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
             // Scrollable detail content
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
+                padding: const EdgeInsets.fromLTRB(
                   20,
                   0,
                   20,
-                  MediaQuery.of(context).padding.bottom + 28,
+                  100,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

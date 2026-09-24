@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/core/utils/extensions.dart';
@@ -39,15 +41,15 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     return Column(
       children: [
         _TopAppBar(displayName: displayName),
-        Expanded(
+        const Expanded(
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
               20,
               0,
               20,
-              MediaQuery.of(context).padding.bottom + 32,
+              100,
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(height: 16),
@@ -157,8 +159,40 @@ class _TopAppBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Patient Info Card
+// Patient Info Card (Expandable & Persistent)
 // ─────────────────────────────────────────────────────────────────────────────
+
+final recoveryCardExpandedProvider =
+    StateNotifierProvider<RecoveryCardExpandedNotifier, bool>((ref) {
+  return RecoveryCardExpandedNotifier();
+});
+
+class RecoveryCardExpandedNotifier extends StateNotifier<bool> {
+  RecoveryCardExpandedNotifier() : super(false) {
+    _loadState();
+  }
+
+  static const _key = 'patient_recovery_card_expanded';
+
+  Future<void> _loadState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedState = prefs.getBool(_key);
+      if (savedState != null) {
+        state = savedState;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> toggle() async {
+    final nextState = !state;
+    state = nextState;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_key, nextState);
+    } catch (_) {}
+  }
+}
 
 class _PatientInfoCard extends ConsumerWidget {
   const _PatientInfoCard();
@@ -167,6 +201,7 @@ class _PatientInfoCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).user;
     final currentPodAsync = ref.watch(currentPodProvider);
+    final isExpanded = ref.watch(recoveryCardExpandedProvider);
 
     return currentPodAsync.when(
       data: (pod) {
@@ -181,7 +216,9 @@ class _PatientInfoCard extends ConsumerWidget {
         return Column(
           children: [
             if (pod != null && pod.isLocked) LockedPodBanner(currentPod: pod),
-            Container(
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
@@ -194,23 +231,31 @@ class _PatientInfoCard extends ConsumerWidget {
                   ),
                 ],
               ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Card Header: Title & POD Status Pill
-                  Row(
-                    children: [
-                      const Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 14,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Expandable Header Row (Tappable)
+                    InkWell(
+                      onTap: () => ref
+                          .read(recoveryCardExpandedProvider.notifier)
+                          .toggle(),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.verified_user_rounded,
                               color: AppColors.primary,
                               size: 20,
                             ),
-                            SizedBox(width: 8),
-                            Expanded(
+                            const SizedBox(width: 8),
+                            const Expanded(
                               child: Text(
                                 'Thông tin phục hồi',
                                 maxLines: 1,
@@ -223,209 +268,240 @@ class _PatientInfoCard extends ConsumerWidget {
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 6),
+
+                            // Status Pill
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isLocked
+                                    ? const Color(0xFFFFF7ED)
+                                    : const Color(0xFFECFDF5),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isLocked
+                                      ? const Color(0xFFFFEDD5)
+                                      : const Color(0xFFA7F3D0),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isLocked
+                                          ? const Color(0xFFEA580C)
+                                          : const Color(0xFF10B981),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    isLocked ? '$podText (Tạm dừng)' : podText,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: isLocked
+                                          ? const Color(0xFFC2410C)
+                                          : const Color(0xFF047857),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(width: 4),
+
+                            // Rotatable Expand/Collapse Arrow Icon
+                            AnimatedRotation(
+                              turns: isExpanded ? 0.5 : 0.0,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeInOut,
+                              child: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Color(0xFF64748B),
+                                size: 24,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
+                    ),
 
-                      // Status Pill
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isLocked
-                                ? const Color(0xFFFFF7ED)
-                                : const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isLocked
-                                  ? const Color(0xFFFFEDD5)
-                                  : const Color(0xFFA7F3D0),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                    // Expandable Body Details
+                    AnimatedCrossFade(
+                      firstChild: const SizedBox.shrink(),
+                      secondChild: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 16),
+
+                          // Metrics Grid (2 Chips Side-by-Side)
+                          Row(
                             children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
+                              // Patient Case ID Chip
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0F9FF),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: const Color(0xFFBAE6FD),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          Icon(
+                                            Icons.badge_outlined,
+                                            size: 15,
+                                            color: Color(0xFF0284C7),
+                                          ),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Mã bệnh nhân',
+                                            style: TextStyle(
+                                              fontFamily: 'Inter',
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF0369A1),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        user?.caseId ?? '---',
+                                        style: const TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF0284C7),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Start Date Chip
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_today_rounded,
+                                            size: 14,
+                                            color: Color(0xFF64748B),
+                                          ),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Ngày phẫu thuật',
+                                            style: TextStyle(
+                                              fontFamily: 'Inter',
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        startDateStr,
+                                        style: const TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF334155),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Bottom Guidance Message
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isLocked
+                                  ? const Color(0xFFFFF7ED)
+                                  : const Color(0xFFF5F3FF),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isLocked
+                                      ? Icons.warning_amber_rounded
+                                      : Icons.auto_awesome_rounded,
                                   color: isLocked
                                       ? const Color(0xFFEA580C)
-                                      : const Color(0xFF10B981),
+                                      : const Color(0xFF8B5CF6),
+                                  size: 18,
                                 ),
-                              ),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  isLocked ? '$podText (Tạm dừng)' : podText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: isLocked
-                                        ? const Color(0xFFC2410C)
-                                        : const Color(0xFF047857),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Metrics Grid (2 Chips Side-by-Side)
-                  Row(
-                    children: [
-                      // Patient Case ID Chip
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0F9FF),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFBAE6FD)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(
-                                    Icons.badge_outlined,
-                                    size: 15,
-                                    color: Color(0xFF0284C7),
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Mã bệnh nhân',
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    isLocked
+                                        ? 'Tiến trình tạm dừng - Thực hiện theo dặn dò y tế.'
+                                        : 'Hôm nay là một ngày tuyệt vời để hồi phục!',
                                     style: TextStyle(
                                       fontFamily: 'Inter',
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF0369A1),
+                                      color: isLocked
+                                          ? const Color(0xFFC2410C)
+                                          : const Color(0xFF6D28D9),
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                user?.caseId ?? '---',
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0284C7),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-
-                      // Start Date Chip
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(
-                                    Icons.calendar_today_rounded,
-                                    size: 14,
-                                    color: Color(0xFF64748B),
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Ngày phẫu thuật',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                startDateStr,
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF334155),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Bottom Guidance Message
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isLocked
-                          ? const Color(0xFFFFF7ED)
-                          : const Color(0xFFF5F3FF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isLocked
-                              ? Icons.warning_amber_rounded
-                              : Icons.auto_awesome_rounded,
-                          color: isLocked
-                              ? const Color(0xFFEA580C)
-                              : const Color(0xFF8B5CF6),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            isLocked
-                                ? 'Tiến trình tạm dừng - Thực hiện theo dặn dò y tế.'
-                                : 'Hôm nay là một ngày tuyệt vời để hồi phục!',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isLocked
-                                  ? const Color(0xFFC2410C)
-                                  : const Color(0xFF6D28D9),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      crossFadeState: isExpanded
+                          ? CrossFadeState.showSecond
+                          : CrossFadeState.showFirst,
+                      duration: const Duration(milliseconds: 250),
+                      sizeCurve: Curves.easeInOut,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

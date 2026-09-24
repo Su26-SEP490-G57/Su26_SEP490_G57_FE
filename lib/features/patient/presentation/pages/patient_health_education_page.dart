@@ -74,6 +74,7 @@ class _PatientHealthEducationPageState
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBody: true,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
@@ -116,6 +117,7 @@ class _PatientHealthEducationPageState
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             const SizedBox(height: 8),
@@ -131,11 +133,11 @@ class _PatientHealthEducationPageState
             // Scrollable 4 Cards Body
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
+                padding: const EdgeInsets.fromLTRB(
                   20,
                   0,
                   20,
-                  MediaQuery.of(context).padding.bottom + 28,
+                  100,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

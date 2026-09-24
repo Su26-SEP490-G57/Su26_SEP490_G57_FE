@@ -24,6 +24,7 @@ class _PatientNotificationsPageState
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      extendBody: true,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
@@ -74,7 +75,7 @@ class _PatientNotificationsPageState
 
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
                   children: [
                     // Locked POD Alert Card (Highest Priority System Alert)
                     if (isLocked &&
