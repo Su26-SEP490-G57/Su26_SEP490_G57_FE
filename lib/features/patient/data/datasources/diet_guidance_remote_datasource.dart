@@ -36,18 +36,8 @@ class DietGuidanceRemoteDataSource {
   }
 
   Future<Map<String, dynamic>> getPatientByCaseId(String caseId) async {
-    // Endpoint: GET /patients?search={caseId}
-    final response = await _dio.get(
-      '/patients',
-      queryParameters: {'search': caseId},
-    );
-
-    final data = response.data as Map<String, dynamic>;
-    final items = data['data'] as List<dynamic>;
-    if (items.isEmpty) {
-      throw Exception('Patient not found');
-    }
-    return items.first as Map<String, dynamic>;
+    final response = await _dio.get('/patients/$caseId');
+    return response.data as Map<String, dynamic>;
   }
 
   Future<PodProtocolModel?> getCurrentDietGuidance(String caseId) async {

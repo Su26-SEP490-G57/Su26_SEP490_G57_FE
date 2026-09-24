@@ -200,6 +200,9 @@ final pendingAlertsProvider = Provider<List<AlertModel>>((ref) {
     'closed',
     'Acknowledged',
     'acknowledged',
+    'Đã xử trí',
+    'ĐÃ XỬ TRÍ',
+    'Đã Xử Trí',
   };
   final pending = all.where((a) => !handledStatuses.contains(a.status)).toList()
     ..sort((a, b) {
@@ -262,6 +265,7 @@ final alertRealtimeProvider = Provider<void>((ref) {
 
   socket.on('alert.created', handleAlert);
   socket.on('alert.updated', handleAlert);
+  socket.on('alert.handled', handleAlert);
   socket.on('alert.closed', (dynamic payload) {
     final alert = parseAlert(payload);
     if (alert == null) return;
@@ -289,6 +293,7 @@ final alertRealtimeProvider = Provider<void>((ref) {
   ref.onDispose(() {
     socket.off('alert.created');
     socket.off('alert.updated');
+    socket.off('alert.handled');
     socket.off('alert.closed');
     socket.dispose();
   });

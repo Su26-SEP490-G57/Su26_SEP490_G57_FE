@@ -193,6 +193,7 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
 
     if (state.status == AssessmentStatus.success && state.result != null) {
       ref.invalidate(patientPodTimelineApiProvider);
+      ref.invalidate(currentPodProvider);
       unawaited(
         context.push(AppRoutes.patientAssessmentResult, extra: state.result),
       );

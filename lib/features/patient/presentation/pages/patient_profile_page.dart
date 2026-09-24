@@ -527,6 +527,8 @@ class PatientProfilePage extends ConsumerWidget {
   void _showNotificationSettingsModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -534,11 +536,12 @@ class PatientProfilePage extends ConsumerWidget {
       builder: (context) {
         bool dailyReminder = true;
         bool dietNotice = true;
+        final bottomInset = MediaQuery.of(context).padding.bottom;
 
         return StatefulBuilder(
           builder: (context, setState) {
             return Padding(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.fromLTRB(24, 24, 24, bottomInset + 32),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

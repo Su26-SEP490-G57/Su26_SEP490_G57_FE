@@ -50,13 +50,19 @@ class AssessmentHistoryLog {
     required this.recoveryStatusTag,
     required this.completedCount,
     required this.totalCount,
+    this.assessmentId,
+    this.isReassessment = false,
+    this.nurseNote,
     this.symptoms = const [],
     this.medicalFeedback,
   });
 
+  final int? assessmentId;
   final DateTime date;
   final int podNumber;
   final bool isAssessed;
+  final bool isReassessment;
+  final String? nurseNote;
   final TriageColor triageColor;
   final String recoveryStatusTag;
   final int completedCount;

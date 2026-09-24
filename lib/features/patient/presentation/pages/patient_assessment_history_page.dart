@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
@@ -11,13 +12,44 @@ import 'package:poms/features/patient/presentation/providers/patient_assessment_
 class PatientAssessmentHistoryPage extends ConsumerWidget {
   const PatientAssessmentHistoryPage({super.key});
 
+  Future<void> _pickAssessmentDate(
+    BuildContext context,
+    WidgetRef ref,
+    List<PatientHistoryDayGroup> dayGroups,
+    DateTime? selectedDate,
+  ) async {
+    if (dayGroups.isEmpty) return;
+
+    final sortedDates = dayGroups.map((g) => g.date).toList()..sort();
+    final initialDate = selectedDate ?? sortedDates.last;
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: sortedDates.first,
+      lastDate: sortedDates.last,
+      helpText: 'Chọn ngày đánh giá',
+      cancelText: 'Hủy',
+      confirmText: 'Chọn',
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+    );
+
+    if (pickedDate == null) return;
+
+    ref.read(selectedHistoryDateProvider.notifier).state = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dayGroups = ref.watch(patientDayGroupsProvider);
     final selectedDate = ref.watch(selectedHistoryDateProvider);
-    final calendarDays = ref.watch(historyCalendarDaysProvider);
-    final historyLog = ref.watch(
-      patientAssessmentHistoryProvider(selectedDate),
-    );
+    final activeGroup = ref.watch(activeHistoryDayGroupProvider);
+    final activeLog = ref.watch(activeAssessmentLogProvider);
+    final timelineAsync = ref.watch(patientPodTimelineApiProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -53,6 +85,17 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.primary,
+              size: 22,
+            ),
+            tooltip: 'Làm mới dữ liệu',
+            onPressed: () {
+              ref.invalidate(patientPodTimelineApiProvider);
+            },
+          ),
+          IconButton(
+            icon: const Icon(
               Icons.notifications_none_rounded,
               color: AppColors.primary,
               size: 24,
@@ -65,38 +108,122 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
       ),
       body: SafeArea(
         bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            // Dynamic Month/Year Indicator & Horizontal Calendar Picker
-            _MonthYearAndCalendarHeader(
-              selectedDate: selectedDate,
-              calendarDays: calendarDays,
-              onDateSelected: (date) {
-                ref.read(selectedHistoryDateProvider.notifier).state = date;
-              },
+        child: timelineAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.history_toggle_off_rounded,
+                    size: 56,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Không thể tải lịch sử đánh giá:\n$err',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => ref.invalidate(patientPodTimelineApiProvider),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Thử lại'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-
-            // Scrollable detail content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  0,
-                  20,
-                  100,
+          ),
+          data: (_) {
+            if (dayGroups.isEmpty) {
+              return const Center(
+                child: Text(
+                  'Chưa có dữ liệu đánh giá.',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 15,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
+              );
+            }
+
+            final currentActiveGroup = activeGroup ?? dayGroups.last;
+            final currentActiveLog = activeLog ?? currentActiveGroup.latestLog;
+
+            return RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: () async {
+                ref.invalidate(patientPodTimelineApiProvider);
+                await ref.read(patientPodTimelineApiProvider.future);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Daily Overview Summary Card
-                    _DailyOverviewSummaryCard(log: historyLog),
+                    // 1. Search Bar for picking dates (nurse / doctor style)
+                    _AssessmentDateSearchBar(
+                      selectedDate: selectedDate,
+                      onTap: () => _pickAssessmentDate(
+                        context,
+                        ref,
+                        dayGroups,
+                        selectedDate,
+                      ),
+                      onClear: selectedDate == null
+                          ? null
+                          : () {
+                              ref.read(selectedHistoryDateProvider.notifier).state = null;
+                            },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 2. Horizontal timeline date picker (nurse / doctor style)
+                    _AssessmentHistoryTimeline(
+                      activeDate: currentActiveGroup.date,
+                      dayGroups: dayGroups,
+                      onSelectDay: (group) {
+                        ref.read(selectedHistoryDateProvider.notifier).state = group.date;
+                        ref.read(selectedAssessmentIdProvider.notifier).state = null;
+                      },
+                    ),
+
+                    // 3. Intra-day selector if multiple assessments exist on selected day
+                    if (currentActiveGroup.logs.length > 1) ...[
+                      const SizedBox(height: 12),
+                      _AssessmentIntraDayTimeSelector(
+                        logs: currentActiveGroup.logs,
+                        activeLog: currentActiveLog,
+                        onSelectLog: (log) {
+                          if (log.assessmentId != null) {
+                            ref.read(selectedAssessmentIdProvider.notifier).state =
+                                log.assessmentId;
+                          }
+                        },
+                      ),
+                    ],
+
                     const SizedBox(height: 20),
 
-                    // Symptom Assessment Detail List or Empty State
-                    if (historyLog.isAssessed) ...[
+                    // 4. Daily Overview Summary Card
+                    _DailyOverviewSummaryCard(log: currentActiveLog),
+                    const SizedBox(height: 20),
+
+                    // 5. Symptom Assessment Detail List or Empty State
+                    if (currentActiveLog.isAssessed) ...[
                       const Text(
                         'Chi tiết đánh giá',
                         style: TextStyle(
@@ -107,29 +234,105 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-
-                      // Dynamic Vertical Symptom List
                       ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: historyLog.symptoms.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 12),
+                        itemCount: currentActiveLog.symptoms.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
-                          final item = historyLog.symptoms[index];
+                          final item = currentActiveLog.symptoms[index];
                           return _SymptomDetailCard(item: item);
                         },
                       ),
                     ] else ...[
                       _UnassessedDateCard(
-                        date: selectedDate,
-                        podNumber: historyLog.podNumber,
+                        date: currentActiveGroup.date,
+                        podNumber: currentActiveGroup.podNumber,
                       ),
                     ],
                   ],
                 ),
               ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Date Search Bar (Nurse/Doctor Style)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AssessmentDateSearchBar extends StatelessWidget {
+  const _AssessmentDateSearchBar({
+    required this.selectedDate,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  final DateTime? selectedDate;
+  final VoidCallback onTap;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasDate = selectedDate != null;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x06000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
             ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.event_rounded,
+              size: 20,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                hasDate
+                    ? 'Ngày chọn: ${DateFormat('dd/MM/yyyy').format(selectedDate!)}'
+                    : 'Chọn ngày xem lịch sử đánh giá...',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontWeight: hasDate ? FontWeight.w700 : FontWeight.w500,
+                  color: hasDate ? AppColors.primary : AppColors.onSurfaceVariant,
+                ),
+              ),
+            ),
+            if (onClear != null)
+              GestureDetector(
+                onTap: onClear,
+                child: const Icon(
+                  Icons.cancel_rounded,
+                  size: 20,
+                  color: AppColors.onSurfaceVariant,
+                ),
+              )
+            else
+              const Icon(
+                Icons.calendar_month_rounded,
+                size: 20,
+                color: AppColors.onSurfaceVariant,
+              ),
           ],
         ),
       ),
@@ -138,142 +341,143 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Month/Year Indicator & Horizontal Date Picker Selector
+// Horizontal Timeline Date Picker (Nurse/Doctor Style with Auto-Scroll)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _MonthYearAndCalendarHeader extends StatelessWidget {
-  const _MonthYearAndCalendarHeader({
-    required this.selectedDate,
-    required this.calendarDays,
-    required this.onDateSelected,
+class _AssessmentHistoryTimeline extends StatefulWidget {
+  const _AssessmentHistoryTimeline({
+    required this.activeDate,
+    required this.dayGroups,
+    required this.onSelectDay,
   });
 
-  final DateTime selectedDate;
-  final List<DateTime> calendarDays;
-  final ValueChanged<DateTime> onDateSelected;
+  final DateTime activeDate;
+  final List<PatientHistoryDayGroup> dayGroups;
+  final ValueChanged<PatientHistoryDayGroup> onSelectDay;
+
+  @override
+  State<_AssessmentHistoryTimeline> createState() =>
+      _AssessmentHistoryTimelineState();
+}
+
+class _AssessmentHistoryTimelineState
+    extends State<_AssessmentHistoryTimeline> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToActiveDate());
+  }
+
+  @override
+  void didUpdateWidget(covariant _AssessmentHistoryTimeline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!isSameDay(oldWidget.activeDate, widget.activeDate) ||
+        oldWidget.dayGroups.length != widget.dayGroups.length) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _scrollToActiveDate(),
+      );
+    }
+  }
+
+  void _scrollToActiveDate() {
+    if (!_scrollController.hasClients || widget.dayGroups.isEmpty) return;
+
+    final index = widget.dayGroups.indexWhere(
+      (g) => isSameDay(g.date, widget.activeDate),
+    );
+
+    if (index == -1) return;
+
+    if (index == widget.dayGroups.length - 1) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } else {
+      const itemWidth = 72.0;
+      const separatorWidth = 10.0;
+      final targetOffset = index * (itemWidth + separatorWidth);
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      final clampedOffset = targetOffset.clamp(0.0, maxExtent);
+
+      _scrollController.animateTo(
+        clampedOffset,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final monthYearText = 'Tháng ${selectedDate.month} ${selectedDate.year}';
+    return SizedBox(
+      height: 82,
+      child: ListView.separated(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        itemCount: widget.dayGroups.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final group = widget.dayGroups[index];
+          final selected = isSameDay(group.date, widget.activeDate);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Month/Year Indicator Label
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                monthYearText,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
-              ),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today_rounded,
-                    size: 16,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Horizontal Calendar Scrollable Row
-        SizedBox(
-          height: 72,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            scrollDirection: Axis.horizontal,
-            itemCount: calendarDays.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final date = calendarDays[index];
-              final isSelected =
-                  date.year == selectedDate.year &&
-                  date.month == selectedDate.month &&
-                  date.day == selectedDate.day;
-
-              return _DayPickerItem(
-                date: date,
-                isSelected: isSelected,
-                onTap: () => onDateSelected(date),
-              );
-            },
-          ),
-        ),
-      ],
+          return _AssessmentHistoryCard(
+            dayGroup: group,
+            selected: selected,
+            onTap: () => widget.onSelectDay(group),
+          );
+        },
+      ),
     );
   }
 }
 
-class _DayPickerItem extends StatelessWidget {
-  const _DayPickerItem({
-    required this.date,
-    required this.isSelected,
+class _AssessmentHistoryCard extends StatelessWidget {
+  const _AssessmentHistoryCard({
+    required this.dayGroup,
+    required this.selected,
     required this.onTap,
   });
 
-  final DateTime date;
-  final bool isSelected;
+  final PatientHistoryDayGroup dayGroup;
+  final bool selected;
   final VoidCallback onTap;
-
-  String _weekdayLabel(int weekday) {
-    return switch (weekday) {
-      DateTime.monday => 'T2',
-      DateTime.tuesday => 'T3',
-      DateTime.wednesday => 'T4',
-      DateTime.thursday => 'T5',
-      DateTime.friday => 'T6',
-      DateTime.saturday => 'T7',
-      DateTime.sunday => 'CN',
-      _ => '',
-    };
-  }
 
   @override
   Widget build(BuildContext context) {
-    final dayStr = date.day.toString().padLeft(2, '0');
-    final weekdayStr = _weekdayLabel(date.weekday);
+    final dateStr = DateFormat('dd/MM').format(dayGroup.date);
+    final repLog = dayGroup.latestLog;
 
-    return GestureDetector(
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 54,
+        duration: const Duration(milliseconds: 180),
+        width: 72,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: selected ? const Color(0xFFEEF4FF) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? AppColors.primary : const Color(0xFFE5E7EB),
-            width: isSelected ? 2 : 1,
+            color: selected ? AppColors.primary : const Color(0xFFE2E8F0),
+            width: selected ? 2.0 : 1.0,
           ),
-          boxShadow: isSelected
+          boxShadow: selected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
                 ]
               : [
@@ -288,28 +492,116 @@ class _DayPickerItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              weekdayStr,
+              dateStr,
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? Colors.white.withValues(alpha: 0.9)
-                    : AppColors.onSurfaceVariant,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? AppColors.primary : const Color(0xFF191B24),
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              dayStr,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: isSelected ? Colors.white : AppColors.onSurface,
-              ),
+            _AssessmentColorDot(
+              triage: repLog.triageColor,
+              isAssessed: dayGroup.isAssessed,
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AssessmentColorDot extends StatelessWidget {
+  const _AssessmentColorDot({
+    required this.triage,
+    required this.isAssessed,
+  });
+
+  final TriageColor triage;
+  final bool isAssessed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isAssessed) {
+      return Container(
+        width: 8,
+        height: 8,
+        decoration: const BoxDecoration(
+          color: Color(0xFF94A3B8),
+          shape: BoxShape.circle,
+        ),
+      );
+    }
+
+    final color = switch (triage) {
+      TriageColor.green => const Color(0xFF16A34A),
+      TriageColor.yellow => const Color(0xFFD97706),
+      TriageColor.red => const Color(0xFFDC2626),
+    };
+
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.4),
+            blurRadius: 4,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Intra-Day Time Selector Tabs
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AssessmentIntraDayTimeSelector extends StatelessWidget {
+  const _AssessmentIntraDayTimeSelector({
+    required this.logs,
+    required this.activeLog,
+    required this.onSelectLog,
+  });
+
+  final List<AssessmentHistoryLog> logs;
+  final AssessmentHistoryLog activeLog;
+  final ValueChanged<AssessmentHistoryLog> onSelectLog;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: logs.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final log = logs[index];
+          final timeStr = DateFormat('HH:mm').format(log.date);
+          final isSelected = log == activeLog;
+
+          return ChoiceChip(
+            label: Text(
+              timeStr,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? Colors.white : AppColors.onSurface,
+              ),
+            ),
+            selected: isSelected,
+            selectedColor: AppColors.primary,
+            backgroundColor: const Color(0xFFF1F5F9),
+            onSelected: (_) => onSelectLog(log),
+          );
+        },
       ),
     );
   }
@@ -380,7 +672,6 @@ class _DailyOverviewSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: Full Date & POD Milestone Tag
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -396,30 +687,10 @@ class _DailyOverviewSummaryCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'POD ${log.podNumber}',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 14),
 
-          // Row 2: Recovery Status Badge
           Row(
             children: [
               Container(
@@ -470,7 +741,6 @@ class _DailyOverviewSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // Row 3: Progress Bar & Target Progress Text
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: TweenAnimationBuilder<double>(
@@ -494,9 +764,11 @@ class _DailyOverviewSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            log.isAssessed
-                ? 'Đã hoàn thành ${log.completedCount}/${log.totalCount} mục đánh giá triệu chứng.'
-                : 'Chưa thực hiện khảo sát triệu chứng cho ngày này.',
+            log.isReassessment
+                ? 'Đã được đánh giá lại bởi điều dưỡng.'
+                : (log.isAssessed
+                    ? 'Đã hoàn thành ${log.completedCount}/${log.totalCount} mục đánh giá triệu chứng.'
+                    : 'Chưa thực hiện khảo sát triệu chứng cho ngày này.'),
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
@@ -540,7 +812,6 @@ class _SymptomDetailCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Icon Container
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -554,8 +825,6 @@ class _SymptomDetailCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-
-              // Symptom Name
               Expanded(
                 child: Text(
                   item.symptomName,
@@ -570,8 +839,6 @@ class _SymptomDetailCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-
-          // Color-Coded Result Badge (Flexibly wraps, never overflows)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
@@ -630,28 +897,25 @@ class _UnassessedDateCard extends StatelessWidget {
     final isPast = selectedDay.isBefore(today);
     final isToday = selectedDay.isAtSameMomentAs(today);
 
-    // Hard boundary limit: ERAS pathway is strictly POD 0 to 5 max
-    final safePodNumber = podNumber.clamp(0, 5);
-
     final String titleMessage;
     final String bodyMessage;
     final String buttonLabel;
     final IconData buttonIcon;
 
     if (isFuture) {
-      titleMessage = 'Chưa đến ngày đánh giá (POD $safePodNumber)';
+      titleMessage = 'Chưa đến ngày đánh giá';
       bodyMessage =
           'Bạn chưa thể thực hiện bài khảo sát cho ngày này. Vui lòng quay lại vào đúng ngày.';
       buttonLabel = 'Chưa đến ngày đánh giá';
       buttonIcon = Icons.lock_clock_outlined;
     } else if (isPast) {
-      titleMessage = 'Đã quá hạn đánh giá (POD $safePodNumber)';
+      titleMessage = 'Đã quá hạn đánh giá';
       bodyMessage =
           'Bài khảo sát theo dõi triệu chứng cho ngày này đã quá hạn. Bạn chỉ có thể thực hiện bài đánh giá cho ngày hiện tại.';
       buttonLabel = 'Đã quá hạn đánh giá';
       buttonIcon = Icons.history_toggle_off_rounded;
     } else {
-      titleMessage = 'Chưa có nhật ký đánh giá (POD $safePodNumber)';
+      titleMessage = 'Chưa có nhật ký đánh giá';
       bodyMessage =
           'Bạn chưa hoàn thành bài khảo sát theo dõi triệu chứng hàng ngày cho hôm nay.';
       buttonLabel = 'Thực hiện đánh giá ngay';

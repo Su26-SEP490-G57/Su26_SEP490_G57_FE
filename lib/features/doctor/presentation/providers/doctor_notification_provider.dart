@@ -21,7 +21,7 @@ final doctorNotificationsProvider =
           .getNotifications();
     });
 
-/// Reload when a nurse manually pauses a diet level.
+/// Reload when a nurse updates vital signs or manually pauses a diet level.
 final doctorNotificationsRealtimeProvider = Provider.autoDispose<void>((ref) {
   final socket = SocketService(
     io.io(
@@ -34,10 +34,14 @@ final doctorNotificationsRealtimeProvider = Provider.autoDispose<void>((ref) {
   );
 
   socket.on('pod.locked', (_) => ref.invalidate(doctorNotificationsProvider));
+  socket.on('vital_signs.created', (_) => ref.invalidate(doctorNotificationsProvider));
+  socket.on('vital_signs.updated', (_) => ref.invalidate(doctorNotificationsProvider));
   unawaited(socket.connect());
 
   ref.onDispose(() {
     socket.off('pod.locked');
+    socket.off('vital_signs.created');
+    socket.off('vital_signs.updated');
     unawaited(socket.disconnect());
     socket.dispose();
   });

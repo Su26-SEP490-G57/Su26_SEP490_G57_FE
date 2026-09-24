@@ -56,7 +56,8 @@ class _PatientNotificationsPageState
           return Column(
             children: [
               // Filter tabs
-              Padding(
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 8,

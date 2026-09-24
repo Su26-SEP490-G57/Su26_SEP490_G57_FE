@@ -8,14 +8,12 @@ import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/features/doctor/domain/models/doctor_notification.dart';
 import 'package:poms/features/doctor/presentation/providers/doctor_notification_provider.dart';
 
-/// Thông báo cho bác sĩ khi điều dưỡng chủ động tạm dừng mức ăn.
+/// Màn hình thông báo cho Bác sĩ khi điều dưỡng cập nhật chỉ số sinh tồn mới hoặc tạm dừng mức ăn.
 class DoctorAlertsPage extends ConsumerWidget {
   const DoctorAlertsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // The initial HTTP request remains the source of truth if the socket is
-    // temporarily unavailable.
     ref.watch(doctorNotificationsRealtimeProvider);
     final notifications = ref.watch(doctorNotificationsProvider);
 
@@ -78,7 +76,7 @@ class _NotificationsHeader extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.fromLTRB(4, 0, 4, 2),
       child: Text(
-        'Tạm dừng mức ăn từ điều dưỡng',
+        'Cập nhật chỉ số sinh tồn & Đánh giá từ điều dưỡng',
         style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 13,
@@ -115,7 +113,17 @@ class _DoctorNotificationCard extends StatelessWidget {
     final displayName = patientName == null || patientName.isEmpty
         ? notification.caseId
         : patientName;
-    const iconColor = Color(0xFFA33200);
+
+    final isVitalSigns = notification.type == 'VITAL_SIGNS';
+    final cardTitle = isVitalSigns
+        ? 'Điều dưỡng cập nhật chỉ số sinh tồn mới'
+        : 'Điều dưỡng tạm dừng mức ăn';
+    final iconData = isVitalSigns
+        ? Icons.monitor_heart_rounded
+        : Icons.pause_circle_rounded;
+    final iconColor = isVitalSigns
+        ? const Color(0xFF006E2F)
+        : const Color(0xFFA33200);
 
     return Material(
       color: Colors.white,
@@ -148,19 +156,19 @@ class _DoctorNotificationCard extends StatelessWidget {
                       color: iconColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.pause_circle_rounded,
+                    child: Icon(
+                      iconData,
                       color: iconColor,
                       size: 20,
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Điều dưỡng tạm dừng mức ăn',
+                      cardTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -204,14 +212,14 @@ class _DoctorNotificationCard extends StatelessWidget {
                   ),
                   if (roomBed != null && roomBed.isNotEmpty) ...[
                     const SizedBox(width: 8),
-                    _RoomBadge(roomBed: roomBed),
+                    _RoomBadge(roomBed: roomBed, color: iconColor),
                   ],
                 ],
               ),
               if (reason != null && reason.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Lý do: $reason',
+                  isVitalSigns ? 'Sinh hiệu: $reason' : 'Lý do: $reason',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -244,13 +252,13 @@ class _DoctorNotificationCard extends StatelessWidget {
 }
 
 class _RoomBadge extends StatelessWidget {
-  const _RoomBadge({required this.roomBed});
+  const _RoomBadge({required this.roomBed, required this.color});
 
   final String roomBed;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    const color = Color(0xFFA33200);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
@@ -260,7 +268,7 @@ class _RoomBadge extends StatelessWidget {
       ),
       child: Text(
         roomBed,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 11,
           fontWeight: FontWeight.w700,
@@ -299,7 +307,7 @@ class _EmptyNotifications extends ConsumerWidget {
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
-                      Icons.notifications_none_rounded,
+                      Icons.monitor_heart_rounded,
                       size: 40,
                       color: AppColors.primary,
                     ),
@@ -317,7 +325,7 @@ class _EmptyNotifications extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Thông báo khi điều dưỡng tạm dừng mức ăn sẽ hiển thị tại đây.',
+                    'Thông báo khi điều dưỡng cập nhật chỉ số sinh tồn mới cho bệnh nhân sẽ hiển thị tại đây.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Inter',
