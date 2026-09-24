@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
@@ -8,6 +9,8 @@ import 'package:poms/features/nurse/data/datasources/treatment_order_remote_data
 import 'package:poms/features/nurse/data/repositories/treatment_order_repository_impl.dart';
 import 'package:poms/features/nurse/domain/models/care_level.dart';
 import 'package:poms/features/nurse/domain/models/treatment_order.dart';
+import 'package:poms/features/nurse/domain/models/treatment_sheet.dart';
+import 'package:poms/features/nurse/domain/models/treatment_sheet_prefill.dart';
 import 'package:poms/features/nurse/domain/repositories/treatment_order_repository.dart';
 
 final treatmentOrderRemoteDatasourceProvider =
@@ -97,9 +100,12 @@ class TreatmentOrderNotifier extends StateNotifier<TreatmentOrderState> {
     }
   }
 
+  /// Lưu "Phiếu theo dõi điều trị" (kèm mức chăm sóc). Lỗi được ghi vào
+  /// `errorMessage` để form hiển thị.
   Future<TreatmentOrder?> submit({
     required CareLevel careLevel,
-    String? instructions,
+    required String instructions,
+    required TreatmentSheetInput sheet,
   }) async {
     if (!mounted) return null;
 
@@ -110,6 +116,7 @@ class TreatmentOrderNotifier extends StateNotifier<TreatmentOrderState> {
         caseId: _caseId,
         careLevel: careLevel,
         instructions: instructions,
+        sheet: sheet,
       );
 
       if (!mounted) return order;
@@ -129,12 +136,47 @@ class TreatmentOrderNotifier extends StateNotifier<TreatmentOrderState> {
         stackTrace: st,
       );
 
-      if (mounted) state = state.copyWith(isSubmitting: false);
+      if (mounted) {
+        state = state.copyWith(
+          isSubmitting: false,
+          errorMessage: _submitErrorMessage(e),
+        );
+      }
 
       return null;
     }
   }
 }
+
+String _submitErrorMessage(Object error) {
+  if (error is DioException) {
+    final status = error.response?.statusCode;
+    if (status == 502) {
+      return 'Không kết nối được HIS — phiếu chưa được lưu.';
+    }
+    if (status == 400) {
+      return 'Thông tin phiếu không hợp lệ. Vui lòng kiểm tra lại.';
+    }
+    if (status == 403) return 'Chỉ bác sĩ mới được lập phiếu điều trị.';
+  }
+  return 'Không thể lưu phiếu theo dõi điều trị. Vui lòng thử lại.';
+}
+
+/// Danh sách "Phiếu theo dõi điều trị" (lưu ở HIS), mới nhất trước. Được
+/// invalidate sau khi bác sĩ lưu phiếu mới.
+final treatmentSheetsProvider = FutureProvider.autoDispose
+    .family<List<TreatmentSheet>, String>((ref, caseId) {
+      return ref.watch(treatmentOrderRepositoryProvider).getSheets(caseId);
+    });
+
+/// Dữ liệu tự điền cho phiếu mới — autoDispose để mỗi lần mở form đều lấy
+/// chỉ số sinh tồn / tờ số mới nhất.
+final treatmentSheetPrefillProvider = FutureProvider.autoDispose
+    .family<TreatmentSheetPrefill, String>((ref, caseId) {
+      return ref
+          .watch(treatmentOrderRepositoryProvider)
+          .getSheetPrefill(caseId);
+    });
 
 final treatmentOrderNotifierProvider =
     StateNotifierProvider.family<
