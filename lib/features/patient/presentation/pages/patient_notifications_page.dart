@@ -370,6 +370,10 @@ class _PatientNotificationsPageState
             context.push(AppRoutes.patientDietGuidance);
           case 'assessment':
             _goToAssessment(context, pod);
+          case 'treatment_sheet':
+            context.push(AppRoutes.patientTreatmentSheets);
+          case 'care_sheet':
+            context.push(AppRoutes.patientCareSheets);
         }
       },
     );
@@ -388,6 +392,18 @@ class _PatientNotificationsPageState
           Icons.assignment_rounded,
           const Color(0xFFE6F9F1),
           const Color(0xFF10B981),
+        );
+      case 'treatment_sheet':
+        return (
+          Icons.medical_information_rounded,
+          AppColors.primaryContainer,
+          AppColors.primary,
+        );
+      case 'care_sheet':
+        return (
+          Icons.assignment_outlined,
+          AppColors.primaryContainer,
+          AppColors.primary,
         );
       default:
         return (

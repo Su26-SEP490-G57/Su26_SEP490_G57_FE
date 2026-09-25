@@ -62,23 +62,18 @@ class PatientNotificationsNotifier
     }
   }
 
-  /// Đánh dấu đã đọc: cập nhật UI ngay (optimistic), gọi API nền — không revert
-  /// nếu lỗi vì đây chỉ là trạng thái hiển thị, không ảnh hưởng nghiệp vụ.
+  /// Xem xong thì mất khỏi danh sách luôn — không giữ lịch sử (khớp backend:
+  /// PATCH .../read xoá hẳn dòng thông báo kiểu trạng thái). Xoá ngay khỏi UI
+  /// (optimistic), gọi API nền; lỗi thì bỏ qua, lần load() kế tiếp tự đồng bộ.
   Future<void> markAsRead(int notificationId) async {
     if (!mounted) return;
     final current = state.notifications;
-    final alreadyRead = current
-        .firstWhere((n) => n.notificationId == notificationId)
-        .isRead;
-    if (alreadyRead) return;
+    final exists = current.any((n) => n.notificationId == notificationId);
+    if (!exists) return;
 
     state = state.copyWith(
       notifications: current
-          .map(
-            (n) => n.notificationId == notificationId
-                ? n.copyWith(isRead: true)
-                : n,
-          )
+          .where((n) => n.notificationId != notificationId)
           .toList(),
     );
 
