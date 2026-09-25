@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -16,13 +17,10 @@ Future<void> _awaitApnsTokenOnIOS(
   }
 }
 
-/// Lấy FCM token để gửi kèm lúc đăng nhập. Trên iOS, ngay sau khi app vừa mở
-/// APNs token có thể chưa kịp đăng ký xong — gọi `getToken()` lúc đó ném
-/// `apns-token-not-set`. Đợi thêm (đăng nhập xảy ra sau initialize() ở
-/// main.dart nên thường đã sẵn sàng, phòng khi chưa thì đợi thêm tối đa 8s)
-/// rồi mới thử; nếu vẫn chưa có, trả về null — đăng nhập vẫn tiếp tục bình
-/// thường, chỉ là thiết bị đó tạm thời chưa nhận được push cho tới lần mở
-/// app kế tiếp (PushNotificationService.initialize() sẽ đăng ký lại).
+/// Lấy FCM token, đợi APNs trên iOS tối đa 8s trước khi thử — best-effort,
+/// không throw, trả null nếu không lấy được (vd Simulator không bao giờ có
+/// APNs token thật — xem `registerDeviceTokenAfterLogin`, hàm này KHÔNG được
+/// gọi trên đường đi của việc đăng nhập nữa để không làm chậm/kẹt login).
 Future<String?> getFcmTokenForLogin() async {
   if (kIsWeb) return null;
 
@@ -34,6 +32,28 @@ Future<String?> getFcmTokenForLogin() async {
   } catch (e) {
     debugPrint('Failed to get FCM token: $e');
     return null;
+  }
+}
+
+/// Đăng ký device token SAU KHI đăng nhập thành công — chạy nền (fire-and-
+/// forget), không chặn UI/luồng đăng nhập. Trước đây form login `await` lấy
+/// FCM token rồi mới gửi kèm trong body /auth/login; trên iOS việc chờ APNs
+/// (tới 8s, có thể không bao giờ xong trên Simulator) khiến người dùng tưởng
+/// đăng nhập bị treo/lỗi. Giờ đăng nhập xong ngay, token gửi riêng qua
+/// `POST /firebase/devices/register` (cần Bearer token nên phải gọi sau khi
+/// đã có access token) khi nào lấy được thì thôi — chưa có thì để lần mở app
+/// kế tiếp tự đăng ký lại (`PushNotificationService.initialize()`).
+Future<void> registerDeviceTokenAfterLogin(Dio authenticatedDio) async {
+  final token = await getFcmTokenForLogin();
+  if (token == null) return;
+
+  try {
+    await authenticatedDio.post(
+      '/firebase/devices/register',
+      data: {'fcmToken': token},
+    );
+  } catch (e) {
+    debugPrint('Failed to register device token after login: $e');
   }
 }
 

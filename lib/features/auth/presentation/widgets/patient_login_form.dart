@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -34,16 +36,20 @@ class _PatientLoginFormState extends ConsumerState<PatientLoginForm> {
     context.hideKeyboard();
     if (!_formKey.currentState!.validate()) return;
 
-    final fcmToken = await getFcmTokenForLogin();
-
+    // Đăng nhập ngay, không chờ FCM token — trên iOS việc chờ APNs (có thể
+    // không bao giờ xong trên Simulator) từng làm nút đăng nhập trông như bị
+    // treo/lỗi. Token được đăng ký riêng, chạy nền, sau khi đăng nhập xong.
     await ref
         .read(authNotifierProvider.notifier)
         .signIn(
           username: _idController.text.trim(),
           password: _passwordController.text,
           rememberMe: _rememberMe,
-          deviceFcmToken: fcmToken,
         );
+
+    if (ref.read(authNotifierProvider).status == AuthStatus.authenticated) {
+      unawaited(registerDeviceTokenAfterLogin(ref.read(appDioProvider)));
+    }
   }
 
   @override
