@@ -142,7 +142,11 @@ class _AppState extends ConsumerState<App> {
 
     // ===== Patient =====
     if (role == UserRole.patient) {
-      router.go(AppRoutes.patientAssessment);
+      if (payload.route == 'diet_guidance') {
+        router.go(AppRoutes.patientDietGuidance);
+      } else {
+        router.go(AppRoutes.patientAssessment);
+      }
       return;
     }
 

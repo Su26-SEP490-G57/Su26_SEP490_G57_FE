@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 
+import 'package:poms/core/services/push_notification_service.dart';
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/shared/widgets/custom_checkbox.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
@@ -35,14 +34,7 @@ class _NurseLoginFormState extends ConsumerState<NurseLoginForm> {
     context.hideKeyboard();
     if (!_formKey.currentState!.validate()) return;
 
-    String? fcmToken;
-    if (!kIsWeb) {
-      try {
-        fcmToken = await FirebaseMessaging.instance.getToken();
-      } catch (e) {
-        debugPrint('Failed to get FCM token: $e');
-      }
-    }
+    final fcmToken = await getFcmTokenForLogin();
 
     await ref
         .read(authNotifierProvider.notifier)

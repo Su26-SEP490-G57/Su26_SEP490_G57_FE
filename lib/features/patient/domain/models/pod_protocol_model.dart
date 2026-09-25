@@ -1,12 +1,36 @@
 import 'package:equatable/equatable.dart';
 
+/// Bác sĩ đã chỉ định chế độ ăn riêng (khi `PodProtocolModel.isCustomized`).
+class PrescribingDoctor extends Equatable {
+  const PrescribingDoctor({required this.id, required this.fullName});
+
+  factory PrescribingDoctor.fromJson(Map<String, dynamic> json) {
+    return PrescribingDoctor(
+      id: json['id'] as int,
+      fullName: json['fullName'] as String,
+    );
+  }
+
+  final int id;
+  final String fullName;
+
+  @override
+  List<Object?> get props => [id, fullName];
+}
+
+/// Hướng dẫn chế độ ăn hiện tại của bệnh nhân — có thể là phác đồ chung theo
+/// POD (`isCustomized = false`, có `podId`) hoặc chỉ định ăn riêng của bác sĩ
+/// (`isCustomized = true`, có `customDietId` + `doctorNotes`/`prescribedByDoctor`).
+/// Khớp với `PatientCurrentDietGuidanceResponseDto` / `PodProtocolResponseDto` bên BE.
 class PodProtocolModel extends Equatable {
   const PodProtocolModel({
-    required this.podId,
-    required this.operationTypeId,
     required this.label,
     required this.recommendedFoods,
     required this.recommendedDrinks,
+    this.isCustomized = false,
+    this.podId,
+    this.operationTypeId,
+    this.customDietId,
     this.dietLevel = 0,
     this.forbiddenFoods = const [],
     this.forbiddenDrinks = const [],
@@ -17,14 +41,18 @@ class PodProtocolModel extends Equatable {
     this.volumePerMealMin,
     this.volumePerMealMax,
     this.volumeInstruction,
+    this.doctorNotes,
+    this.prescribedByDoctor,
     this.updatedAt,
     this.createdAt,
   });
 
   factory PodProtocolModel.fromJson(Map<String, dynamic> json) {
     return PodProtocolModel(
-      podId: json['podId'] as int,
-      operationTypeId: json['operationTypeId'] as int,
+      isCustomized: json['isCustomized'] as bool? ?? false,
+      podId: json['podId'] as int?,
+      operationTypeId: json['operationTypeId'] as int?,
+      customDietId: json['customDietId'] as int?,
       label: json['label'] as String,
       dietLevel: json['dietLevel'] as int? ?? 0,
       mealsPerDayMin: json['mealsPerDayMin'] as int?,
@@ -33,6 +61,12 @@ class PodProtocolModel extends Equatable {
       volumePerMealMin: json['volumePerMealMin'] as int?,
       volumePerMealMax: json['volumePerMealMax'] as int?,
       volumeInstruction: json['volumeInstruction'] as String?,
+      doctorNotes: json['doctorNotes'] as String?,
+      prescribedByDoctor: json['prescribedByDoctor'] != null
+          ? PrescribingDoctor.fromJson(
+              json['prescribedByDoctor'] as Map<String, dynamic>,
+            )
+          : null,
       recommendedFoods:
           (json['recommendedFoods'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -67,8 +101,10 @@ class PodProtocolModel extends Equatable {
     );
   }
 
-  final int podId;
-  final int operationTypeId;
+  final bool isCustomized;
+  final int? podId;
+  final int? operationTypeId;
+  final int? customDietId;
   final String label;
   final int dietLevel;
   final int? mealsPerDayMin;
@@ -77,6 +113,8 @@ class PodProtocolModel extends Equatable {
   final int? volumePerMealMin;
   final int? volumePerMealMax;
   final String? volumeInstruction;
+  final String? doctorNotes;
+  final PrescribingDoctor? prescribedByDoctor;
   final List<String> recommendedFoods;
   final List<String> recommendedDrinks;
   final List<String> forbiddenFoods;
@@ -86,8 +124,10 @@ class PodProtocolModel extends Equatable {
   final DateTime? createdAt;
 
   Map<String, dynamic> toJson() => {
+    'isCustomized': isCustomized,
     'podId': podId,
     'operationTypeId': operationTypeId,
+    'customDietId': customDietId,
     'label': label,
     'dietLevel': dietLevel,
     'mealsPerDayMin': mealsPerDayMin,
@@ -96,6 +136,7 @@ class PodProtocolModel extends Equatable {
     'volumePerMealMin': volumePerMealMin,
     'volumePerMealMax': volumePerMealMax,
     'volumeInstruction': volumeInstruction,
+    'doctorNotes': doctorNotes,
     'recommendedFoods': recommendedFoods,
     'recommendedDrinks': recommendedDrinks,
     'forbiddenFoods': forbiddenFoods,
@@ -107,8 +148,10 @@ class PodProtocolModel extends Equatable {
 
   @override
   List<Object?> get props => [
+    isCustomized,
     podId,
     operationTypeId,
+    customDietId,
     label,
     dietLevel,
     mealsPerDayMin,
@@ -117,6 +160,8 @@ class PodProtocolModel extends Equatable {
     volumePerMealMin,
     volumePerMealMax,
     volumeInstruction,
+    doctorNotes,
+    prescribedByDoctor,
     recommendedFoods,
     recommendedDrinks,
     forbiddenFoods,

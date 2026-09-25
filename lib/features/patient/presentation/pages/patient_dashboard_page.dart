@@ -9,6 +9,7 @@ import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/core/utils/extensions.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
+import 'package:poms/features/patient/presentation/providers/patient_notification_provider.dart';
 import 'package:poms/features/patient/presentation/widgets/locked_pod_banner.dart';
 
 class PatientDashboardPage extends ConsumerStatefulWidget {
@@ -43,12 +44,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
         _TopAppBar(displayName: displayName),
         const Expanded(
           child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              0,
-              20,
-              100,
-            ),
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -70,13 +66,15 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 // Top App Bar
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TopAppBar extends StatelessWidget {
+class _TopAppBar extends ConsumerWidget {
   const _TopAppBar({required this.displayName});
 
   final String displayName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
+
     return Container(
       color: AppColors.background,
       padding: EdgeInsets.only(
@@ -143,14 +141,56 @@ class _TopAppBar extends StatelessWidget {
           ),
 
           // Notification shortcut
-          IconButton(
-            icon: const Icon(
-              Icons.notifications_none_rounded,
-              color: AppColors.primary,
-              size: 26,
-            ),
-            tooltip: 'Thông báo hệ thống',
-            onPressed: () => context.push(AppRoutes.patientNotifications),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: AppColors.primary,
+                  size: 26,
+                ),
+                tooltip: 'Thông báo hệ thống',
+                onPressed: () => context.push(AppRoutes.patientNotifications),
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDC2626),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: AppColors.background,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          unreadCount > 9 ? '9+' : '$unreadCount',
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -164,8 +204,8 @@ class _TopAppBar extends StatelessWidget {
 
 final recoveryCardExpandedProvider =
     StateNotifierProvider<RecoveryCardExpandedNotifier, bool>((ref) {
-  return RecoveryCardExpandedNotifier();
-});
+      return RecoveryCardExpandedNotifier();
+    });
 
 class RecoveryCardExpandedNotifier extends StateNotifier<bool> {
   RecoveryCardExpandedNotifier() : super(false) {

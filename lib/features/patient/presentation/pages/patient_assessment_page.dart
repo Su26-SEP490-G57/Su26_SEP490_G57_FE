@@ -33,9 +33,28 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
 
   @override
   Widget build(BuildContext context) {
+    final currentPodAsync = ref.watch(currentPodProvider);
+
+    // Chặn ngay tại đây — bất kể người dùng bấm vào từ đâu (trang chủ, thông
+    // báo, lịch sử đánh giá, deep-link, …) — thay vì để từng nơi gọi tự kiểm
+    // tra `canSubmitAssessment` trước khi push route (dễ sót, như banner cảnh
+    // báo cũ chỉ hiện chứ không chặn vào màn). Lỗi tải pod (network) thì fail
+    // open: vẫn cho vào, backend vẫn là chốt chặn cuối cùng khi submit.
+    if (currentPodAsync.isLoading) {
+      return _LoadingScreen(onBack: () => context.pop());
+    }
+    final pod = currentPodAsync.valueOrNull;
+    if (pod != null && !pod.canSubmitAssessment) {
+      return _LockedAssessmentScreen(
+        reason:
+            pod.assessmentDisabledReason ??
+            'Bài đánh giá hiện tại chưa thể thực hiện.',
+        onBack: () => context.pop(),
+      );
+    }
+
     final questionsAsync = ref.watch(surveyQuestionsProvider);
     final assessmentState = ref.watch(assessmentNotifierProvider);
-    final currentPodAsync = ref.watch(currentPodProvider);
 
     return questionsAsync.when(
       loading: () => _LoadingScreen(onBack: () => context.pop()),
@@ -77,51 +96,11 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      currentPodAsync.when(
-                        data: (pod) {
-                          if (pod == null) return const SizedBox.shrink();
-                          if (pod.isLocked) return LockedPodBanner(currentPod: pod);
-                          if (!pod.canSubmitAssessment &&
-                              pod.assessmentDisabledReason != null) {
-                            return Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 24),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFF4E5),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: const Color(0xFFFFB74D)
-                                      .withValues(alpha: 0.5),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.info_outline_rounded,
-                                    color: Color(0xFFE65100),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      pod.assessmentDisabledReason!,
-                                      style: const TextStyle(
-                                        fontFamily: 'Inter',
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFFE65100),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, _) => const SizedBox.shrink(),
-                      ),
+                      // canSubmitAssessment == false đã bị chặn hẳn ở build()
+                      // phía trên rồi — pod tới đây chỉ còn cần báo tạm dừng
+                      // POD (isLocked), một khái niệm khác và KHÔNG chặn nộp bài.
+                      if (pod != null && pod.isLocked)
+                        LockedPodBanner(currentPod: pod),
                       _ProgressBar(
                         progress: progress,
                         current: _currentIndex + 1,
@@ -272,6 +251,95 @@ class _LoadingScreen extends StatelessWidget {
           const Expanded(
             child: Center(
               child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Locked screen — canSubmitAssessment == false (RED alert cooldown, ERAS đã
+// hoàn thành, hoặc ngoài khung giờ cố định cho Vàng/Đỏ). Chặn hẳn việc vào
+// màn trả lời câu hỏi, không chỉ cảnh báo, bất kể vào từ đâu.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LockedAssessmentScreen extends StatelessWidget {
+  const _LockedAssessmentScreen({required this.reason, required this.onBack});
+
+  final String reason;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          _Header(onBack: onBack),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFF4E5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.lock_clock_rounded,
+                        size: 36,
+                        color: Color(0xFFE65100),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Bài đánh giá tạm thời chưa thể thực hiện',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      reason,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        height: 1.5,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: onBack,
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text('Quay lại'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

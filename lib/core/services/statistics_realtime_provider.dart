@@ -10,7 +10,9 @@ import 'package:poms/features/nurse/presentation/providers/assessment_provider.d
     as nurse_assessment;
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/priority_patients_provider.dart';
+import 'package:poms/features/patient/domain/models/patient_notification_model.dart';
 import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
+import 'package:poms/features/patient/presentation/providers/patient_notification_provider.dart';
 import 'package:poms/features/patient/presentation/providers/survey_provider.dart'
     as patient_survey;
 import 'package:poms/main.dart';
@@ -161,6 +163,31 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
     ref.invalidate(patient_survey.surveyQuestionsProvider);
   }
 
+  // Thông báo mới cho chính bệnh nhân đang đăng nhập (vd bác sĩ đổi chế độ
+  // ăn Chung/Riêng) — cập nhật ngay khi app đang mở, không cần đợi FCM (không
+  // chạy được trên simulator, và OS có thể trì hoãn khi thiết bị thật).
+  void applyNotificationPayload(dynamic payload) {
+    final map = extractMap(payload);
+    if (map == null) return;
+
+    final myCaseId = ref.read(authStateProvider).valueOrNull?.caseId;
+    final eventCaseId = map['caseId']?.toString();
+    if (myCaseId == null || eventCaseId == null || eventCaseId != myCaseId) {
+      return;
+    }
+
+    try {
+      final notification = PatientNotificationModel.fromJson(map);
+      ref
+          .read(patientNotificationsNotifierProvider.notifier)
+          .upsertFromSocket(notification);
+    } catch (_) {
+      // Payload không đúng dạng mong đợi — bỏ qua, không làm crash socket listener.
+    }
+  }
+
+  socket.on('notification.created', applyNotificationPayload);
+
   socket.on('createPatient', (payload) {
     applyPatientPayload(payload);
     ref.invalidate(priorityPatientsProvider);
@@ -217,6 +244,7 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
     socket.off('deletePatient');
     socket.off('submitSurvey');
     socket.off('assessment.submitted');
+    socket.off('notification.created');
     socket.dispose();
   });
 });

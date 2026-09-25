@@ -43,6 +43,11 @@ abstract final class AppConstants {
   // API endpoints — danh mục mã bệnh ICD-10 (?search=&limit=)
   static const String endpointDiseases = '/diseases';
 
+  // API endpoints — thông báo hệ thống của bệnh nhân
+  static const String endpointMyNotifications = '/notifications/mine';
+  static String endpointMarkNotificationRead(int notificationId) =>
+      '/notifications/$notificationId/read';
+
   // API endpoints — phiếu theo dõi chăm sóc
   static const String endpointCareObservationMyTasks =
       '/care-observation/tasks/mine';

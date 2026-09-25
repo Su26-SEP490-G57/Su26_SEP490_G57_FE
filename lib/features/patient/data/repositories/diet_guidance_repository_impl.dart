@@ -9,32 +9,8 @@ class DietGuidanceRepositoryImpl implements DietGuidanceRepository {
 
   @override
   Future<PodProtocolModel?> getCurrentDietGuidance(String caseId) async {
-    // 1. Get Patient Details to get operationTypeId
-    final patientDetail = await _remoteDataSource.getPatientByCaseId(caseId);
-    final operationType =
-        patientDetail['operationType'] as Map<String, dynamic>?;
-
-    if (operationType == null) {
-      throw Exception('Patient does not have an assigned operation type.');
-    }
-
-    final operationTypeId = operationType['id'] as int;
-
-    final currentDietLevel = (patientDetail['currentDietLevel'] as int?) ?? 0;
-
-    // 2. Get all Pod Protocols for this operation type
-    final podProtocols = await _remoteDataSource.getPodProtocols(
-      operationTypeId,
-    );
-
-    // 3. Find the protocol matching the patient's current diet level
-    try {
-      return podProtocols.firstWhere((p) => p.dietLevel == currentDietLevel);
-    } catch (_) {
-      if (podProtocols.isNotEmpty) {
-        return podProtocols.first;
-      }
-      return null;
-    }
+    // BE tự phân giải: ưu tiên chỉ định ăn riêng đang active của bác sĩ
+    // (isCustomized = true), nếu không có mới trả về phác đồ chung theo POD.
+    return _remoteDataSource.getCurrentDietGuidance(caseId);
   }
 }

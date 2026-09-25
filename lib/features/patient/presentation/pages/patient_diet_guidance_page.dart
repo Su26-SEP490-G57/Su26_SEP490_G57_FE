@@ -252,10 +252,24 @@ class _DietGuidanceContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildStageHeader(),
+          if (protocol.isCustomized) ...[
+            const SizedBox(height: 16),
+            _buildCustomizedBanner(),
+          ],
           const SizedBox(height: 24),
+          if (protocol.doctorNotes != null &&
+              protocol.doctorNotes!.isNotEmpty) ...[
+            _buildDoctorNotesCard(),
+            const SizedBox(height: 24),
+          ],
           _buildMealsInfoCard(),
           const SizedBox(height: 24),
           _buildVolumeInfoCard(),
+          if (protocol.mealInstruction != null &&
+              protocol.mealInstruction!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildVolumeDescriptionCard(),
+          ],
           const SizedBox(height: 24),
           _buildFoodsListCard(
             title: 'Thực phẩm khuyên dùng',
@@ -272,13 +286,17 @@ class _DietGuidanceContent extends StatelessWidget {
           ),
           if (protocol.recommendedDrinks.isNotEmpty) const SizedBox(height: 24),
           _buildForbiddenCard(
-            title: 'Chưa nên sử dụng / Hạn chế',
-            foods: protocol.forbiddenFoods,
-            drinks: protocol.forbiddenDrinks,
+            title: 'Thực phẩm hạn chế',
+            items: protocol.forbiddenFoods,
+            icon: Icons.no_food_rounded,
           ),
-          if (protocol.forbiddenFoods.isNotEmpty ||
-              protocol.forbiddenDrinks.isNotEmpty)
-            const SizedBox(height: 24),
+          if (protocol.forbiddenFoods.isNotEmpty) const SizedBox(height: 24),
+          _buildForbiddenCard(
+            title: 'Đồ uống hạn chế',
+            items: protocol.forbiddenDrinks,
+            icon: Icons.no_drinks_rounded,
+          ),
+          if (protocol.forbiddenDrinks.isNotEmpty) const SizedBox(height: 24),
           _buildUpgradeCriteriaCard(
             title: 'Điều kiện xem xét nâng mức ăn',
             criteria: protocol.upgradeCriteria,
@@ -311,12 +329,105 @@ class _DietGuidanceContent extends StatelessWidget {
     );
   }
 
+  /// Banner báo bệnh nhân đang dùng chỉ định ăn riêng của bác sĩ thay vì
+  /// phác đồ chung theo POD.
+  Widget _buildCustomizedBanner() {
+    final doctorName = protocol.prescribedByDoctor?.fullName;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.medical_information_rounded,
+            color: Color(0xFF2563EB),
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              doctorName != null
+                  ? 'Chế độ ăn chỉ định riêng bởi BS. $doctorName'
+                  : 'Chế độ ăn chỉ định riêng bởi bác sĩ điều trị',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Color(0xFF1D4ED8),
+                fontFamily: 'Inter',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDoctorNotesCard() {
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.sticky_note_2_rounded,
+                  color: Color(0xFF2563EB),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Ghi chú của bác sĩ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: Color(0xFF1D4ED8),
+                    fontFamily: 'Inter',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            protocol.doctorNotes!,
+            style: TextStyle(
+              fontSize: 15,
+              color: AppColors.onSurface.withValues(alpha: 0.85),
+              height: 1.5,
+              fontFamily: 'Inter',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStageHeader() {
     final displayLabel = protocol.label.startsWith('Mức')
         ? protocol.label
         : 'Mức ${protocol.dietLevel} – ${protocol.label}';
 
-    return Row(
+    // Wrap thay vì Row: nhãn tùy chỉnh (vd "Mức 2 – Chế độ ăn chỉ định riêng")
+    // có thể dài hơn nhiều so với nhãn phác đồ chung ("Mức 2 – Cháo loãng"). Với
+    // Row + Expanded, phần dòng phụ bị ép xuống còn vài chục pixel và wrap từng
+    // chữ một; Wrap cho phép dòng phụ tự xuống hàng nguyên vẹn khi không đủ chỗ.
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 12,
+      runSpacing: 8,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -334,15 +445,12 @@ class _DietGuidanceContent extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Chế độ dinh dưỡng hồi phục ERAS',
-            style: TextStyle(
-              color: AppColors.onSurface.withValues(alpha: 0.6),
-              fontSize: 14,
-              fontFamily: 'Inter',
-            ),
+        Text(
+          'Chế độ dinh dưỡng hồi phục ERAS',
+          style: TextStyle(
+            color: AppColors.onSurface.withValues(alpha: 0.6),
+            fontSize: 14,
+            fontFamily: 'Inter',
           ),
         ),
       ],
@@ -413,21 +521,6 @@ class _DietGuidanceContent extends StatelessWidget {
               ),
             ],
           ),
-          if (protocol.mealInstruction != null &&
-              protocol.mealInstruction!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Divider(color: Color(0xFFEDEDF9)),
-            const SizedBox(height: 12),
-            Text(
-              protocol.mealInstruction!,
-              style: const TextStyle(
-                fontSize: 15,
-                color: AppColors.onSurfaceVariant,
-                height: 1.4,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -472,7 +565,7 @@ class _DietGuidanceContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Khối lượng mỗi bữa / lần',
+                      'Thể tích dung nạp',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
@@ -495,21 +588,41 @@ class _DietGuidanceContent extends StatelessWidget {
               ),
             ],
           ),
-          if (protocol.volumeInstruction != null &&
-              protocol.volumeInstruction!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Divider(color: Color(0xFFEDEDF9)),
-            const SizedBox(height: 12),
-            Text(
-              protocol.volumeInstruction!,
-              style: TextStyle(
-                color: AppColors.onSurface.withValues(alpha: 0.85),
-                height: 1.6,
-                fontSize: 15,
-                fontFamily: 'Inter',
-              ),
+        ],
+      ),
+    );
+  }
+
+  /// Mô tả chi tiết — đúng nội dung ô "Mô tả chi tiết" mà bác sĩ/điều dưỡng
+  /// nhập bên FE_ADMIN (`mealInstruction`), hiển thị thành khối riêng ngay
+  /// dưới "Thể tích dung nạp" thay vì nhét trong thẻ "Tần suất bữa ăn".
+  Widget _buildVolumeDescriptionCard() {
+    if (protocol.mealInstruction == null || protocol.mealInstruction!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Mô tả chi tiết',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: AppColors.onSurface,
+              fontFamily: 'Inter',
             ),
-          ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            protocol.mealInstruction!,
+            style: TextStyle(
+              color: AppColors.onSurface.withValues(alpha: 0.85),
+              height: 1.6,
+              fontSize: 15,
+              fontFamily: 'Inter',
+            ),
+          ),
         ],
       ),
     );
@@ -568,11 +681,10 @@ class _DietGuidanceContent extends StatelessWidget {
 
   Widget _buildForbiddenCard({
     required String title,
-    required List<String> foods,
-    required List<String> drinks,
+    required List<String> items,
+    required IconData icon,
   }) {
-    final allItems = [...foods, ...drinks];
-    if (allItems.isEmpty) {
+    if (items.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -588,11 +700,7 @@ class _DietGuidanceContent extends StatelessWidget {
                   color: const Color(0xFFFEE2E2),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
-                  Icons.warning_amber_rounded,
-                  color: Color(0xFFDC2626),
-                  size: 24,
-                ),
+                child: Icon(icon, color: const Color(0xFFDC2626), size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -609,7 +717,7 @@ class _DietGuidanceContent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          ...allItems.map(
+          ...items.map(
             (item) => Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
               child: Row(

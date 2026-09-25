@@ -7,6 +7,7 @@ import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
 import 'package:poms/features/patient/domain/models/symptom_history_model.dart';
 import 'package:poms/features/patient/domain/models/survey_models.dart';
+import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
 import 'package:poms/features/patient/presentation/providers/patient_assessment_history_provider.dart';
 
 class PatientAssessmentHistoryPage extends ConsumerWidget {
@@ -48,6 +49,7 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
     final dayGroups = ref.watch(patientDayGroupsProvider);
     final selectedDate = ref.watch(selectedHistoryDateProvider);
     final activeGroup = ref.watch(activeHistoryDayGroupProvider);
+    final currentPod = ref.watch(currentPodProvider).valueOrNull;
     final activeLog = ref.watch(activeAssessmentLogProvider);
     final timelineAsync = ref.watch(patientPodTimelineApiProvider);
 
@@ -133,7 +135,8 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
-                    onPressed: () => ref.invalidate(patientPodTimelineApiProvider),
+                    onPressed: () =>
+                        ref.invalidate(patientPodTimelineApiProvider),
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('Thử lại'),
                     style: ElevatedButton.styleFrom(
@@ -186,7 +189,12 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
                       onClear: selectedDate == null
                           ? null
                           : () {
-                              ref.read(selectedHistoryDateProvider.notifier).state = null;
+                              ref
+                                      .read(
+                                        selectedHistoryDateProvider.notifier,
+                                      )
+                                      .state =
+                                  null;
                             },
                     ),
                     const SizedBox(height: 16),
@@ -196,8 +204,10 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
                       activeDate: currentActiveGroup.date,
                       dayGroups: dayGroups,
                       onSelectDay: (group) {
-                        ref.read(selectedHistoryDateProvider.notifier).state = group.date;
-                        ref.read(selectedAssessmentIdProvider.notifier).state = null;
+                        ref.read(selectedHistoryDateProvider.notifier).state =
+                            group.date;
+                        ref.read(selectedAssessmentIdProvider.notifier).state =
+                            null;
                       },
                     ),
 
@@ -209,7 +219,9 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
                         activeLog: currentActiveLog,
                         onSelectLog: (log) {
                           if (log.assessmentId != null) {
-                            ref.read(selectedAssessmentIdProvider.notifier).state =
+                            ref
+                                    .read(selectedAssessmentIdProvider.notifier)
+                                    .state =
                                 log.assessmentId;
                           }
                         },
@@ -238,7 +250,8 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: currentActiveLog.symptoms.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 12),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final item = currentActiveLog.symptoms[index];
                           return _SymptomDetailCard(item: item);
@@ -248,6 +261,10 @@ class PatientAssessmentHistoryPage extends ConsumerWidget {
                       _UnassessedDateCard(
                         date: currentActiveGroup.date,
                         podNumber: currentActiveGroup.podNumber,
+                        canSubmitAssessment:
+                            currentPod?.canSubmitAssessment ?? true,
+                        assessmentDisabledReason:
+                            currentPod?.assessmentDisabledReason,
                       ),
                     ],
                   ],
@@ -299,11 +316,7 @@ class _AssessmentDateSearchBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.event_rounded,
-              size: 20,
-              color: AppColors.primary,
-            ),
+            const Icon(Icons.event_rounded, size: 20, color: AppColors.primary),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -314,7 +327,9 @@ class _AssessmentDateSearchBar extends StatelessWidget {
                   fontFamily: 'Inter',
                   fontSize: 14,
                   fontWeight: hasDate ? FontWeight.w700 : FontWeight.w500,
-                  color: hasDate ? AppColors.primary : AppColors.onSurfaceVariant,
+                  color: hasDate
+                      ? AppColors.primary
+                      : AppColors.onSurfaceVariant,
                 ),
               ),
             ),
@@ -513,10 +528,7 @@ class _AssessmentHistoryCard extends StatelessWidget {
 }
 
 class _AssessmentColorDot extends StatelessWidget {
-  const _AssessmentColorDot({
-    required this.triage,
-    required this.isAssessed,
-  });
+  const _AssessmentColorDot({required this.triage, required this.isAssessed});
 
   final TriageColor triage;
   final bool isAssessed;
@@ -691,84 +703,44 @@ class _DailyOverviewSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: badgeColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      log.recoveryStatusTag,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: badgeColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${log.completionPercentage}%',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.easeInOut,
-              tween: Tween<double>(
-                begin: 0,
-                end: log.completionPercentage / 100.0,
-              ),
-              builder: (context, value, child) {
-                return LinearProgressIndicator(
-                  value: value,
-                  minHeight: 8,
-                  backgroundColor: const Color(0xFFEDEDF9),
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    AppColors.primary,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: badgeBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    shape: BoxShape.circle,
                   ),
-                );
-              },
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  log.recoveryStatusTag,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: badgeColor,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             log.isReassessment
                 ? 'Đã được đánh giá lại bởi điều dưỡng.'
                 : (log.isAssessed
-                    ? 'Đã hoàn thành ${log.completedCount}/${log.totalCount} mục đánh giá triệu chứng.'
-                    : 'Chưa thực hiện khảo sát triệu chứng cho ngày này.'),
+                      ? 'Đã hoàn thành ${log.completedCount}/${log.totalCount} mục đánh giá triệu chứng.'
+                      : 'Chưa thực hiện khảo sát triệu chứng cho ngày này.'),
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
@@ -882,10 +854,21 @@ class _SymptomDetailCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _UnassessedDateCard extends StatelessWidget {
-  const _UnassessedDateCard({required this.date, required this.podNumber});
+  const _UnassessedDateCard({
+    required this.date,
+    required this.podNumber,
+    required this.canSubmitAssessment,
+    this.assessmentDisabledReason,
+  });
 
   final DateTime date;
   final int podNumber;
+
+  /// Trạng thái khóa đánh giá thực tế của bệnh nhân (RED alert cooldown, ERAS
+  /// đã hoàn thành, ngoài khung giờ cố định…) — khác với isFuture/isPast bên
+  /// dưới vốn chỉ so ngày được chọn với hôm nay.
+  final bool canSubmitAssessment;
+  final String? assessmentDisabledReason;
 
   @override
   Widget build(BuildContext context) {
@@ -896,6 +879,8 @@ class _UnassessedDateCard extends StatelessWidget {
     final isFuture = selectedDay.isAfter(today);
     final isPast = selectedDay.isBefore(today);
     final isToday = selectedDay.isAtSameMomentAs(today);
+    final isLockedToday = isToday && !canSubmitAssessment;
+    final canTapButton = isToday && canSubmitAssessment;
 
     final String titleMessage;
     final String bodyMessage;
@@ -914,6 +899,13 @@ class _UnassessedDateCard extends StatelessWidget {
           'Bài khảo sát theo dõi triệu chứng cho ngày này đã quá hạn. Bạn chỉ có thể thực hiện bài đánh giá cho ngày hiện tại.';
       buttonLabel = 'Đã quá hạn đánh giá';
       buttonIcon = Icons.history_toggle_off_rounded;
+    } else if (isLockedToday) {
+      titleMessage = 'Bài đánh giá tạm thời chưa thể thực hiện';
+      bodyMessage =
+          assessmentDisabledReason ??
+          'Bài đánh giá hiện tại chưa thể thực hiện.';
+      buttonLabel = 'Tạm khóa';
+      buttonIcon = Icons.lock_clock_rounded;
     } else {
       titleMessage = 'Chưa có nhật ký đánh giá';
       bodyMessage =
@@ -936,9 +928,11 @@ class _UnassessedDateCard extends StatelessWidget {
                 ? Icons.event_available_outlined
                 : isPast
                 ? Icons.history_toggle_off_rounded
+                : isLockedToday
+                ? Icons.lock_clock_rounded
                 : Icons.assignment_late_outlined,
             size: 48,
-            color: (isFuture || isPast)
+            color: (isFuture || isPast || isLockedToday)
                 ? AppColors.onSurfaceVariant.withValues(alpha: 0.6)
                 : AppColors.primary,
           ),
@@ -967,7 +961,7 @@ class _UnassessedDateCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: isToday
+              onPressed: canTapButton
                   ? () => context.push(AppRoutes.patientAssessment)
                   : null,
               style: ElevatedButton.styleFrom(

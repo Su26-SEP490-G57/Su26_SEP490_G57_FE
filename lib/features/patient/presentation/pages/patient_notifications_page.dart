@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import 'package:poms/core/constants/app_colors.dart';
 import 'package:poms/core/constants/app_routes.dart';
+import 'package:poms/core/utils/extensions.dart';
+import 'package:poms/features/patient/domain/models/current_pod.dart';
+import 'package:poms/features/patient/domain/models/patient_notification_model.dart';
 import 'package:poms/features/patient/presentation/providers/current_pod_provider.dart';
+import 'package:poms/features/patient/presentation/providers/patient_notification_provider.dart';
 
 class PatientNotificationsPage extends ConsumerStatefulWidget {
   const PatientNotificationsPage({super.key});
@@ -21,6 +25,13 @@ class _PatientNotificationsPageState
   @override
   Widget build(BuildContext context) {
     final currentPodAsync = ref.watch(currentPodProvider);
+    final notificationsState = ref.watch(patientNotificationsNotifierProvider);
+    final medicalNotifications = notificationsState.notifications
+        .where((n) => n.category == 'medical')
+        .toList();
+    final systemNotifications = notificationsState.notifications
+        .where((n) => n.category == 'system')
+        .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -75,61 +86,74 @@ class _PatientNotificationsPageState
               const SizedBox(height: 8),
 
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                  children: [
-                    // Locked POD Alert Card (Highest Priority System Alert)
-                    if (isLocked &&
-                        (_selectedFilter == 'all' ||
-                            _selectedFilter == 'system')) ...[
-                      _buildLockedPodAlertCard(context, holdReason),
-                      const SizedBox(height: 16),
-                    ],
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () => Future.wait([
+                    ref
+                        .read(patientNotificationsNotifierProvider.notifier)
+                        .load(),
+                    ref.refresh(currentPodProvider.future),
+                  ]),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                    children: [
+                      // Locked POD Alert Card (Highest Priority System Alert)
+                      if (isLocked &&
+                          (_selectedFilter == 'all' ||
+                              _selectedFilter == 'system')) ...[
+                        _buildLockedPodAlertCard(context, pod, holdReason),
+                        const SizedBox(height: 16),
+                      ],
 
-                    // Standard Notifications List
-                    if (_selectedFilter == 'all' ||
-                        _selectedFilter == 'medical') ...[
-                      _buildNotificationItem(
-                        icon: Icons.assignment_rounded,
-                        iconBgColor: const Color(0xFFE6F9F1),
-                        iconColor: const Color(0xFF10B981),
-                        title: 'Nhắc nhở làm khảo sát hàng ngày',
-                        body:
-                            'Hãy hoàn thành bài đánh giá triệu chứng hôm nay để bác sĩ và điều dưỡng theo dõi tiến trình hồi phục của bạn.',
-                        time: 'Hôm nay',
-                        isUnread: true,
-                        onTap: () => context.push(AppRoutes.patientAssessment),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildNotificationItem(
-                        icon: Icons.restaurant_menu_rounded,
-                        iconBgColor: const Color(0xFFFFF7E6),
-                        iconColor: const Color(0xFFF59E0B),
-                        title: 'Cập nhật hướng dẫn chế độ ăn',
-                        body:
-                            'Chế độ ăn uống và vận động khuyến nghị theo giao thức ERAS cho ngày hiện tại đã sẵn sàng.',
-                        time: 'Hôm nay',
-                        isUnread: false,
-                        onTap: () =>
-                            context.push(AppRoutes.patientDietGuidance),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
+                      // Medical: thông báo thật (vd đổi chế độ ăn Chung/Riêng)
+                      // trước, rồi tới nhắc nhở khảo sát cố định.
+                      if (_selectedFilter == 'all' ||
+                          _selectedFilter == 'medical') ...[
+                        for (final notification in medicalNotifications) ...[
+                          _buildDynamicNotificationItem(
+                            context,
+                            pod,
+                            notification,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        _buildNotificationItem(
+                          icon: Icons.assignment_rounded,
+                          iconBgColor: const Color(0xFFE6F9F1),
+                          iconColor: const Color(0xFF10B981),
+                          title: 'Nhắc nhở làm khảo sát hàng ngày',
+                          body:
+                              'Hãy hoàn thành bài đánh giá triệu chứng hôm nay để bác sĩ và điều dưỡng theo dõi tiến trình hồi phục của bạn.',
+                          time: 'Hôm nay',
+                          isUnread: true,
+                          onTap: () => _goToAssessment(context, pod),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
 
-                    if (_selectedFilter == 'all' ||
-                        _selectedFilter == 'system') ...[
-                      _buildNotificationItem(
-                        icon: Icons.health_and_safety_rounded,
-                        iconBgColor: AppColors.primaryContainer,
-                        iconColor: AppColors.primary,
-                        title: 'Hồ sơ bệnh án ERAS đã kích hoạt',
-                        body:
-                            'Tài khoản của bạn đã được kết nối thành công với giao thức theo dõi sau phẫu thuật.',
-                        time: 'Vài ngày trước',
-                        isUnread: false,
-                      ),
+                      if (_selectedFilter == 'all' ||
+                          _selectedFilter == 'system') ...[
+                        for (final notification in systemNotifications) ...[
+                          _buildDynamicNotificationItem(
+                            context,
+                            pod,
+                            notification,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        _buildNotificationItem(
+                          icon: Icons.health_and_safety_rounded,
+                          iconBgColor: AppColors.primaryContainer,
+                          iconColor: AppColors.primary,
+                          title: 'Hồ sơ bệnh án ERAS đã kích hoạt',
+                          body:
+                              'Tài khoản của bạn đã được kết nối thành công với giao thức theo dõi sau phẫu thuật.',
+                          time: 'Vài ngày trước',
+                          isUnread: false,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -161,7 +185,26 @@ class _PatientNotificationsPageState
     );
   }
 
-  Widget _buildLockedPodAlertCard(BuildContext context, String? holdReason) {
+  /// Điều hướng sang màn trả lời câu hỏi — chặn ngay từ đây nếu
+  /// `canSubmitAssessment == false` thay vì đẩy vào rồi để màn đó tự bounce
+  /// lại, dù trang đích cũng tự chặn độc lập (defense in depth).
+  void _goToAssessment(BuildContext context, CurrentPod? pod) {
+    if (pod != null && !pod.canSubmitAssessment) {
+      context.showTopToast(
+        pod.assessmentDisabledReason ??
+            'Bài đánh giá hiện tại chưa thể thực hiện.',
+        isError: false,
+      );
+      return;
+    }
+    context.push(AppRoutes.patientAssessment);
+  }
+
+  Widget _buildLockedPodAlertCard(
+    BuildContext context,
+    CurrentPod? pod,
+    String? holdReason,
+  ) {
     String reasonText = holdReason != null && holdReason.trim().isNotEmpty
         ? holdReason.trim()
         : 'Đang trong quá trình theo dõi lâm sàng đặc biệt từ đội ngũ y tế.';
@@ -247,7 +290,7 @@ class _PatientNotificationsPageState
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => context.push(AppRoutes.patientAssessment),
+                  onPressed: () => _goToAssessment(context, pod),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFE65100),
                     foregroundColor: Colors.white,
@@ -298,6 +341,73 @@ class _PatientNotificationsPageState
         ],
       ),
     );
+  }
+
+  /// Thông báo thật lấy từ backend (vd bác sĩ đổi chế độ ăn Chung/Riêng).
+  /// Bấm vào: đánh dấu đã đọc + điều hướng theo `route` (khớp
+  /// AppNotificationPayload.route dùng cho push notification).
+  Widget _buildDynamicNotificationItem(
+    BuildContext context,
+    CurrentPod? pod,
+    PatientNotificationModel notification,
+  ) {
+    final (icon, iconBgColor, iconColor) = _iconForRoute(notification.route);
+
+    return _buildNotificationItem(
+      icon: icon,
+      iconBgColor: iconBgColor,
+      iconColor: iconColor,
+      title: notification.title,
+      body: notification.body,
+      time: _formatRelativeTime(notification.createdAt),
+      isUnread: !notification.isRead,
+      onTap: () {
+        ref
+            .read(patientNotificationsNotifierProvider.notifier)
+            .markAsRead(notification.notificationId);
+        switch (notification.route) {
+          case 'diet_guidance':
+            context.push(AppRoutes.patientDietGuidance);
+          case 'assessment':
+            _goToAssessment(context, pod);
+        }
+      },
+    );
+  }
+
+  (IconData, Color, Color) _iconForRoute(String? route) {
+    switch (route) {
+      case 'diet_guidance':
+        return (
+          Icons.restaurant_menu_rounded,
+          const Color(0xFFFFF7E6),
+          const Color(0xFFF59E0B),
+        );
+      case 'assessment':
+        return (
+          Icons.assignment_rounded,
+          const Color(0xFFE6F9F1),
+          const Color(0xFF10B981),
+        );
+      default:
+        return (
+          Icons.notifications_rounded,
+          AppColors.primaryContainer,
+          AppColors.primary,
+        );
+    }
+  }
+
+  String _formatRelativeTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final local = dateTime.toLocal();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(local.year, local.month, local.day);
+    final diffDays = today.difference(date).inDays;
+
+    if (diffDays == 0) return 'Hôm nay';
+    if (diffDays == 1) return 'Hôm qua';
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
   }
 
   Widget _buildNotificationItem({
