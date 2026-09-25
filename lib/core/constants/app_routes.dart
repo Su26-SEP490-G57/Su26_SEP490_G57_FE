@@ -36,6 +36,8 @@ abstract final class AppRoutes {
   static const String patientAssessmentResult = '/patient/assessment/result';
   static const String patientAssessmentHistory = '/patient/assessment-history';
   static const String patientDietGuidance = '/patient/diet-guidance';
+  static const String patientTreatmentSheets = '/patient/treatment-sheets';
+  static const String patientCareSheets = '/patient/care-sheets';
 
   // Helpers for parameterized routes
   static String nursePatientDetailPath(String id) => '/nurse/patients/$id';

@@ -32,6 +32,7 @@ import 'package:poms/features/patient/presentation/pages/patient_assessment_resu
 import 'package:poms/features/patient/presentation/pages/patient_dashboard_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_diet_guidance_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_health_education_page.dart';
+import 'package:poms/features/patient/presentation/pages/patient_sheets_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_notifications_page.dart';
 import 'package:poms/features/patient/presentation/pages/patient_profile_page.dart';
 import 'package:poms/core/services/notification_service.dart';
@@ -293,6 +294,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.patientEducation,
         builder: (context, state) => const PatientHealthEducationPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.patientTreatmentSheets,
+        builder: (context, state) =>
+            const PatientSheetsPage(kind: PatientSheetKind.treatment),
+      ),
+      GoRoute(
+        path: AppRoutes.patientCareSheets,
+        builder: (context, state) =>
+            const PatientSheetsPage(kind: PatientSheetKind.care),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

@@ -489,48 +489,65 @@ class _PatientInfoCard extends ConsumerWidget {
                           ),
                           const SizedBox(height: 14),
 
-                          // Bottom Guidance Message
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isLocked
-                                  ? const Color(0xFFFFF7ED)
-                                  : const Color(0xFFF5F3FF),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  isLocked
-                                      ? Icons.warning_amber_rounded
-                                      : Icons.auto_awesome_rounded,
-                                  color: isLocked
-                                      ? const Color(0xFFEA580C)
-                                      : const Color(0xFF8B5CF6),
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    isLocked
-                                        ? 'Tiến trình tạm dừng - Thực hiện theo dặn dò y tế.'
-                                        : 'Hôm nay là một ngày tuyệt vời để hồi phục!',
-                                    style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: isLocked
-                                          ? const Color(0xFFC2410C)
-                                          : const Color(0xFF6D28D9),
+                          // Chỉ nhắc khi tiến trình POD đang bị tạm dừng.
+                          if (isLocked) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF7ED),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Color(0xFFEA580C),
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Tiến trình tạm dừng - Thực hiện theo dặn dò y tế.',
+                                      style: TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFFC2410C),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
+                            const SizedBox(height: 14),
+                          ],
+
+                          // Phiếu điều trị / phiếu chăm sóc của chính bệnh nhân (xem PDF)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _SheetShortcutButton(
+                                  icon: Icons.medical_information_outlined,
+                                  label: 'Phiếu điều trị',
+                                  onTap: () => context.push(
+                                    AppRoutes.patientTreatmentSheets,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _SheetShortcutButton(
+                                  icon: Icons.assignment_outlined,
+                                  label: 'Phiếu chăm sóc',
+                                  onTap: () =>
+                                      context.push(AppRoutes.patientCareSheets),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -899,6 +916,40 @@ class _BentoActionCardState extends State<_BentoActionCard> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SheetShortcutButton extends StatelessWidget {
+  const _SheetShortcutButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
