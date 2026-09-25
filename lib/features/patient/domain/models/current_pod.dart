@@ -6,6 +6,11 @@ class CurrentPod extends Equatable {
     required this.isLocked,
     this.currentPod,
     this.holdReason,
+    this.triageColor,
+    this.isAssessmentLocked = false,
+    this.erasCompleted = false,
+    this.canSubmitAssessment = true,
+    this.assessmentDisabledReason,
   });
 
   factory CurrentPod.fromJson(Map<String, dynamic> json) {
@@ -14,6 +19,11 @@ class CurrentPod extends Equatable {
       currentPod: json['currentPod'] as int?,
       isLocked: json['isLocked'] as bool? ?? false,
       holdReason: json['holdReason'] as String?,
+      triageColor: json['triageColor'] as String?,
+      isAssessmentLocked: json['isAssessmentLocked'] as bool? ?? false,
+      erasCompleted: json['erasCompleted'] as bool? ?? false,
+      canSubmitAssessment: json['canSubmitAssessment'] as bool? ?? true,
+      assessmentDisabledReason: json['assessmentDisabledReason'] as String?,
     );
   }
 
@@ -21,7 +31,22 @@ class CurrentPod extends Equatable {
   final int? currentPod;
   final bool isLocked;
   final String? holdReason;
+  final String? triageColor;
+  final bool isAssessmentLocked;
+  final bool erasCompleted;
+  final bool canSubmitAssessment;
+  final String? assessmentDisabledReason;
 
   @override
-  List<Object?> get props => [caseId, currentPod, isLocked, holdReason];
+  List<Object?> get props => [
+        caseId,
+        currentPod,
+        isLocked,
+        holdReason,
+        triageColor,
+        isAssessmentLocked,
+        erasCompleted,
+        canSubmitAssessment,
+        assessmentDisabledReason,
+      ];
 }
