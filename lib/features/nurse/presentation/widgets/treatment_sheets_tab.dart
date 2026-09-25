@@ -13,12 +13,15 @@ const _textMuted = Color(0xFF424656);
 const _border = Color(0xFFE1E3EE);
 
 /// Tab "Phiếu điều trị" — danh sách phiếu theo dõi điều trị của người bệnh
-/// (lưu ở HIS), mới nhất trước. Chỉ xem; bác sĩ lập phiếu mới bằng nút trên
-/// thanh tiêu đề.
+/// (lưu ở HIS), mới nhất trước. Nút "Thêm phiếu điều trị" ở đầu tab (giống
+/// tab Phiếu chăm sóc) chỉ hiện khi có [onAdd] — tức là bác sĩ.
 class TreatmentSheetsTab extends ConsumerWidget {
-  const TreatmentSheetsTab({required this.caseId, super.key});
+  const TreatmentSheetsTab({required this.caseId, this.onAdd, super.key});
 
   final String caseId;
+
+  /// Mở form lập phiếu mới; null = không được lập phiếu (chỉ xem).
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,36 +30,58 @@ class TreatmentSheetsTab extends ConsumerWidget {
     Future<void> refresh() =>
         ref.refresh(treatmentSheetsProvider(caseId).future);
 
+    final addButton = onAdd != null
+        ? Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Thêm phiếu điều trị'),
+              ),
+            ),
+          )
+        : null;
+
     return sheetsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) => _Message(
-        icon: Icons.cloud_off_rounded,
-        text: 'Không tải được phiếu điều trị từ HIS.',
-        action: OutlinedButton(
-          onPressed: () => ref.invalidate(treatmentSheetsProvider(caseId)),
-          child: const Text('Thử lại'),
-        ),
+      error: (_, _) => ListView(
+        children: [
+          ?addButton,
+          _Message(
+            icon: Icons.cloud_off_rounded,
+            text: 'Không tải được phiếu điều trị từ HIS.',
+            action: OutlinedButton(
+              onPressed: () => ref.invalidate(treatmentSheetsProvider(caseId)),
+              child: const Text('Thử lại'),
+            ),
+          ),
+        ],
       ),
       data: (sheets) => RefreshIndicator(
         onRefresh: refresh,
-        child: sheets.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 80),
-                  _Message(
-                    icon: Icons.description_outlined,
-                    text: 'Chưa có phiếu theo dõi điều trị.',
-                  ),
-                ],
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            ?addButton,
+            if (sheets.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 60),
+                child: _Message(
+                  icon: Icons.description_outlined,
+                  text: 'Chưa có phiếu theo dõi điều trị.',
+                ),
               )
-            : ListView.separated(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                itemCount: sheets.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (_, index) => _SheetCard(sheet: sheets[index]),
-              ),
+            else
+              for (final sheet in sheets)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: _SheetCard(sheet: sheet),
+                ),
+          ],
+        ),
       ),
     );
   }

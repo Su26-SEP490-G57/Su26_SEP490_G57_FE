@@ -157,6 +157,7 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
   Widget build(BuildContext context) {
     final patientState = ref.watch(patientNotifierProvider);
     final assignedRoomsAsync = ref.watch(assignedRoomsProvider);
+    final canSeeAll = ref.watch(canSeeAllPatientsProvider);
 
     if (patientState.isLoading ||
         (assignedRoomsAsync.isLoading && !assignedRoomsAsync.hasValue)) {
@@ -166,14 +167,14 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
       return Center(child: Text(patientState.errorMessage ?? 'Có lỗi xảy ra'));
     }
 
-    if (assignedRoomsAsync.hasError) {
+    if (assignedRoomsAsync.hasError && !canSeeAll) {
       return const Center(
         child: Text('Không thể tải phòng bệnh được phân công'),
       );
     }
 
     final assignedRooms = assignedRoomsAsync.value ?? [];
-    final isUnassigned = assignedRooms.isEmpty;
+    final isUnassigned = !canSeeAll && assignedRooms.isEmpty;
 
     final filteredPatients = _filtered(patientState.patients);
     final totalPages = max(1, (filteredPatients.length / _pageSize).ceil());
@@ -194,7 +195,7 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
     return Column(
       children: [
         // ── Top App Bar ──────────────────────────────────────────────
-        _TopAppBar(assignedRooms: assignedRooms),
+        _TopAppBar(assignedRooms: assignedRooms, canSeeAll: canSeeAll),
 
         // ── Body ─────────────────────────────────────────────────────
         Expanded(
@@ -374,13 +375,16 @@ class _NursePatientsPageState extends ConsumerState<NursePatientsPage> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _TopAppBar extends StatelessWidget {
-  const _TopAppBar({required this.assignedRooms});
+  const _TopAppBar({required this.assignedRooms, required this.canSeeAll});
 
   final List<String> assignedRooms;
+  final bool canSeeAll;
 
   @override
   Widget build(BuildContext context) {
-    final roomsText = assignedRooms.isEmpty
+    final roomsText = canSeeAll
+        ? 'Tất cả phòng'
+        : assignedRooms.isEmpty
         ? 'Chưa phân phòng'
         : assignedRooms.join(', ');
 
@@ -695,6 +699,9 @@ class _PatientCard extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text(
                     data.name,
+                    // Tên dài tối đa 2 dòng rồi "..." để không đè cột mức ăn.
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 18,
@@ -715,6 +722,8 @@ class _PatientCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            const SizedBox(width: 8),
 
             // Right — diet level + chevron trên, status pill dưới
             Column(

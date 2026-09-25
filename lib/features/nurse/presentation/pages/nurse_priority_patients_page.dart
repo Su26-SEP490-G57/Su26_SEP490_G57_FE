@@ -205,7 +205,8 @@ class _NursePriorityPatientsPageState
     final assignedRoomsAsync = ref.watch(assignedRoomsProvider);
 
     final assignedRooms = assignedRoomsAsync.value ?? [];
-    final isUnassigned = assignedRooms.isEmpty;
+    final canSeeAll = ref.watch(canSeeAllPatientsProvider);
+    final isUnassigned = !canSeeAll && assignedRooms.isEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF8FF),
@@ -213,6 +214,7 @@ class _NursePriorityPatientsPageState
         children: [
           _TopAppBar(
             assignedRooms: assignedRooms,
+            canSeeAll: canSeeAll,
             onSearchTap: () => FocusScope.of(context).requestFocus(),
             onFilterTap: () => _showFilterSheet(context),
           ),
@@ -357,15 +359,19 @@ class _TopAppBar extends StatelessWidget {
     required this.onSearchTap,
     required this.onFilterTap,
     required this.assignedRooms,
+    required this.canSeeAll,
   });
 
   final VoidCallback onSearchTap;
   final VoidCallback onFilterTap;
   final List<String> assignedRooms;
+  final bool canSeeAll;
 
   @override
   Widget build(BuildContext context) {
-    final roomsText = assignedRooms.isEmpty
+    final roomsText = canSeeAll
+        ? 'Tất cả phòng'
+        : assignedRooms.isEmpty
         ? 'Chưa phân phòng'
         : 'Phòng: ${assignedRooms.join(", ")}';
 

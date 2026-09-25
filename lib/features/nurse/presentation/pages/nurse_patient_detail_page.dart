@@ -11,7 +11,6 @@ import 'package:poms/features/nurse/presentation/providers/assessment_provider.d
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:poms/features/nurse/presentation/providers/care_observation_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/care_sheets_list.dart';
-import 'package:poms/features/nurse/presentation/widgets/medical_records_tab.dart';
 import 'package:poms/features/nurse/presentation/providers/treatment_order_provider.dart';
 import 'package:poms/features/nurse/presentation/widgets/treatment_order_sheet.dart';
 import 'package:poms/features/nurse/presentation/widgets/treatment_sheets_tab.dart';
@@ -52,16 +51,18 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
   bool _isUpdatingCare = false;
   bool _isHandlingAlert = false;
 
+  // Cùng thứ tự với panel chi tiết bệnh nhân trên web: Tổng quan, Chỉ số,
+  // Phiếu điều trị, Phiếu chăm sóc, rồi các tab còn lại.
   static const _tabs = [
     'Tổng quan',
     'Chỉ số',
-    'Lịch sử đánh giá',
-    'Ghi chú',
-    'Bệnh án',
     'Phiếu điều trị',
     'Phiếu chăm sóc',
+    'Lịch sử đánh giá',
+    'Ghi chú',
     'Tuân thủ',
   ];
+  static final _assessmentTabIndex = _tabs.indexOf('Lịch sử đánh giá');
 
   @override
   void initState() {
@@ -313,16 +314,6 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
               ),
             ),
             actions: [
-              // Chỉ bác sĩ mới được tạo chỉ định điều trị.
-              if (isDoctorRole)
-                IconButton(
-                  icon: const Icon(
-                    Icons.medical_information_outlined,
-                    color: Colors.white,
-                  ),
-                  tooltip: 'Thêm phiếu theo dõi điều trị',
-                  onPressed: _handleTreatmentOrder,
-                ),
               IconButton(
                 icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
                 tooltip: 'Thêm ghi chú',
@@ -381,8 +372,8 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
               patient: patient,
               assessmentState: assessmentState,
               activeAlert: activeAlert,
-              // Tab 'Lịch sử đánh giá' đã dịch sang index 2 sau khi chèn 'Chỉ số'.
-              onAssessmentTap: () => _tabController.animateTo(2),
+              onAssessmentTap: () =>
+                  _tabController.animateTo(_assessmentTabIndex),
               onObservationSheetTap: isNurseRole
                   ? () => context.push(
                       AppRoutes.nurseObservationSheetPath(widget.patientId),
@@ -390,14 +381,17 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
                   : null,
             ),
             VitalSignsTab(caseId: widget.patientId),
-            _AssessmentTab(caseId: widget.patientId),
-            _NotesTab(caseId: widget.patientId),
-            MedicalRecordsTab(caseId: widget.patientId),
-            TreatmentSheetsTab(caseId: widget.patientId),
+            TreatmentSheetsTab(
+              caseId: widget.patientId,
+              // Chỉ bác sĩ mới được tạo chỉ định điều trị.
+              onAdd: isDoctorRole ? _handleTreatmentOrder : null,
+            ),
             CareSheetsList(
               caseId: widget.patientId,
               canCreate: isNurseRole || isDoctorRole,
             ),
+            _AssessmentTab(caseId: widget.patientId),
+            _NotesTab(caseId: widget.patientId),
             _ComplianceTab(caseId: widget.patientId),
           ],
         ),
@@ -471,7 +465,7 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
     if (!mounted) return;
 
     if (newAssessment != null) {
-      _tabController.animateTo(2);
+      _tabController.animateTo(_assessmentTabIndex);
       context.showTopToast(
         'Đã cập nhật đánh giá lại: $statusLabel',
         isSuccess: true,

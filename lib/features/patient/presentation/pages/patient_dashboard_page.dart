@@ -37,7 +37,9 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).user;
-    final displayName = user?.displayName.split(' ').first ?? 'bạn';
+    // Người Việt gọi theo TÊN (chữ cuối): "Nguyễn Văn An" → "An".
+    final nameParts = (user?.displayName ?? '').trim().split(RegExp(r'\s+'));
+    final displayName = nameParts.last.isNotEmpty ? nameParts.last : 'bạn';
 
     return Column(
       children: [
@@ -129,6 +131,8 @@ class _TopAppBar extends ConsumerWidget {
                 ),
                 Text(
                   '$displayName!',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 20,
