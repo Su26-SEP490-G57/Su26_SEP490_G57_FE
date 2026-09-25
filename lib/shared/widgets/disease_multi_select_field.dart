@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:poms/core/constants/disease_catalog.dart';
+import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/shared/data/disease_search.dart';
 
-/// Chọn nhiều bệnh từ danh mục ICD — tương đương `DiseaseAutocomplete
-/// multiple` của web: các bệnh đã chọn hiển thị dạng chip (có nút xoá), ô bên
-/// dưới tìm theo mã hoặc tên (không dấu cũng được).
-class DiseaseMultiSelectField extends StatelessWidget {
+/// Chọn nhiều bệnh từ danh mục ICD-10 (API /diseases) — tương đương
+/// `DiseaseAutocomplete multiple` của web: các bệnh đã chọn hiển thị dạng chip
+/// (có nút xoá), ô bên dưới tìm theo mã hoặc tên (không dấu cũng được).
+class DiseaseMultiSelectField extends ConsumerWidget {
   const DiseaseMultiSelectField({
     required this.label,
     required this.values,
@@ -24,8 +26,9 @@ class DiseaseMultiSelectField extends StatelessWidget {
   final InputDecoration? decoration;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final selected = values.toSet();
+    final diseaseSearch = DiseaseSearch(ref.read(appDioProvider));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,13 +62,15 @@ class DiseaseMultiSelectField extends StatelessWidget {
         ],
         Autocomplete<DiseaseOption>(
           displayStringForOption: (option) => option.label,
-          optionsBuilder: (textEditingValue) {
-            final query = _normalize(textEditingValue.text);
-            return diseaseCatalog.where(
-              (option) =>
-                  !selected.contains(option.label) &&
-                  _normalize('${option.code} ${option.name}').contains(query),
-            );
+          optionsBuilder: (textEditingValue) async {
+            try {
+              final options = await diseaseSearch.search(textEditingValue.text);
+              return options.where(
+                (option) => !selected.contains(option.label),
+              );
+            } on Exception {
+              return const Iterable<DiseaseOption>.empty();
+            }
           },
           onSelected: (option) => onChanged([...values, option.label]),
           fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
@@ -111,20 +116,4 @@ class DiseaseMultiSelectField extends StatelessWidget {
       ],
     );
   }
-}
-
-// Bỏ dấu tiếng Việt để tìm "tang huyet ap" vẫn ra "Tăng huyết áp".
-String _normalize(String value) {
-  const from =
-      'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ';
-  const to =
-      'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd';
-  final lower = value.toLowerCase();
-  final buffer = StringBuffer();
-  for (final rune in lower.runes) {
-    final char = String.fromCharCode(rune);
-    final index = from.indexOf(char);
-    buffer.write(index >= 0 ? to[index] : char);
-  }
-  return buffer.toString();
 }

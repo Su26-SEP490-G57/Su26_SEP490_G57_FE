@@ -40,6 +40,9 @@ abstract final class AppConstants {
   static String endpointTreatmentSheetPrefill(String caseId) =>
       '/treatment-orders/patient/$caseId/sheet-prefill';
 
+  // API endpoints — danh mục mã bệnh ICD-10 (?search=&limit=)
+  static const String endpointDiseases = '/diseases';
+
   // API endpoints — phiếu theo dõi chăm sóc
   static const String endpointCareObservationMyTasks =
       '/care-observation/tasks/mine';
