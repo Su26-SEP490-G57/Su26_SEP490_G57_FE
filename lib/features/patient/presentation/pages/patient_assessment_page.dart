@@ -78,9 +78,47 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       currentPodAsync.when(
-                        data: (pod) => pod != null && pod.isLocked
-                            ? LockedPodBanner(currentPod: pod)
-                            : const SizedBox.shrink(),
+                        data: (pod) {
+                          if (pod == null) return const SizedBox.shrink();
+                          if (pod.isLocked) return LockedPodBanner(currentPod: pod);
+                          if (!pod.canSubmitAssessment &&
+                              pod.assessmentDisabledReason != null) {
+                            return Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 24),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF4E5),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFFFFB74D)
+                                      .withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.info_outline_rounded,
+                                    color: Color(0xFFE65100),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      pod.assessmentDisabledReason!,
+                                      style: const TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFFE65100),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
                         loading: () => const SizedBox.shrink(),
                         error: (_, _) => const SizedBox.shrink(),
                       ),
@@ -162,6 +200,16 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
   }
 
   Future<void> _submit(List<SurveyQuestion> questions) async {
+    final pod = ref.read(currentPodProvider).valueOrNull;
+    if (pod != null && !pod.canSubmitAssessment) {
+      context.showTopToast(
+        pod.assessmentDisabledReason ??
+            'Bài đánh giá hiện tại chưa thể thực hiện.',
+        isError: true,
+      );
+      return;
+    }
+
     final user = ref.read(authNotifierProvider).user;
     final caseId = user?.caseId;
 

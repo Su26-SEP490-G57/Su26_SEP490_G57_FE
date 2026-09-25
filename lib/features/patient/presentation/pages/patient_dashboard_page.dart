@@ -517,11 +517,19 @@ class _PatientInfoCard extends ConsumerWidget {
 // Action Cards Section
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ActionGrid extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// Action Cards Section
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ActionGrid extends ConsumerWidget {
   const _ActionGrid();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pod = ref.watch(currentPodProvider).valueOrNull;
+    final canSubmit = pod?.canSubmitAssessment ?? true;
+    final disabledReason = pod?.assessmentDisabledReason;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -564,16 +572,42 @@ class _ActionGrid extends StatelessWidget {
         // Action Card 2: Trả lời các câu hỏi
         _BentoActionCard(
           categoryTag: 'THEO DÕI HÀNG NGÀY',
-          tagBgColor: const Color(0xFFD1FAE5),
-          tagTextColor: const Color(0xFF047857),
-          gradientColors: const [Color(0xFFECFDF5), Color(0xFFF0FDF4)],
-          borderColor: const Color(0xFFA7F3D0),
-          iconColor: const Color(0xFF10B981),
-          icon: Icons.assignment_turned_in_rounded,
+          tagBgColor: canSubmit
+              ? const Color(0xFFD1FAE5)
+              : const Color(0xFFF1F5F9),
+          tagTextColor: canSubmit
+              ? const Color(0xFF047857)
+              : const Color(0xFF64748B),
+          gradientColors: canSubmit
+              ? const [Color(0xFFECFDF5), Color(0xFFF0FDF4)]
+              : const [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+          borderColor: canSubmit
+              ? const Color(0xFFA7F3D0)
+              : const Color(0xFFCBD5E1),
+          iconColor: canSubmit
+              ? const Color(0xFF10B981)
+              : const Color(0xFF64748B),
+          icon: canSubmit
+              ? Icons.assignment_turned_in_rounded
+              : Icons.lock_clock_rounded,
           title: 'Trả lời các câu hỏi',
           subtitle: 'Khảo sát triệu chứng & thể trạng sức khỏe mỗi ngày',
-          actionText: 'Thực hiện ngay',
-          onTap: () => context.push(AppRoutes.patientAssessment),
+          actionText: canSubmit ? 'Thực hiện ngay' : 'Tạm khóa',
+          actionIcon: canSubmit
+              ? Icons.arrow_forward_rounded
+              : Icons.lock_outline_rounded,
+          isDisabled: !canSubmit,
+          disabledReason: disabledReason,
+          onTap: () {
+            if (!canSubmit) {
+              context.showTopToast(
+                disabledReason ?? 'Bài đánh giá tạm thời chưa thể thực hiện.',
+                isError: false,
+              );
+              return;
+            }
+            context.push(AppRoutes.patientAssessment);
+          },
         ),
         const SizedBox(height: 14),
 
@@ -613,6 +647,9 @@ class _BentoActionCard extends StatefulWidget {
     required this.subtitle,
     required this.actionText,
     required this.onTap,
+    this.isDisabled = false,
+    this.disabledReason,
+    this.actionIcon,
   });
 
   final String categoryTag;
@@ -626,6 +663,9 @@ class _BentoActionCard extends StatefulWidget {
   final String subtitle;
   final String actionText;
   final VoidCallback onTap;
+  final bool isDisabled;
+  final String? disabledReason;
+  final IconData? actionIcon;
 
   @override
   State<_BentoActionCard> createState() => _BentoActionCardState();
@@ -636,6 +676,9 @@ class _BentoActionCardState extends State<_BentoActionCard> {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveActionIcon =
+        widget.actionIcon ?? Icons.arrow_forward_rounded;
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) => setState(() => _isPressed = false),
@@ -735,6 +778,47 @@ class _BentoActionCardState extends State<_BentoActionCard> {
                   height: 1.35,
                 ),
               ),
+
+              // Disabled Reason Callout Banner (Phương án B)
+              if (widget.isDisabled &&
+                  widget.disabledReason != null &&
+                  widget.disabledReason!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFFEDD5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: Color(0xFFC2410C),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.disabledReason!,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFC2410C),
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 14),
 
               // Action Footer Bar
@@ -765,7 +849,7 @@ class _BentoActionCardState extends State<_BentoActionCard> {
                       ],
                     ),
                     child: Icon(
-                      Icons.arrow_forward_rounded,
+                      effectiveActionIcon,
                       size: 14,
                       color: widget.iconColor,
                     ),
