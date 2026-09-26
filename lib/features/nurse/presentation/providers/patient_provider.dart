@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:poms/core/services/socket_provider.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 
 import 'package:poms/features/nurse/data/datasources/patient_remote_datasource.dart';
-import 'package:poms/features/nurse/data/datasources/patient_socket_datasource.dart';
 import 'package:poms/features/nurse/data/repositories/patient_repository_impl.dart';
 
 import 'package:poms/features/nurse/domain/repositories/patient_repository.dart';
@@ -20,17 +18,8 @@ final patientRemoteDatasourceProvider = Provider<PatientRemoteDataSource>((
   return PatientRemoteDataSource(ref.watch(appDioProvider));
 });
 
-final patientSocketDatasourceProvider = Provider<PatientSocketDataSource>((
-  ref,
-) {
-  return PatientSocketDataSource(ref.watch(socketServiceProvider));
-});
-
 final patientRepositoryProvider = Provider<PatientRepository>((ref) {
-  return PatientRepositoryImpl(
-    ref.watch(patientRemoteDatasourceProvider),
-    ref.watch(patientSocketDatasourceProvider),
-  );
+  return PatientRepositoryImpl(ref.watch(patientRemoteDatasourceProvider));
 });
 
 final patientNotifierProvider =

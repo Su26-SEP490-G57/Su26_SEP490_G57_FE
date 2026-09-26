@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poms/core/services/socket_service.dart';
+import 'package:poms/features/auth/domain/models/user_model.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poms/features/doctor/presentation/providers/doctor_patient_provider.dart';
 import 'package:poms/features/nurse/data/models/patient_response.dart';
 import 'package:poms/features/nurse/domain/models/patient_summary.dart';
 import 'package:poms/features/nurse/presentation/providers/analytics_provider.dart';
@@ -31,12 +33,28 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
     ),
   );
 
+  // Khoá/mở mức ăn (nút "Tạm dừng ăn"/"Tiếp tục ăn") phát trên namespace
+  // RIÊNG '/patients' (PatientGateway), không đi qua '/statistics' — cần kết
+  // nối thêm để 1 phiên nurse/doctor khác (hoặc chính patient đó) thấy ngay
+  // không cần reload.
+  final patientsSocket = SocketService(
+    io.io(
+      '${appFlavorConfig.apiBaseUrl}/patients',
+      io.OptionBuilder()
+          .setTransports(['websocket'])
+          .disableAutoConnect()
+          .build(),
+    ),
+  );
+
   Future<void> connectIfNeeded() async {
     await socket.connect();
+    await patientsSocket.connect();
   }
 
   Future<void> disconnectIfNeeded() async {
     await socket.disconnect();
+    await patientsSocket.disconnect();
     lastSurveyEventKey = null;
   }
 
@@ -101,11 +119,23 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
     }
   }
 
+  // Doctor có danh sách bệnh nhân RIÊNG (doctorPatientsNotifierProvider,
+  // không autoDispose) — trước giờ chỉ fetch 1 lần lúc mở màn, không có
+  // realtime nào cả nên hay bị lệch so với bên nurse. Chỉ đọc/tạo provider
+  // này khi người đang đăng nhập THẬT SỰ là doctor, tránh việc mọi session
+  // (kể cả nurse/patient) đều vô tình fetch nguyên danh sách bệnh nhân của
+  // doctor mỗi lần có socket event.
+  bool isCurrentUserDoctor() =>
+      ref.read(authStateProvider).valueOrNull?.primaryRole == UserRole.doctor;
+
   void applyPatientPayload(dynamic payload) {
     final patient = patientFromPayload(payload);
     if (patient == null) return;
 
     ref.read(patientNotifierProvider.notifier).upsertPatient(patient);
+    if (isCurrentUserDoctor()) {
+      ref.read(doctorPatientsNotifierProvider.notifier).upsertPatient(patient);
+    }
   }
 
   void removePatientPayload(dynamic payload) {
@@ -114,6 +144,9 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
     if (caseId == null || caseId.isEmpty) return;
 
     ref.read(patientNotifierProvider.notifier).removePatient(caseId);
+    if (isCurrentUserDoctor()) {
+      ref.read(doctorPatientsNotifierProvider.notifier).removePatient(caseId);
+    }
   }
 
   void applySurveyPayload(dynamic payload) {
@@ -158,6 +191,30 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
           : existing?.alertCount,
     );
 
+    if (isCurrentUserDoctor()) {
+      final existingForDoctor = ref
+          .read(doctorPatientsNotifierProvider)
+          .patients
+          .where((item) => item.code == caseId)
+          .cast<PatientSummary?>()
+          .firstOrNull;
+
+      ref
+          .read(doctorPatientsNotifierProvider.notifier)
+          .patchPatient(
+            caseId,
+            status: status,
+            lastAssessmentTime: lastAssessmentTime,
+            assessmentDone: existingForDoctor != null
+                ? existingForDoctor.assessmentDone + 1
+                : null,
+            needsIntervention: status == PatientStatus.red,
+            alertCount: status == PatientStatus.red
+                ? (existingForDoctor?.alertCount ?? 0) + 1
+                : existingForDoctor?.alertCount,
+          );
+    }
+
     ref.invalidate(nurse_assessment.assessmentNotifierProvider(caseId));
     ref.invalidate(currentPodProvider);
     ref.invalidate(patient_survey.surveyQuestionsProvider);
@@ -185,6 +242,24 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
       // Payload không đúng dạng mong đợi — bỏ qua, không làm crash socket listener.
     }
   }
+
+  // Bất kỳ ai (nurse/doctor khác, hoặc chính patient) đang xem patient này
+  // đều cần thấy trạng thái khoá mức ăn mới ngay, không cần reload.
+  void applyPodLockPayload(dynamic payload) {
+    final map = extractMap(payload);
+    final caseId = map?['caseId']?.toString();
+    if (caseId == null || caseId.isEmpty) return;
+
+    ref.invalidate(patientPodStatusProvider(caseId));
+
+    final myCaseId = ref.read(authStateProvider).valueOrNull?.caseId;
+    if (myCaseId != null && myCaseId == caseId) {
+      ref.invalidate(currentPodProvider);
+    }
+  }
+
+  patientsSocket.on('pod.locked', applyPodLockPayload);
+  patientsSocket.on('pod.unlocked', applyPodLockPayload);
 
   socket.on('notification.created', applyNotificationPayload);
 
@@ -246,5 +321,8 @@ final statisticsRealtimeProvider = Provider<void>((ref) {
     socket.off('assessment.submitted');
     socket.off('notification.created');
     socket.dispose();
+    patientsSocket.off('pod.locked');
+    patientsSocket.off('pod.unlocked');
+    patientsSocket.dispose();
   });
 });

@@ -133,15 +133,42 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
         false;
   }
 
-  Future<void> _togglePodLock(bool isLocked) async {
+  Future<bool> _confirmContinueWithPendingAlert() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => const _ContinueDietWithAlertDialog(),
+        ) ??
+        false;
+  }
+
+  Future<void> _togglePodLock(bool isLocked, {AlertModel? activeAlert}) async {
     if (isLocked) {
-      final confirmed = await _confirm(
-        title: 'Tiếp tục mức ăn',
-        message: 'Cho phép tiếp tục tiến trình mức ăn cho người bệnh?',
-        confirmLabel: 'Tiếp tục',
-      );
+      // Còn cảnh báo chưa xử trí (PENDING_REVIEW) → bắt buộc tick "Xác nhận
+      // xử trí" trong popup thì mới cho tiếp tục mức ăn; không tick thì mức
+      // ăn vẫn tiếp tục dừng (không gọi setPodLock).
+      final hasPendingAlert = activeAlert != null;
+      final confirmed = hasPendingAlert
+          ? await _confirmContinueWithPendingAlert()
+          : await _confirm(
+              title: 'Tiếp tục mức ăn',
+              message: 'Cho phép tiếp tục tiến trình mức ăn cho người bệnh?',
+              confirmLabel: 'Tiếp tục',
+            );
       if (!confirmed) return;
       await _runCareAction(() async {
+        if (hasPendingAlert) {
+          await ref
+              .read(alertRemoteDataSourceProvider)
+              .acknowledgeAlert(
+                alertId: activeAlert.alertId,
+                nurseAction: null,
+                nursingNote: null,
+              );
+          ref
+              .read(alertsNotifierProvider.notifier)
+              .markHandled(activeAlert.alertId);
+          ref.invalidate(activeAlertForPatientProvider(widget.patientId));
+        }
         await ref
             .read(patientRemoteDatasourceProvider)
             .setPodLock(caseId: widget.patientId, isLocked: false);
@@ -149,7 +176,9 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
         await ref
             .read(assessmentNotifierProvider(widget.patientId).notifier)
             .submitReassessment(
-              nurseNote: '▶️ Cho phép tiếp tục tiến trình ăn cho người bệnh',
+              nurseNote: hasPendingAlert
+                  ? '▶️ Xác nhận xử trí cảnh báo và cho phép tiếp tục tiến trình ăn cho người bệnh'
+                  : '▶️ Cho phép tiếp tục tiến trình ăn cho người bệnh',
               source: 'NOTE',
             );
       }, 'Đã tiếp tục mức ăn');
@@ -408,7 +437,10 @@ class _NursePatientDetailPageState extends ConsumerState<NursePatientDetailPage>
             : () => _showDietManagement(patient),
         onPodLockPressed: podStatusAsync.asData == null
             ? null
-            : () => _togglePodLock(podStatusAsync.asData!.value.isLocked),
+            : () => _togglePodLock(
+                podStatusAsync.asData!.value.isLocked,
+                activeAlert: activeAlert,
+              ),
         onDietRollback: patient.dietLevel > 0
             ? () => _rollbackDietLevel(patient)
             : null,
@@ -677,6 +709,60 @@ class _HoldReasonDialogState extends State<_HoldReasonDialog> {
             Navigator.of(context).pop(value);
           },
           child: const Text('Tạm dừng'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Popup bắt buộc tick "Xác nhận xử trí" trước khi cho phép tiếp tục mức ăn
+/// khi người bệnh còn cảnh báo (PENDING_REVIEW) chưa được xử trí. Không tick
+/// thì nút "Tiếp tục" bị vô hiệu hoá — mức ăn vẫn tiếp tục dừng.
+class _ContinueDietWithAlertDialog extends StatefulWidget {
+  const _ContinueDietWithAlertDialog();
+
+  @override
+  State<_ContinueDietWithAlertDialog> createState() =>
+      _ContinueDietWithAlertDialogState();
+}
+
+class _ContinueDietWithAlertDialogState
+    extends State<_ContinueDietWithAlertDialog> {
+  bool _acknowledged = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Tiếp tục mức ăn'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Người bệnh đang có cảnh báo chưa được xử trí. Vui lòng xác nhận '
+            'đã xử trí cảnh báo trước khi cho tiếp tục mức ăn.',
+          ),
+          const SizedBox(height: 12),
+          CheckboxListTile(
+            value: _acknowledged,
+            onChanged: (value) =>
+                setState(() => _acknowledged = value ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Xác nhận xử trí cảnh báo hiện tại'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Hủy'),
+        ),
+        ElevatedButton(
+          onPressed: _acknowledged
+              ? () => Navigator.of(context).pop(true)
+              : null,
+          child: const Text('Tiếp tục'),
         ),
       ],
     );

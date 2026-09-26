@@ -88,7 +88,56 @@ class DoctorPatientsNotifier extends StateNotifier<DoctorPatientsState> {
     } else {
       current.insert(0, updated);
     }
-    state = state.copyWith(patients: current);
+    state = state.copyWith(patients: _sortedByPriority(current));
+  }
+
+  void removePatient(String caseId) {
+    if (!mounted) return;
+    final exists = state.patients.any((p) => p.code == caseId);
+    if (!exists) return;
+    state = state.copyWith(
+      patients: state.patients.where((p) => p.code != caseId).toList(),
+    );
+  }
+
+  /// Cập nhật 1 phần dữ liệu (vd triage color sau khi nộp/đánh giá lại) —
+  /// mirror `PatientNotifier.patchPatient` bên nurse, để danh sách bệnh nhân
+  /// của doctor cũng cập nhật realtime qua socket giống hệt bên nurse thay vì
+  /// chỉ đọc 1 lần lúc mở màn.
+  void patchPatient(
+    String caseId, {
+    PatientStatus? status,
+    String? lastAssessmentTime,
+    int? assessmentDone,
+    bool? needsIntervention,
+    int? alertCount,
+  }) {
+    if (!mounted) return;
+    final patients = state.patients.map((item) {
+      if (item.code != caseId) return item;
+      return item.copyWith(
+        status: status,
+        lastAssessmentTime: lastAssessmentTime,
+        assessmentDone: assessmentDone,
+        needsIntervention: needsIntervention,
+        alertCount: alertCount,
+      );
+    }).toList();
+    // Re-sort so priority order (ĐỎ → VÀNG → XANH) stays correct after a
+    // WebSocket reassessment event changes a patient's triage status —
+    // mirrors PatientNotifier.patchPatient on the nurse side.
+    state = state.copyWith(patients: _sortedByPriority(patients));
+  }
+
+  /// Sort patients ĐỎ → VÀNG → XANH, preserving relative order within each group.
+  static List<PatientSummary> _sortedByPriority(List<PatientSummary> list) {
+    const rank = {
+      PatientStatus.red: 0,
+      PatientStatus.yellow: 1,
+      PatientStatus.green: 2,
+    };
+    return [...list]
+      ..sort((a, b) => (rank[a.status] ?? 2).compareTo(rank[b.status] ?? 2));
   }
 }
 

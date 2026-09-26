@@ -219,11 +219,17 @@ class _PatientAssessmentPageState extends ConsumerState<PatientAssessmentPage> {
     if (!mounted) return;
 
     if (state.status == AssessmentStatus.success && state.result != null) {
-      ref.invalidate(patientPodTimelineApiProvider);
-      ref.invalidate(currentPodProvider);
+      // Điều hướng sang màn Kết quả TRƯỚC khi invalidate currentPodProvider.
+      // Nếu invalidate trước, PatientAssessmentPage (đang là màn hiện tại,
+      // watch currentPodProvider để chặn khi bị khóa) rebuild ngay lập tức —
+      // nếu bài vừa nộp làm patient thành RED/YELLOW, nó render luôn màn
+      // "Tạm khóa" tại chỗ, chèn ngay trước khi lệnh push kịp chạy, nên
+      // patient không kịp thấy màn Kết quả của chính bài vừa nộp.
       unawaited(
         context.push(AppRoutes.patientAssessmentResult, extra: state.result),
       );
+      ref.invalidate(patientPodTimelineApiProvider);
+      ref.invalidate(currentPodProvider);
     } else if (state.status == AssessmentStatus.error) {
       context.showTopToast(
         state.errorMessage ?? 'Có lỗi xảy ra. Vui lòng thử lại.',
