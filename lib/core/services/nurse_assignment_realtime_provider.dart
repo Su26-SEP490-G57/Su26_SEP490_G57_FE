@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
+import 'package:poms/core/services/socket_auth.dart';
 import 'package:poms/core/services/socket_service.dart';
 import 'package:poms/features/auth/domain/models/user_model.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
@@ -20,6 +21,7 @@ final nurseAssignmentRealtimeProvider = Provider<void>((ref) {
       io.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
+          .setAuthFn(socketAuthFn(ref))
           .build(),
     ),
   );

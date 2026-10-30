@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
+import 'package:poms/core/services/socket_auth.dart';
 import 'package:poms/core/services/socket_service.dart';
 import 'package:poms/features/doctor/data/datasources/doctor_notification_remote_datasource.dart';
 import 'package:poms/features/doctor/domain/models/doctor_notification.dart';
@@ -29,17 +30,20 @@ final doctorNotificationsRealtimeProvider = Provider.autoDispose<void>((ref) {
       io.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
+          .setAuthFn(socketAuthFn(ref))
           .build(),
     ),
   );
 
   socket.on('pod.locked', (_) => ref.invalidate(doctorNotificationsProvider));
+  socket.on('pod.unlocked', (_) => ref.invalidate(doctorNotificationsProvider));
   socket.on('vital_signs.created', (_) => ref.invalidate(doctorNotificationsProvider));
   socket.on('vital_signs.updated', (_) => ref.invalidate(doctorNotificationsProvider));
   unawaited(socket.connect());
 
   ref.onDispose(() {
     socket.off('pod.locked');
+    socket.off('pod.unlocked');
     socket.off('vital_signs.created');
     socket.off('vital_signs.updated');
     unawaited(socket.disconnect());

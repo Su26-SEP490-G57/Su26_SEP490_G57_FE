@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:poms/core/utils/exception_handler.dart';
 import 'package:poms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poms/features/patient/data/datasources/survey_remote_datasource.dart';
 import 'package:poms/features/patient/data/repositories/survey_repository_impl.dart';
@@ -84,9 +85,16 @@ class AssessmentNotifier extends StateNotifier<AssessmentState> {
     } catch (e) {
       if (!mounted) return;
 
+      // Answers stay intact — they live in the caller's own widget state
+      // (e.g. PatientAssessmentPage's `_answers` map), not here, so a failed
+      // submit doesn't force the patient to redo the form; they can just
+      // retry. What was missing was a friendly message: raw Dio/exception
+      // text (e.g. "DioException [connectionTimeout]...") was shown directly
+      // instead of going through the app's own exception→Failure mapping
+      // used everywhere else.
       state = AssessmentState(
         status: AssessmentStatus.error,
-        errorMessage: e.toString(),
+        errorMessage: mapExceptionToFailure(e).message,
       );
     }
   }

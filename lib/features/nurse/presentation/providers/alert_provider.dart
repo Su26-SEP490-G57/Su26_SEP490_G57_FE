@@ -10,6 +10,7 @@ import 'package:poms/features/nurse/domain/repositories/alert_repository.dart';
 import 'package:poms/features/nurse/presentation/providers/patient_provider.dart';
 import 'package:poms/main.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:poms/core/services/socket_auth.dart';
 import 'package:poms/core/services/socket_service.dart';
 
 // ── Infrastructure providers ──────────────────────────────────────────────────
@@ -234,6 +235,7 @@ final alertRealtimeProvider = Provider<void>((ref) {
       io.OptionBuilder()
           .setTransports(['websocket'])
           .disableAutoConnect()
+          .setAuthFn(socketAuthFn(ref))
           .build(),
     ),
   );
